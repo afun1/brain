@@ -1,6 +1,6 @@
 import { usePrograms } from "@/hooks/use-programs";
 import { Link } from "wouter";
-import { Loader2, Headphones, ArrowRight, PlayCircle } from "lucide-react";
+import { Loader2, Headphones, ArrowRight, PlayCircle, Sliders } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function HomePage() {
@@ -62,7 +62,7 @@ export default function HomePage() {
           >
             {programs?.map((program) => (
               <motion.div key={program.id} variants={item}>
-                <Link href={`/program/${program.id}`} className="block group">
+                <Link href={`/program/${program.id}`} className="block group" data-testid={`link-program-${program.id}`}>
                   <div className="glass-panel rounded-3xl p-8 h-full transition-all duration-500 hover:bg-white/5 hover:scale-[1.02] border border-white/5 group-hover:border-primary/30 relative overflow-hidden">
                     
                     {/* Hover Glow */}
@@ -96,6 +96,40 @@ export default function HomePage() {
                 </Link>
               </motion.div>
             ))}
+
+            {/* Custom Frequency Card */}
+            <motion.div variants={item}>
+              <Link href="/custom" className="block group" data-testid="link-custom-frequency">
+                <div className="glass-panel rounded-3xl p-8 h-full transition-all duration-500 hover:bg-white/5 hover:scale-[1.02] border border-accent/20 group-hover:border-accent/50 relative overflow-hidden">
+                  
+                  {/* Hover Glow */}
+                  <div className="absolute inset-0 bg-gradient-to-tr from-accent/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  
+                  <div className="relative z-10 flex flex-col h-full">
+                    <div className="flex justify-between items-start mb-8">
+                      <div className="bg-accent/10 p-3 rounded-2xl group-hover:bg-accent/20 transition-colors">
+                        <Sliders className="w-8 h-8 text-accent" />
+                      </div>
+                      <span className="px-3 py-1 rounded-full bg-white/5 text-muted-foreground text-xs font-bold tracking-wider uppercase border border-white/10">
+                        Custom Mode
+                      </span>
+                    </div>
+                    
+                    <h3 className="text-2xl font-display mb-3 group-hover:text-accent transition-colors">
+                      Custom Frequencies
+                    </h3>
+                    
+                    <p className="text-muted-foreground text-sm leading-relaxed mb-8 flex-1">
+                      Create your own binaural beat combination. Select any carrier frequency (left ear) and beat frequency, and see the calculated right ear frequency in real-time.
+                    </p>
+                    
+                    <div className="flex items-center text-accent text-sm font-bold tracking-wide group-hover:translate-x-1 transition-transform">
+                      ADJUST FREQUENCIES <ArrowRight className="ml-2 w-4 h-4" />
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            </motion.div>
           </motion.div>
         )}
       </div>

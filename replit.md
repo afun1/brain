@@ -38,13 +38,35 @@ Sleep programs contain multiple stages, each defining:
 - Duration in seconds
 - Start/end frequencies for gradual transitions
 
+### Custom Frequency Mode
+- Route: `/custom`
+- Allows users to manually adjust carrier (left ear) and beat frequencies
+- Right ear frequency is automatically calculated (carrier + beat)
+- Solfeggio frequency presets: 174, 285, 396, 417, 432, 528, 639, 741, 852, 963 Hz
+- Beat frequency presets: 0.5, 1, 2, 4, 6, 8, 10, 12, 15, 20 Hz
+- Real-time frequency adjustment while audio is playing
+
+### Solfeggio Frequencies (used in 8-Hour program)
+| Frequency | Chakra/Purpose |
+|-----------|----------------|
+| 174 Hz | Foundation - Security & Stability |
+| 285 Hz | Healing - Tissue & Cell Restoration |
+| 396 Hz | Root Chakra - Release Fear/Guilt |
+| 417 Hz | Sacral - Break Negative Patterns |
+| 432 Hz | Universal Harmony - Natural Tuning |
+| 528 Hz | Love Frequency - DNA Repair |
+| 639 Hz | Heart Chakra - Relationships |
+| 741 Hz | Throat - Clarity & Awakening |
+| 852 Hz | Third Eye - Intuition |
+| 963 Hz | Crown Chakra - Cosmic Connection |
+
 ### Project Structure
 ```
 client/           # React frontend
   src/
     components/   # UI components including audio controls, visualizer
     hooks/        # Custom hooks (audio engine, data fetching)
-    pages/        # Route pages (Home, Player)
+    pages/        # Route pages (Home, Player, Custom)
     lib/          # Utilities and query client
 server/           # Express backend
   routes.ts       # API route handlers
