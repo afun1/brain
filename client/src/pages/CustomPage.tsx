@@ -2,7 +2,7 @@ import { useCustomAudio } from "@/hooks/use-custom-audio";
 import { WaveVisualizer } from "@/components/WaveVisualizer";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Play, Pause, Volume2, Sliders, ArrowLeft } from "lucide-react";
+import { Play, Pause, Volume2, Sliders, ArrowLeft, ArrowLeftRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 
@@ -66,11 +66,13 @@ export default function CustomPage() {
 
           <div className="glass-panel rounded-2xl p-6 space-y-6">
             <div className="grid grid-cols-3 gap-4 text-center">
-              <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
-                <div className="text-2xl md:text-3xl font-bold text-primary" data-testid="text-left-freq">
-                  {audio.carrierFreq} Hz
+              <div className={`p-4 rounded-xl border ${audio.carrierSide === 'left' ? 'bg-primary/10 border-primary/20' : 'bg-white/5 border-white/10'}`}>
+                <div className={`text-2xl md:text-3xl font-bold ${audio.carrierSide === 'left' ? 'text-primary' : 'text-muted-foreground'}`} data-testid="text-left-freq">
+                  {audio.leftFreq} Hz
                 </div>
-                <div className="text-xs text-muted-foreground mt-1">Left Ear (Carrier)</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Left Ear {audio.carrierSide === 'left' ? '(Carrier)' : '(Calculated)'}
+                </div>
               </div>
               <div className="p-4 rounded-xl bg-accent/10 border border-accent/20">
                 <div className="text-2xl md:text-3xl font-bold text-accent animate-pulse" data-testid="text-beat-freq">
@@ -78,19 +80,36 @@ export default function CustomPage() {
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">Binaural Beat</div>
               </div>
-              <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
-                <div className="text-2xl md:text-3xl font-bold text-primary" data-testid="text-right-freq">
+              <div className={`p-4 rounded-xl border ${audio.carrierSide === 'right' ? 'bg-primary/10 border-primary/20' : 'bg-white/5 border-white/10'}`}>
+                <div className={`text-2xl md:text-3xl font-bold ${audio.carrierSide === 'right' ? 'text-primary' : 'text-muted-foreground'}`} data-testid="text-right-freq">
                   {audio.rightFreq} Hz
                 </div>
-                <div className="text-xs text-muted-foreground mt-1">Right Ear</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Right Ear {audio.carrierSide === 'right' ? '(Carrier)' : '(Calculated)'}
+                </div>
               </div>
+            </div>
+
+            <div className="flex justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => audio.setCarrierSide(audio.carrierSide === 'left' ? 'right' : 'left')}
+                className="gap-2"
+                data-testid="button-swap-sides"
+              >
+                <ArrowLeftRight className="w-4 h-4" />
+                Swap Carrier to {audio.carrierSide === 'left' ? 'Right' : 'Left'} Ear
+              </Button>
             </div>
           </div>
 
           <div className="glass-panel rounded-2xl p-6 space-y-6">
             <div>
               <div className="flex justify-between items-center mb-3">
-                <label className="text-sm font-medium text-white">Left Ear (Carrier Frequency)</label>
+                <label className="text-sm font-medium text-white">
+                  {audio.carrierSide === 'left' ? 'Left' : 'Right'} Ear (Carrier Frequency)
+                </label>
                 <span className="text-sm text-muted-foreground font-mono">{audio.carrierFreq} Hz</span>
               </div>
               <Slider

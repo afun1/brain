@@ -12,8 +12,11 @@ export function useCustomAudio() {
   const [volume, setVolumeState] = useState(0.5);
   const [carrierFreq, setCarrierFreqState] = useState(174);
   const [beatFreq, setBeatFreqState] = useState(4);
+  const [carrierSide, setCarrierSideState] = useState<'left' | 'right'>('left');
 
-  const rightFreq = carrierFreq + beatFreq;
+  const calculatedFreq = carrierFreq + beatFreq;
+  const leftFreq = carrierSide === 'left' ? carrierFreq : calculatedFreq;
+  const rightFreq = carrierSide === 'left' ? calculatedFreq : carrierFreq;
 
   useEffect(() => {
     return () => {
@@ -56,8 +59,8 @@ export function useCustomAudio() {
     rightPan.pan.value = 1;
     masterGain.gain.value = volume;
 
-    leftOsc.frequency.value = carrierFreq;
-    rightOsc.frequency.value = carrierFreq + beatFreq;
+    leftOsc.frequency.value = leftFreq;
+    rightOsc.frequency.value = rightFreq;
 
     leftOsc.start();
     rightOsc.start();
@@ -69,7 +72,7 @@ export function useCustomAudio() {
     masterGainRef.current = masterGain;
 
     setIsPlaying(true);
-  }, [carrierFreq, beatFreq, volume, initAudio]);
+  }, [carrierFreq, beatFreq, volume, initAudio, leftFreq, rightFreq, carrierSide]);
 
   const stop = useCallback(() => {
     if (leftOscillatorRef.current) {
@@ -93,34 +96,33 @@ export function useCustomAudio() {
     }
   }, [isPlaying, play, stop]);
 
-  const setCarrierFreq = useCallback((freq: number) => {
-    setCarrierFreqState(freq);
+  const updateOscillatorFreqs = useCallback((carrier: number, beat: number, side: 'left' | 'right') => {
+    const calc = carrier + beat;
+    const newLeft = side === 'left' ? carrier : calc;
+    const newRight = side === 'left' ? calc : carrier;
+    
     if (leftOscillatorRef.current && audioContextRef.current) {
-      leftOscillatorRef.current.frequency.setTargetAtTime(
-        freq, 
-        audioContextRef.current.currentTime, 
-        0.05
-      );
+      leftOscillatorRef.current.frequency.setTargetAtTime(newLeft, audioContextRef.current.currentTime, 0.05);
     }
     if (rightOscillatorRef.current && audioContextRef.current) {
-      rightOscillatorRef.current.frequency.setTargetAtTime(
-        freq + beatFreq, 
-        audioContextRef.current.currentTime, 
-        0.05
-      );
+      rightOscillatorRef.current.frequency.setTargetAtTime(newRight, audioContextRef.current.currentTime, 0.05);
     }
-  }, [beatFreq]);
+  }, []);
+
+  const setCarrierFreq = useCallback((freq: number) => {
+    setCarrierFreqState(freq);
+    updateOscillatorFreqs(freq, beatFreq, carrierSide);
+  }, [beatFreq, carrierSide, updateOscillatorFreqs]);
 
   const setBeatFreq = useCallback((freq: number) => {
     setBeatFreqState(freq);
-    if (rightOscillatorRef.current && audioContextRef.current) {
-      rightOscillatorRef.current.frequency.setTargetAtTime(
-        carrierFreq + freq, 
-        audioContextRef.current.currentTime, 
-        0.05
-      );
-    }
-  }, [carrierFreq]);
+    updateOscillatorFreqs(carrierFreq, freq, carrierSide);
+  }, [carrierFreq, carrierSide, updateOscillatorFreqs]);
+
+  const setCarrierSide = useCallback((side: 'left' | 'right') => {
+    setCarrierSideState(side);
+    updateOscillatorFreqs(carrierFreq, beatFreq, side);
+  }, [carrierFreq, beatFreq, updateOscillatorFreqs]);
 
   const setVolume = useCallback((val: number) => {
     setVolumeState(val);
@@ -140,6 +142,10 @@ export function useCustomAudio() {
     setCarrierFreq,
     beatFreq,
     setBeatFreq,
+    carrierSide,
+    setCarrierSide,
+    leftFreq,
     rightFreq,
+    calculatedFreq,
   };
 }
