@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { usePrograms } from "@/hooks/use-programs";
 import { useCustomAudio } from "@/hooks/use-custom-audio";
 import { useAudioEngine } from "@/hooks/use-audio-engine";
@@ -9,7 +9,7 @@ import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Play, Pause, Volume2, Sliders, Headphones, 
-  ArrowLeftRight, Moon 
+  ArrowLeftRight, Moon, Brain, Timer
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { SleepStage } from "@shared/schema";
@@ -38,7 +38,17 @@ const BEAT_PRESETS = [
   { freq: 12, label: "12", name: "Beta" },
 ];
 
-type Mode = "custom" | "program";
+type Mode = "custom" | "program" | "learning";
+type LearningTarget = "alpha" | "theta";
+
+const DURATION_OPTIONS = [
+  { minutes: 10, label: "10 min" },
+  { minutes: 15, label: "15 min" },
+  { minutes: 20, label: "20 min" },
+  { minutes: 30, label: "30 min" },
+  { minutes: 45, label: "45 min" },
+  { minutes: 60, label: "1 hour" },
+];
 
 export default function ConsolePage() {
   const { data: programs } = usePrograms();
@@ -46,11 +56,94 @@ export default function ConsolePage() {
   const [mode, setMode] = useState<Mode>("custom");
   const [selectedProgramId, setSelectedProgramId] = useState<number | null>(null);
   
+  // Learning Mode state
+  const [learningTarget, setLearningTarget] = useState<LearningTarget>("alpha");
+  const [learningDuration, setLearningDuration] = useState(20); // minutes
+  const [includeWindDown, setIncludeWindDown] = useState(true);
+  
   const selectedProgram = programs?.find(p => p.id === selectedProgramId);
   const programAudio = useAudioEngine(selectedProgram?.stages as SleepStage[] || []);
+  
+  // Generate learning mode stages dynamically
+  const learningStages = useMemo((): SleepStage[] => {
+    const stages: SleepStage[] = [];
+    const totalSeconds = learningDuration * 60;
+    const windDownSeconds = includeWindDown ? Math.min(300, totalSeconds * 0.15) : 0; // 5 min or 15% max
+    const mainSeconds = totalSeconds - windDownSeconds;
+    
+    // Wind-down phase: from beta (15Hz) to alpha (10Hz)
+    if (includeWindDown && windDownSeconds > 0) {
+      stages.push({
+        id: 1,
+        programId: 0,
+        name: "Wind Down",
+        startBeatFreq: 15,
+        endBeatFreq: 10,
+        startCarrierFreq: 432,
+        endCarrierFreq: 432,
+        durationSeconds: Math.round(windDownSeconds),
+        order: 1,
+      });
+    }
+    
+    if (learningTarget === "alpha") {
+      // Stay in alpha (8-12Hz, targeting 10Hz)
+      stages.push({
+        id: 2,
+        programId: 0,
+        name: "Alpha State",
+        startBeatFreq: 10,
+        endBeatFreq: 10,
+        startCarrierFreq: 432,
+        endCarrierFreq: 432,
+        durationSeconds: Math.round(mainSeconds),
+        order: 2,
+      });
+    } else {
+      // Go to theta: transition from alpha to theta
+      const transitionSeconds = Math.min(180, mainSeconds * 0.2); // 3 min or 20% max
+      const thetaSeconds = mainSeconds - transitionSeconds;
+      
+      stages.push({
+        id: 2,
+        programId: 0,
+        name: "Alpha to Theta",
+        startBeatFreq: 10,
+        endBeatFreq: 6,
+        startCarrierFreq: 432,
+        endCarrierFreq: 432,
+        durationSeconds: Math.round(transitionSeconds),
+        order: 2,
+      });
+      
+      stages.push({
+        id: 3,
+        programId: 0,
+        name: "Deep Theta",
+        startBeatFreq: 6,
+        endBeatFreq: 6,
+        startCarrierFreq: 432,
+        endCarrierFreq: 432,
+        durationSeconds: Math.round(thetaSeconds),
+        order: 3,
+      });
+    }
+    
+    return stages;
+  }, [learningTarget, learningDuration, includeWindDown]);
+  
+  const learningAudio = useAudioEngine(learningStages);
 
-  const isPlaying = mode === "custom" ? customAudio.isPlaying : programAudio.isPlaying;
-  const beatFreq = mode === "custom" ? customAudio.beatFreq : programAudio.currentBeat;
+  const isPlaying = mode === "custom" 
+    ? customAudio.isPlaying 
+    : mode === "program" 
+      ? programAudio.isPlaying 
+      : learningAudio.isPlaying;
+  const beatFreq = mode === "custom" 
+    ? customAudio.beatFreq 
+    : mode === "program" 
+      ? programAudio.currentBeat 
+      : learningAudio.currentBeat;
 
   const getCurrentStageName = () => {
     if (!selectedProgram || mode !== "program") return "";
@@ -80,24 +173,47 @@ export default function ConsolePage() {
     setSelectedProgramId(programId);
     setMode("program");
   };
+  
+  const getLearningCurrentStage = () => {
+    if (mode !== "learning") return "";
+    let timeScanner = 0;
+    for (const stage of learningStages) {
+      if (learningAudio.elapsedTime >= timeScanner && learningAudio.elapsedTime < timeScanner + stage.durationSeconds) {
+        return stage.name;
+      }
+      timeScanner += stage.durationSeconds;
+    }
+    if (learningAudio.elapsedTime >= learningAudio.totalDuration && learningAudio.totalDuration > 0) {
+      return "Complete";
+    }
+    return "Ready";
+  };
 
   const handleTogglePlay = () => {
     if (mode === "custom") {
       customAudio.togglePlay();
-    } else {
+    } else if (mode === "program") {
       programAudio.togglePlay();
+    } else {
+      learningAudio.togglePlay();
     }
   };
 
   const handleVolumeChange = (val: number) => {
     if (mode === "custom") {
       customAudio.setVolume(val);
-    } else {
+    } else if (mode === "program") {
       programAudio.setVolume(val);
+    } else {
+      learningAudio.setVolume(val);
     }
   };
 
-  const currentVolume = mode === "custom" ? customAudio.volume : programAudio.volume;
+  const currentVolume = mode === "custom" 
+    ? customAudio.volume 
+    : mode === "program" 
+      ? programAudio.volume 
+      : learningAudio.volume;
 
   return (
     <div className="relative min-h-screen bg-background overflow-hidden flex flex-col">
@@ -112,14 +228,18 @@ export default function ConsolePage() {
         <div className="w-full max-w-4xl mx-auto space-y-4">
           
           <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsList className="grid w-full grid-cols-3 mb-4">
               <TabsTrigger value="custom" className="gap-2" data-testid="tab-custom">
                 <Sliders className="w-4 h-4" />
-                Custom Mode
+                <span className="hidden sm:inline">Custom</span>
+              </TabsTrigger>
+              <TabsTrigger value="learning" className="gap-2" data-testid="tab-learning">
+                <Brain className="w-4 h-4" />
+                <span className="hidden sm:inline">Learning</span>
               </TabsTrigger>
               <TabsTrigger value="program" className="gap-2" data-testid="tab-program">
                 <Headphones className="w-4 h-4" />
-                Sleep Programs
+                <span className="hidden sm:inline">Sleep</span>
               </TabsTrigger>
             </TabsList>
 
@@ -220,6 +340,128 @@ export default function ConsolePage() {
                     ))}
                   </div>
                 </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="learning" className="space-y-4 mt-0">
+              <div className="glass-panel rounded-2xl p-4 space-y-4">
+                <div className="text-center mb-2">
+                  <h3 className="text-lg font-display text-white" data-testid="text-learning-title">Learning Mode</h3>
+                  <p className="text-xs text-muted-foreground" data-testid="text-learning-description">
+                    Optimize your focus with alpha or theta brainwave states
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-xs font-medium text-white" data-testid="label-target-state">Target State</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant={learningTarget === "alpha" ? "default" : "outline"}
+                      onClick={() => {
+                        learningAudio.reset();
+                        setLearningTarget("alpha");
+                      }}
+                      className="h-auto py-3 flex flex-col items-center gap-1"
+                      data-testid="button-target-alpha"
+                    >
+                      <span className="font-semibold">Alpha (8-12 Hz)</span>
+                      <span className="text-[10px] opacity-70">Relaxed focus, learning</span>
+                    </Button>
+                    <Button
+                      variant={learningTarget === "theta" ? "default" : "outline"}
+                      onClick={() => {
+                        learningAudio.reset();
+                        setLearningTarget("theta");
+                      }}
+                      className="h-auto py-3 flex flex-col items-center gap-1"
+                      data-testid="button-target-theta"
+                    >
+                      <span className="font-semibold">Theta (4-8 Hz)</span>
+                      <span className="text-[10px] opacity-70">Deep meditation, creativity</span>
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-white" data-testid="label-wind-down">Wind Down</label>
+                    <Button
+                      variant={includeWindDown ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        learningAudio.reset();
+                        setIncludeWindDown(!includeWindDown);
+                      }}
+                      className="h-7 text-xs"
+                      data-testid="button-toggle-winddown"
+                    >
+                      {includeWindDown ? "On" : "Off"}
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground" data-testid="text-winddown-description">
+                    Gradual transition from beta (alert) to your target state
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Timer className="w-4 h-4 text-muted-foreground" />
+                    <label className="text-xs font-medium text-white" data-testid="label-duration">Duration</label>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {DURATION_OPTIONS.map((opt) => (
+                      <Button
+                        key={opt.minutes}
+                        variant={learningDuration === opt.minutes ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          learningAudio.reset();
+                          setLearningDuration(opt.minutes);
+                        }}
+                        className="text-xs px-3 h-8"
+                        data-testid={`button-duration-${opt.minutes}`}
+                      >
+                        {opt.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="h-px bg-white/10" />
+
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={`${learningTarget}-${learningDuration}-${includeWindDown}`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="space-y-3"
+                  >
+                    <div className="text-center py-2">
+                      <div className="text-xl font-bold text-accent" data-testid="text-learning-stage">
+                        {getLearningCurrentStage()}
+                      </div>
+                      <div className="text-xs text-muted-foreground" data-testid="label-learning-current-stage">Current Stage</div>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span data-testid="text-learning-elapsed">{formatTime(learningAudio.elapsedTime)}</span>
+                      <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden" data-testid="progress-bar-learning">
+                        <div 
+                          className="h-full bg-primary transition-all"
+                          style={{ width: `${learningAudio.totalDuration > 0 ? (learningAudio.elapsedTime / learningAudio.totalDuration) * 100 : 0}%` }}
+                        />
+                      </div>
+                      <span data-testid="text-learning-total">{formatTime(learningAudio.totalDuration)}</span>
+                    </div>
+
+                    <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground/60 font-mono">
+                      <span data-testid="text-learning-beat">{Math.round(learningAudio.currentBeat * 10) / 10} Hz Beat</span>
+                      <span>•</span>
+                      <span data-testid="text-learning-carrier">{Math.round(learningAudio.currentCarrier)} Hz Carrier</span>
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
               </div>
             </TabsContent>
 
@@ -339,7 +581,7 @@ export default function ConsolePage() {
             size="icon"
             onClick={handleTogglePlay}
             disabled={mode === "program" && !selectedProgram}
-            className="rounded-full"
+            className="rounded-full w-12 h-12"
             data-testid="button-play-pause"
           >
             {isPlaying ? (
@@ -352,7 +594,11 @@ export default function ConsolePage() {
           <div className="flex-1 flex justify-end">
             <div className="text-right text-xs text-muted-foreground">
               <div className="font-mono" data-testid="text-mode-indicator">
-                {mode === "custom" ? "Custom" : selectedProgram?.name || "Program"}
+                {mode === "custom" 
+                  ? "Custom" 
+                  : mode === "learning" 
+                    ? `Learning: ${learningTarget === "alpha" ? "Alpha" : "Theta"}`
+                    : selectedProgram?.name || "Program"}
               </div>
             </div>
           </div>
