@@ -1,16 +1,25 @@
 const CACHE_NAME = 'binaural-sleep-v1';
 const STATIC_ASSETS = [
   '/',
-  '/index.html',
   '/favicon.png',
   '/pwa-192x192.png',
   '/pwa-512x512.png'
 ];
 
+const STATIC_EXTENSIONS = ['.js', '.css', '.html', '.png', '.svg', '.ico', '.woff', '.woff2', '.ttf'];
+
+function isStaticAsset(url) {
+  const pathname = new URL(url).pathname;
+  if (pathname.startsWith('/api/')) return false;
+  return STATIC_EXTENSIONS.some(ext => pathname.endsWith(ext)) || pathname === '/';
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
+      return cache.addAll(STATIC_ASSETS).catch((err) => {
+        console.warn('Failed to cache some assets:', err);
+      });
     })
   );
   self.skipWaiting();
@@ -31,6 +40,7 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  if (!isStaticAsset(event.request.url)) return;
   
   event.respondWith(
     caches.match(event.request).then((cached) => {

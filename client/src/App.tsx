@@ -3,6 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import HomePage from "@/pages/HomePage";
 import PlayerPage from "@/pages/PlayerPage";
 import CustomPage from "@/pages/CustomPage";
@@ -25,6 +26,7 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <Router />
+        <InstallPrompt />
       </TooltipProvider>
     </QueryClientProvider>
   );
