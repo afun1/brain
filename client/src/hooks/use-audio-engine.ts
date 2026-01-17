@@ -193,6 +193,13 @@ export function useAudioEngine(stages: AudioStage[] = []) {
     }
   }, []);
 
+  const reset = useCallback(() => {
+    stopAudio();
+    setElapsedTime(0);
+    setCurrentCarrier(0);
+    setCurrentBeat(0);
+  }, [stopAudio]);
+
   return {
     isPlaying,
     togglePlay,
@@ -202,6 +209,7 @@ export function useAudioEngine(stages: AudioStage[] = []) {
     totalDuration,
     currentCarrier,
     currentBeat,
+    reset,
     audioContext: audioContextRef.current
   };
 }

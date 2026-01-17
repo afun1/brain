@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Play, Pause, Volume2, Sliders, Music, Headphones, 
-  ArrowLeftRight, Moon, SkipForward, SkipBack 
+  Play, Pause, Volume2, Sliders, Headphones, 
+  ArrowLeftRight, Moon 
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import type { SleepStage } from "@shared/schema";
 
 const SOLFEGGIO_PRESETS = [
@@ -76,9 +76,7 @@ export default function ConsolePage() {
   };
 
   const handleProgramSelect = (programId: number) => {
-    if (programAudio.isPlaying) {
-      programAudio.togglePlay();
-    }
+    programAudio.reset();
     setSelectedProgramId(programId);
     setMode("program");
   };
@@ -107,7 +105,7 @@ export default function ConsolePage() {
 
       <header className="relative z-10 flex items-center justify-center gap-3 p-4 border-b border-white/10">
         <Moon className="w-5 h-5 text-primary" />
-        <span className="text-sm tracking-widest uppercase font-semibold text-primary/80">Binaural Sleep Console</span>
+        <span className="text-sm tracking-widest uppercase font-semibold text-primary/80" data-testid="text-header-title">Binaural Sleep Console</span>
       </header>
 
       <main className="flex-1 relative z-10 flex flex-col px-4 py-4 pb-48 overflow-y-auto">
@@ -132,19 +130,19 @@ export default function ConsolePage() {
                     <div className={`text-xl font-bold ${customAudio.carrierSide === 'left' ? 'text-primary' : 'text-muted-foreground'}`} data-testid="text-left-freq">
                       {customAudio.leftFreq} Hz
                     </div>
-                    <div className="text-xs text-muted-foreground">Left</div>
+                    <div className="text-xs text-muted-foreground" data-testid="label-left-ear">Left</div>
                   </div>
                   <div className="p-3 rounded-xl bg-accent/10 border border-accent/20">
                     <div className="text-xl font-bold text-accent animate-pulse" data-testid="text-beat-freq">
                       {customAudio.beatFreq} Hz
                     </div>
-                    <div className="text-xs text-muted-foreground">Beat</div>
+                    <div className="text-xs text-muted-foreground" data-testid="label-beat-display">Beat</div>
                   </div>
                   <div className={`p-3 rounded-xl border ${customAudio.carrierSide === 'right' ? 'bg-primary/10 border-primary/20' : 'bg-white/5 border-white/10'}`}>
                     <div className={`text-xl font-bold ${customAudio.carrierSide === 'right' ? 'text-primary' : 'text-muted-foreground'}`} data-testid="text-right-freq">
                       {customAudio.rightFreq} Hz
                     </div>
-                    <div className="text-xs text-muted-foreground">Right</div>
+                    <div className="text-xs text-muted-foreground" data-testid="label-right-ear">Right</div>
                   </div>
                 </div>
 
@@ -163,8 +161,8 @@ export default function ConsolePage() {
 
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <label className="text-xs font-medium text-white">Carrier (Solfeggio)</label>
-                    <span className="text-xs text-muted-foreground font-mono">{customAudio.carrierFreq} Hz</span>
+                    <label className="text-xs font-medium text-white" data-testid="label-carrier">Carrier (Solfeggio)</label>
+                    <span className="text-xs text-muted-foreground font-mono" data-testid="text-carrier-value">{customAudio.carrierFreq} Hz</span>
                   </div>
                   <Slider
                     value={[customAudio.carrierFreq]}
@@ -195,8 +193,8 @@ export default function ConsolePage() {
 
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <label className="text-xs font-medium text-white">Binaural Beat</label>
-                    <span className="text-xs text-muted-foreground font-mono">{customAudio.beatFreq} Hz</span>
+                    <label className="text-xs font-medium text-white" data-testid="label-beat">Binaural Beat</label>
+                    <span className="text-xs text-muted-foreground font-mono" data-testid="text-beat-value">{customAudio.beatFreq} Hz</span>
                   </div>
                   <Slider
                     value={[customAudio.beatFreq]}
@@ -255,41 +253,41 @@ export default function ConsolePage() {
                       className="space-y-3"
                     >
                       <div className="text-center py-4">
-                        <h3 className="text-lg font-display text-white mb-1">{selectedProgram.name}</h3>
-                        <p className="text-xs text-muted-foreground mb-3">{selectedProgram.description}</p>
+                        <h3 className="text-lg font-display text-white mb-1" data-testid="text-program-name">{selectedProgram.name}</h3>
+                        <p className="text-xs text-muted-foreground mb-3" data-testid="text-program-description">{selectedProgram.description}</p>
                         
                         <div className="flex items-center justify-center gap-4 text-sm">
                           <div className="text-center">
                             <div className="text-xl font-bold text-accent" data-testid="text-current-stage">
                               {getCurrentStageName()}
                             </div>
-                            <div className="text-xs text-muted-foreground">Current Stage</div>
+                            <div className="text-xs text-muted-foreground" data-testid="label-current-stage">Current Stage</div>
                           </div>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>{formatTime(programAudio.elapsedTime)}</span>
-                        <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
+                        <span data-testid="text-elapsed-time">{formatTime(programAudio.elapsedTime)}</span>
+                        <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden" data-testid="progress-bar">
                           <div 
                             className="h-full bg-primary transition-all"
                             style={{ width: `${programAudio.totalDuration > 0 ? (programAudio.elapsedTime / programAudio.totalDuration) * 100 : 0}%` }}
                           />
                         </div>
-                        <span>{formatTime(programAudio.totalDuration)}</span>
+                        <span data-testid="text-total-time">{formatTime(programAudio.totalDuration)}</span>
                       </div>
 
                       <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground/60 font-mono">
-                        <span>{Math.round(programAudio.currentBeat * 10) / 10} Hz Beat</span>
+                        <span data-testid="text-program-beat">{Math.round(programAudio.currentBeat * 10) / 10} Hz Beat</span>
                         <span>•</span>
-                        <span>{Math.round(programAudio.currentCarrier)} Hz Carrier</span>
+                        <span data-testid="text-program-carrier">{Math.round(programAudio.currentCarrier)} Hz Carrier</span>
                       </div>
                     </motion.div>
                   </AnimatePresence>
                 )}
 
                 {!selectedProgram && (
-                  <div className="text-center py-8 text-muted-foreground text-sm">
+                  <div className="text-center py-8 text-muted-foreground text-sm" data-testid="text-program-empty-state">
                     Select a sleep program above
                   </div>
                 )}
@@ -312,11 +310,11 @@ export default function ConsolePage() {
             />
           </div>
 
-          <div className="glass-panel rounded-xl p-3">
+          <div className="glass-panel rounded-xl p-3" data-testid="section-frequency-legend">
             <div className="text-xs text-muted-foreground space-y-1">
-              <p><strong className="text-white">Delta (0.5-4 Hz):</strong> Deep sleep, healing</p>
-              <p><strong className="text-white">Theta (4-8 Hz):</strong> Meditation, REM</p>
-              <p><strong className="text-white">Alpha (8-12 Hz):</strong> Relaxation</p>
+              <p data-testid="text-legend-delta"><strong className="text-white">Delta (0.5-4 Hz):</strong> Deep sleep, healing</p>
+              <p data-testid="text-legend-theta"><strong className="text-white">Theta (4-8 Hz):</strong> Meditation, REM</p>
+              <p data-testid="text-legend-alpha"><strong className="text-white">Alpha (8-12 Hz):</strong> Relaxation</p>
             </div>
           </div>
         </div>
@@ -337,20 +335,19 @@ export default function ConsolePage() {
             />
           </div>
 
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+          <Button
+            size="icon"
             onClick={handleTogglePlay}
             disabled={mode === "program" && !selectedProgram}
-            className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-[0_0_30px_rgba(167,139,250,0.3)] hover:shadow-[0_0_50px_rgba(167,139,250,0.5)] transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
+            className="rounded-full"
             data-testid="button-play-pause"
           >
             {isPlaying ? (
-              <Pause className="w-5 h-5 text-primary-foreground fill-current" />
+              <Pause className="w-5 h-5 fill-current" />
             ) : (
-              <Play className="w-5 h-5 text-primary-foreground fill-current ml-0.5" />
+              <Play className="w-5 h-5 fill-current ml-0.5" />
             )}
-          </motion.button>
+          </Button>
 
           <div className="flex-1 flex justify-end">
             <div className="text-right text-xs text-muted-foreground">
