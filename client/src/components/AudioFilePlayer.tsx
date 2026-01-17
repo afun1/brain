@@ -6,15 +6,17 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Play, Pause, Volume2, Upload, X, Music, MessageCircle, 
   SkipBack, SkipForward, Repeat, Repeat1, ChevronUp, ChevronDown, Trash2,
-  Download, FileText
+  Download
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { AudioRecorder } from "./AudioRecorder";
 
 interface AudioFilePlayerProps {
   title: string;
   icon: "music" | "affirmation";
   storageKey: string;
   testIdPrefix: string;
+  showRecorder?: boolean;
 }
 
 function formatTime(seconds: number): string {
@@ -96,10 +98,16 @@ async function savePlaylistFile(content: string, defaultName: string, extension:
   }
 }
 
-export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix }: AudioFilePlayerProps) {
+export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRecorder = false }: AudioFilePlayerProps) {
   const player = usePlaylistAudioPlayer(storageKey);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  const handleRecordingSave = (file: File, name: string) => {
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    player.addFiles(dataTransfer.files);
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -169,7 +177,7 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix }: Audio
             variant="ghost"
             size="icon"
             onClick={player.clearPlaylist}
-            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+            className="h-7 w-7 text-muted-foreground"
             data-testid={`${testIdPrefix}-clear-all-btn`}
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -186,6 +194,17 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix }: Audio
         className="hidden"
         data-testid={`${testIdPrefix}-file-input`}
       />
+
+      {showRecorder && (
+        <>
+          <AudioRecorder
+            onSaveRecording={handleRecordingSave}
+            onSaveSubliminal={handleRecordingSave}
+            testIdPrefix={`${testIdPrefix}-recorder`}
+          />
+          <div className="h-px bg-white/10" />
+        </>
+      )}
 
       <div className="flex gap-2">
         <Button
@@ -277,7 +296,7 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix }: Audio
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                      className="h-6 w-6 text-muted-foreground"
                       onClick={(e) => { e.stopPropagation(); player.removeTrack(track.id); }}
                       data-testid={`${testIdPrefix}-remove-${index}`}
                     >

@@ -549,6 +549,7 @@ export default function ConsolePage() {
               icon="affirmation" 
               storageKey="playlist:affirmations"
               testIdPrefix="affirmation-player"
+              showRecorder={true}
             />
           </div>
 
