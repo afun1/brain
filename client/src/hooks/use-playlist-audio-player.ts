@@ -9,10 +9,12 @@ export interface PlaylistTrack {
 }
 
 type LoopMode = 'off' | 'playlist' | 'track';
+type Tuning = 440 | 432;
 
 interface PersistedSettings {
   loopMode: LoopMode;
   volume: number;
+  tuning?: Tuning;
 }
 
 function generateId(): string {
@@ -29,6 +31,7 @@ export function usePlaylistAudioPlayer(storageKey: string) {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [loopMode, setLoopMode] = useState<LoopMode>('playlist');
+  const [tuning, setTuningState] = useState<Tuning>(440);
 
   const currentTrack = tracks[currentIndex] || null;
 
@@ -39,14 +42,22 @@ export function usePlaylistAudioPlayer(storageKey: string) {
         const settings: PersistedSettings = JSON.parse(saved);
         setLoopMode(settings.loopMode || 'playlist');
         setVolumeState(settings.volume ?? 0.5);
+        setTuningState(settings.tuning ?? 440);
       } catch {}
     }
   }, [storageKey]);
 
   useEffect(() => {
-    const settings: PersistedSettings = { loopMode, volume };
+    const settings: PersistedSettings = { loopMode, volume, tuning };
     localStorage.setItem(storageKey, JSON.stringify(settings));
-  }, [loopMode, volume, storageKey]);
+  }, [loopMode, volume, tuning, storageKey]);
+
+  // Apply playback rate based on tuning (432/440 = ~0.9818 for A=432 Hz)
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.playbackRate = tuning === 432 ? 432 / 440 : 1.0;
+    }
+  }, [tuning]);
 
   useEffect(() => {
     return () => {
@@ -69,6 +80,7 @@ export function usePlaylistAudioPlayer(storageKey: string) {
     audio.src = track.objectUrl;
     audio.volume = volume;
     audio.loop = loopMode === 'track';
+    audio.playbackRate = tuning === 432 ? 432 / 440 : 1.0;
     
     audio.onloadedmetadata = () => {
       setDuration(audio.duration);
@@ -99,7 +111,7 @@ export function usePlaylistAudioPlayer(storageKey: string) {
 
     audioRef.current = audio;
     setCurrentTime(0);
-  }, [volume, loopMode, currentIndex]);
+  }, [volume, loopMode, currentIndex, tuning]);
 
   useEffect(() => {
     if (currentTrack) {
@@ -262,6 +274,10 @@ export function usePlaylistAudioPlayer(storageKey: string) {
     setDuration(0);
   }, [tracks]);
 
+  const toggleTuning = useCallback(() => {
+    setTuningState(prev => prev === 440 ? 432 : 440);
+  }, []);
+
   return {
     tracks,
     currentTrack,
@@ -271,6 +287,7 @@ export function usePlaylistAudioPlayer(storageKey: string) {
     currentTime,
     duration,
     loopMode,
+    tuning,
     addFiles,
     removeTrack,
     moveTrack,
@@ -284,5 +301,6 @@ export function usePlaylistAudioPlayer(storageKey: string) {
     seek,
     cycleLoopMode,
     clearPlaylist,
+    toggleTuning,
   };
 }

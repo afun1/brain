@@ -176,12 +176,12 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix }: Audio
             </div>
           </div>
 
-          <div className="flex items-center justify-center gap-2">
+          <div className="flex items-center justify-center gap-1">
             <Button
               variant="ghost"
               size="icon"
               onClick={player.cycleLoopMode}
-              className={`h-8 w-8 ${player.loopMode !== 'off' ? 'text-primary' : 'text-muted-foreground'}`}
+              className={player.loopMode !== 'off' ? 'text-primary' : 'text-muted-foreground'}
               title={loopLabel}
               data-testid={`${testIdPrefix}-loop-btn`}
             >
@@ -192,7 +192,6 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix }: Audio
               variant="ghost"
               size="icon"
               onClick={player.prev}
-              className="h-8 w-8"
               data-testid={`${testIdPrefix}-prev-btn`}
             >
               <SkipBack className="w-4 h-4" />
@@ -202,7 +201,6 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix }: Audio
               variant="default"
               size="icon"
               onClick={player.togglePlay}
-              className="h-10 w-10"
               data-testid={`${testIdPrefix}-play-btn`}
             >
               {player.isPlaying ? (
@@ -216,10 +214,22 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix }: Audio
               variant="ghost"
               size="icon"
               onClick={player.next}
-              className="h-8 w-8"
               data-testid={`${testIdPrefix}-next-btn`}
             >
               <SkipForward className="w-4 h-4" />
+            </Button>
+          </div>
+
+          <div className="flex items-center justify-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={player.toggleTuning}
+              className={player.tuning === 432 ? 'text-primary border-primary' : ''}
+              title={`Tuning: A=${player.tuning} Hz (click to toggle)`}
+              data-testid={`${testIdPrefix}-tuning-btn`}
+            >
+              A={player.tuning} Hz
             </Button>
           </div>
 
