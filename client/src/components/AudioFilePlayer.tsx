@@ -1,12 +1,14 @@
 import { useRef } from "react";
-import { usePlaylistAudioPlayer } from "@/hooks/use-playlist-audio-player";
+import { usePlaylistAudioPlayer, PlaylistTrack } from "@/hooks/use-playlist-audio-player";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Play, Pause, Volume2, Upload, X, Music, MessageCircle, 
-  SkipBack, SkipForward, Repeat, Repeat1, ChevronUp, ChevronDown, Trash2
+  SkipBack, SkipForward, Repeat, Repeat1, ChevronUp, ChevronDown, Trash2,
+  Download, FileText
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface AudioFilePlayerProps {
   title: string;
@@ -22,9 +24,82 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+function generateM3U(tracks: PlaylistTrack[], playlistTitle: string): string {
+  const lines: string[] = [];
+  lines.push("#EXTM3U");
+  lines.push(`#PLAYLIST:${playlistTitle}`);
+  lines.push("# NOTE: Replace the file names below with full paths to your audio files");
+  lines.push("# Example: C:\\Music\\song.mp3 or /home/user/Music/song.mp3");
+  lines.push("");
+  
+  tracks.forEach(track => {
+    const duration = track.duration ? Math.round(track.duration) : -1;
+    lines.push(`#EXTINF:${duration},${track.name}`);
+    lines.push(track.name);
+  });
+  
+  return lines.join("\r\n");
+}
+
+function generatePLS(tracks: PlaylistTrack[], playlistTitle: string): string {
+  const lines: string[] = [];
+  lines.push("[playlist]");
+  lines.push(`PlaylistName=${playlistTitle}`);
+  lines.push("; NOTE: Replace file names with full paths to your audio files");
+  lines.push("; Example: C:\\Music\\song.mp3 or /home/user/Music/song.mp3");
+  lines.push("");
+  
+  tracks.forEach((track, index) => {
+    const num = index + 1;
+    lines.push(`File${num}=${track.name}`);
+    lines.push(`Title${num}=${track.name}`);
+    if (track.duration) {
+      lines.push(`Length${num}=${Math.round(track.duration)}`);
+    }
+  });
+  
+  lines.push(`NumberOfEntries=${tracks.length}`);
+  lines.push("Version=2");
+  
+  return lines.join("\r\n");
+}
+
+async function savePlaylistFile(content: string, defaultName: string, extension: string, mimeType: string): Promise<boolean> {
+  try {
+    if ('showSaveFilePicker' in window) {
+      const handle = await (window as any).showSaveFilePicker({
+        suggestedName: `${defaultName}.${extension}`,
+        types: [{
+          description: `${extension.toUpperCase()} Playlist`,
+          accept: { [mimeType]: [`.${extension}`] }
+        }]
+      });
+      const writable = await handle.createWritable();
+      await writable.write(content);
+      await writable.close();
+      return true;
+    } else {
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${defaultName}.${extension}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      return true;
+    }
+  } catch (err: any) {
+    if (err.name === 'AbortError') return false;
+    throw err;
+  }
+}
+
 export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix }: AudioFilePlayerProps) {
   const player = usePlaylistAudioPlayer(storageKey);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -32,6 +107,38 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix }: Audio
       player.addFiles(files);
     }
     e.target.value = "";
+  };
+
+  const handleExportM3U = async () => {
+    if (player.tracks.length === 0) return;
+    try {
+      const content = generateM3U(player.tracks, title);
+      const saved = await savePlaylistFile(content, title.replace(/\s+/g, '_'), 'm3u', 'audio/x-mpegurl');
+      if (saved) {
+        toast({ 
+          title: "Template saved", 
+          description: "Open the file in a text editor to add your file paths" 
+        });
+      }
+    } catch (err) {
+      toast({ title: "Export failed", description: "Could not save playlist file", variant: "destructive" });
+    }
+  };
+
+  const handleExportPLS = async () => {
+    if (player.tracks.length === 0) return;
+    try {
+      const content = generatePLS(player.tracks, title);
+      const saved = await savePlaylistFile(content, title.replace(/\s+/g, '_'), 'pls', 'audio/x-scpls');
+      if (saved) {
+        toast({ 
+          title: "Template saved", 
+          description: "Open the file in a text editor to add your file paths" 
+        });
+      }
+    } catch (err) {
+      toast({ title: "Export failed", description: "Could not save playlist file", variant: "destructive" });
+    }
   };
 
   const IconComponent = icon === "music" ? Music : MessageCircle;
@@ -80,16 +187,45 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix }: Audio
         data-testid={`${testIdPrefix}-file-input`}
       />
 
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => fileInputRef.current?.click()}
-        className="w-full gap-2"
-        data-testid={`${testIdPrefix}-upload-btn`}
-      >
-        <Upload className="w-4 h-4" />
-        {player.tracks.length === 0 ? 'Add Audio Files' : 'Add More Files'}
-      </Button>
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => fileInputRef.current?.click()}
+          className="flex-1 gap-2"
+          data-testid={`${testIdPrefix}-upload-btn`}
+        >
+          <Upload className="w-4 h-4" />
+          {player.tracks.length === 0 ? 'Add Files' : 'Add More'}
+        </Button>
+        
+        {player.tracks.length > 0 && (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportM3U}
+              className="gap-1"
+              title="Export as .m3u playlist"
+              data-testid={`${testIdPrefix}-export-m3u-btn`}
+            >
+              <Download className="w-3.5 h-3.5" />
+              .m3u
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportPLS}
+              className="gap-1"
+              title="Export as .pls playlist"
+              data-testid={`${testIdPrefix}-export-pls-btn`}
+            >
+              <Download className="w-3.5 h-3.5" />
+              .pls
+            </Button>
+          </>
+        )}
+      </div>
 
       {player.tracks.length > 0 && (
         <>
