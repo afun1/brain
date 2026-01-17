@@ -184,11 +184,13 @@ export default function CustomPage() {
             <AudioFilePlayer 
               title="Background Music" 
               icon="music" 
+              storageKey="playlist:music"
               testIdPrefix="music-player"
             />
             <AudioFilePlayer 
               title="Affirmations" 
               icon="affirmation" 
+              storageKey="playlist:affirmations"
               testIdPrefix="affirmation-player"
             />
           </div>
