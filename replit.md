@@ -60,6 +60,23 @@ The app uses a single-page console with three tabbed modes:
    - 8-Hour Solfeggio Journey
    - Multi-stage frequency progressions with gradual transitions
 
+### Audio Players
+Two independent audio players for ambient sound:
+
+1. **Background Music Player**
+   - Load audio files via drag-drop or file picker
+   - Playlist management with reordering
+   - A=440Hz / A=432Hz tuning toggle
+   - Loop and shuffle modes
+   - Export playlists as .m3u or .pls files
+
+2. **Affirmations Player**
+   - All features from Background Music player
+   - Audio Recording via MediaRecorder API
+   - Subliminal Track Conversion (1-20% volume, default 5%)
+   - Recorded affirmations saved as WAV files
+   - Note: Recordings persist in browser session only (lost on refresh)
+
 ### Solfeggio Frequencies (used in 8-Hour program)
 | Frequency | Chakra/Purpose |
 |-----------|----------------|
