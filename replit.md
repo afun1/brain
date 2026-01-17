@@ -38,13 +38,27 @@ Sleep programs contain multiple stages, each defining:
 - Duration in seconds
 - Start/end frequencies for gradual transitions
 
-### Custom Frequency Mode
-- Route: `/custom`
-- Allows users to manually adjust carrier (left ear) and beat frequencies
-- Right ear frequency is automatically calculated (carrier + beat)
-- Solfeggio frequency presets: 174, 285, 396, 417, 432, 528, 639, 741, 852, 963 Hz
-- Beat frequency presets: 0.5, 1, 2, 4, 6, 8, 10, 12, 15, 20 Hz
-- Real-time frequency adjustment while audio is playing
+### Unified Console Interface
+The app uses a single-page console with three tabbed modes:
+
+1. **Custom Mode** - Manual frequency adjustment
+   - Carrier (Solfeggio) frequency: 60-1000 Hz with presets (174, 285, 396, 417, 432, 528, 639, 741, 852, 963 Hz)
+   - Binaural beat frequency: 0.5-40 Hz with presets (0.5, 1, 2, 4, 6, 8, 10, 12 Hz)
+   - Swap carrier between left/right ear
+   - Real-time frequency adjustment while audio is playing
+
+2. **Learning Mode** - Meditation/focus enhancement
+   - Target state selection: Alpha (8-12 Hz) or Theta (4-8 Hz)
+   - Optional wind-down phase: gradual transition from beta (15 Hz) to alpha
+   - Duration options: 10, 15, 20, 30, 45, or 60 minutes
+   - Dynamically generated stages based on settings
+   - Progress tracking with current stage display
+
+3. **Sleep Programs** - Pre-built sleep journeys
+   - 90-Minute Sleep Cycle
+   - 8-Hour Full Night
+   - 8-Hour Solfeggio Journey
+   - Multi-stage frequency progressions with gradual transitions
 
 ### Solfeggio Frequencies (used in 8-Hour program)
 | Frequency | Chakra/Purpose |
