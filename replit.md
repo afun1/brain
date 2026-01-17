@@ -39,7 +39,7 @@ Sleep programs contain multiple stages, each defining:
 - Start/end frequencies for gradual transitions
 
 ### Unified Console Interface
-The app uses a single-page console with three tabbed modes:
+The app uses a single-page console with four tabbed modes:
 
 1. **Custom Mode** - Manual frequency adjustment
    - Carrier (Solfeggio) frequency: 60-1000 Hz with presets (174, 285, 396, 417, 432, 528, 639, 741, 852, 963 Hz)
@@ -54,7 +54,15 @@ The app uses a single-page console with three tabbed modes:
    - Dynamically generated stages based on settings
    - Progress tracking with current stage display
 
-3. **Sleep Programs** - Pre-built sleep journeys
+3. **Daytime Mode** - Focus/alertness enhancement for active use
+   - Target state selection: Beta (15-30 Hz) for focus or Gamma (30+ Hz) for peak flow
+   - Optional ramp-up phase: gradual transition from low beta (12 Hz) to target
+   - Duration options for work sessions: 15, 25, 45, 60, 90, or 120 minutes
+   - Beta mode: steady 20 Hz for sustained concentration
+   - Gamma mode: alternating 40-42 Hz across stages for engagement
+   - Mode switching automatically stops other audio engines to prevent overlap
+
+4. **Sleep Programs** - Pre-built sleep journeys
    - 90-Minute Sleep Cycle
    - 8-Hour Full Night
    - 8-Hour Solfeggio Journey
