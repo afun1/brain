@@ -1,5 +1,6 @@
 import { useCustomAudio } from "@/hooks/use-custom-audio";
 import { WaveVisualizer } from "@/components/WaveVisualizer";
+import { AudioFilePlayer } from "@/components/AudioFilePlayer";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Play, Pause, Volume2, Sliders, ArrowLeft, ArrowLeftRight } from "lucide-react";
@@ -177,6 +178,19 @@ export default function CustomPage() {
               <p><strong className="text-white">Alpha (8-12 Hz):</strong> Relaxation, calm focus</p>
               <p><strong className="text-white">Beta (12-30 Hz):</strong> Alertness, concentration</p>
             </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <AudioFilePlayer 
+              title="Background Music" 
+              icon="music" 
+              testIdPrefix="music-player"
+            />
+            <AudioFilePlayer 
+              title="Affirmations" 
+              icon="affirmation" 
+              testIdPrefix="affirmation-player"
+            />
           </div>
         </motion.div>
       </main>
