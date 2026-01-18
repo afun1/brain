@@ -4,6 +4,7 @@ import { useCustomAudio } from "@/hooks/use-custom-audio";
 import { useAudioEngine } from "@/hooks/use-audio-engine";
 import { WaveVisualizer } from "@/components/WaveVisualizer";
 import { AudioFilePlayer } from "@/components/AudioFilePlayer";
+import { StereoConfusionPlayer } from "@/components/StereoConfusionPlayer";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -959,6 +960,8 @@ export default function ConsolePage() {
               showRecorder={true}
             />
           </div>
+
+          <StereoConfusionPlayer />
 
           <div className="glass-panel rounded-xl p-3" data-testid="section-frequency-legend">
             <div className="text-xs text-muted-foreground grid grid-cols-2 md:grid-cols-5 gap-2">
