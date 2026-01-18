@@ -62,6 +62,11 @@ The app uses a single-page console with five tabbed modes:
    - **PDF Reader with Multiple Reading Modes**: 
      - Load PDF books/documents via drag-drop or file picker
      - Page navigation and zoom controls
+     - **Word Lookup**: Click any word to see its definition
+       - Uses free dictionary API (dictionaryapi.dev)
+       - Shows phonetic pronunciation, part of speech, definitions
+       - Audio pronunciation playback when available
+       - Example sentences and synonyms
      - **TTS Read Mode**: 
        - Reads aloud with synchronized word highlighting (flash, not slide)
        - Adjustable read speed (0.5x-5x) for dyslexia support

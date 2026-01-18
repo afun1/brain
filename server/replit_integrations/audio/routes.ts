@@ -276,6 +276,55 @@ export function registerAudioRoutes(app: Express): void {
     }
   });
 
+  // Word definition lookup using free dictionary API
+  app.get("/api/dictionary/:word", async (req: Request, res: Response) => {
+    try {
+      const word = req.params.word.toLowerCase().trim();
+      
+      if (!word || word.length > 50) {
+        return res.status(400).json({ error: "Invalid word" });
+      }
+
+      // Use free dictionary API (no API key required)
+      const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          return res.status(404).json({ error: "Word not found", word });
+        }
+        throw new Error(`Dictionary API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (!Array.isArray(data) || data.length === 0) {
+        return res.status(404).json({ error: "Word not found", word });
+      }
+
+      // Extract useful information
+      const entry = data[0];
+      const result = {
+        word: entry.word,
+        phonetic: entry.phonetic || entry.phonetics?.find((p: any) => p.text)?.text || "",
+        audio: entry.phonetics?.find((p: any) => p.audio)?.audio || "",
+        meanings: entry.meanings?.map((m: any) => ({
+          partOfSpeech: m.partOfSpeech,
+          definitions: m.definitions?.slice(0, 3).map((d: any) => ({
+            definition: d.definition,
+            example: d.example || null,
+          })) || [],
+          synonyms: m.synonyms?.slice(0, 5) || [],
+        })) || [],
+        origin: entry.origin || null,
+      };
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching word definition:", error);
+      res.status(500).json({ error: "Failed to fetch definition" });
+    }
+  });
+
   // Batch TTS endpoint for longer texts (splits into chunks)
   app.post("/api/tts/batch", async (req: Request, res: Response) => {
     try {

@@ -2,11 +2,24 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Play, Pause, Square, Upload, BookOpen, Info, Eye, Zap, BookText, FastForward } from "lucide-react";
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Play, Pause, Square, Upload, BookOpen, Info, Eye, Zap, BookText, FastForward, X, Volume2, Loader2, BookMarked } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import * as pdfjsLib from "pdfjs-dist";
+
+interface WordDefinition {
+  word: string;
+  phonetic: string;
+  audio: string;
+  meanings: {
+    partOfSpeech: string;
+    definitions: { definition: string; example: string | null }[];
+    synonyms: string[];
+  }[];
+  origin: string | null;
+}
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
@@ -55,6 +68,13 @@ export function PDFReader() {
   const [isPageFlashing, setIsPageFlashing] = useState(false);
   const [pageFlashIndex, setPageFlashIndex] = useState(0);
   
+  const [selectedWord, setSelectedWord] = useState<string | null>(null);
+  const [wordDefinition, setWordDefinition] = useState<WordDefinition | null>(null);
+  const [isLookingUp, setIsLookingUp] = useState(false);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const [showDefinition, setShowDefinition] = useState(false);
+  
+  const definitionAudioRef = useRef<HTMLAudioElement | null>(null);
   const rsvpIntervalRef = useRef<number | null>(null);
   const pageFlashIntervalRef = useRef<number | null>(null);
   
@@ -268,6 +288,61 @@ export function PDFReader() {
       animationFrameRef.current = requestAnimationFrame(updateHighlight);
     }
   }, [isReading, isPaused, currentWordIndex, allPagesText, currentPage]);
+
+  const lookupWord = useCallback(async (word: string) => {
+    const cleanWord = word.replace(/[^a-zA-Z'-]/g, "").toLowerCase();
+    if (!cleanWord || cleanWord.length < 2) return;
+    
+    setSelectedWord(cleanWord);
+    setIsLookingUp(true);
+    setLookupError(null);
+    setWordDefinition(null);
+    setShowDefinition(true);
+    
+    try {
+      const response = await fetch(`/api/dictionary/${encodeURIComponent(cleanWord)}`);
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          setLookupError(`"${cleanWord}" not found in dictionary`);
+        } else {
+          throw new Error("Failed to fetch definition");
+        }
+        return;
+      }
+      
+      const data = await response.json();
+      setWordDefinition(data);
+    } catch (error) {
+      console.error("Error looking up word:", error);
+      setLookupError("Failed to look up word");
+    } finally {
+      setIsLookingUp(false);
+    }
+  }, []);
+
+  const playPronunciation = useCallback(() => {
+    if (!wordDefinition?.audio) return;
+    
+    let audioUrl = wordDefinition.audio;
+    if (audioUrl.startsWith("//")) {
+      audioUrl = "https:" + audioUrl;
+    }
+    
+    if (definitionAudioRef.current) {
+      definitionAudioRef.current.pause();
+    }
+    
+    const audio = new Audio(audioUrl);
+    definitionAudioRef.current = audio;
+    audio.play().catch(console.error);
+  }, [wordDefinition]);
+
+  const handleWordClick = useCallback((word: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isReading || isRsvpRunning || isPageFlashing) return;
+    lookupWord(word);
+  }, [isReading, isRsvpRunning, isPageFlashing, lookupWord]);
 
   const hasExtractableText = allPagesText.some(t => t.trim().length > 0);
   
@@ -849,15 +924,16 @@ export function PDFReader() {
               />
               
               <div
-                className="absolute top-0 left-0 pointer-events-none"
+                className="absolute top-0 left-0"
                 style={{
                   width: canvasRef.current?.width || 0,
                   height: canvasRef.current?.height || 0,
+                  pointerEvents: (isReading || isRsvpRunning || isPageFlashing) ? "none" : "auto",
                 }}
               >
                 {highlightedWord && readingMode === "tts" && (
                   <div
-                    className="absolute bg-yellow-400/60 rounded-sm"
+                    className="absolute bg-yellow-400/60 rounded-sm pointer-events-none"
                     style={{
                       left: highlightedWord.x,
                       top: highlightedWord.y,
@@ -867,6 +943,22 @@ export function PDFReader() {
                     data-testid="word-highlight"
                   />
                 )}
+                
+                {!isReading && !isRsvpRunning && !isPageFlashing && wordPositions.map((wp, i) => (
+                  <div
+                    key={i}
+                    className="absolute cursor-pointer hover:bg-blue-400/30 rounded-sm transition-colors"
+                    style={{
+                      left: wp.x,
+                      top: wp.y,
+                      width: wp.width,
+                      height: wp.height,
+                    }}
+                    onClick={(e) => handleWordClick(wp.word, e)}
+                    title={`Look up "${wp.word}"`}
+                    data-testid={`word-${wp.index}`}
+                  />
+                ))}
               </div>
               
               {isRsvpRunning && rsvpCurrentWord && (
@@ -910,6 +1002,92 @@ export function PDFReader() {
         {isReading && (
           <div className="text-center text-xs text-muted-foreground" data-testid="text-reading-status">
             Reading word {currentWordIndex + 1} of {wordsRef.current.length}
+          </div>
+        )}
+        
+        {pdfDoc && !isReading && !isRsvpRunning && !isPageFlashing && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <BookMarked className="w-3 h-3" />
+            <span>Click any word to look up its definition</span>
+          </div>
+        )}
+        
+        {showDefinition && (
+          <div className="bg-background/80 border border-border rounded-lg p-3 space-y-2" data-testid="definition-panel">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-sm" data-testid="definition-word">
+                  {selectedWord}
+                </span>
+                {wordDefinition?.phonetic && (
+                  <span className="text-xs text-muted-foreground">
+                    {wordDefinition.phonetic}
+                  </span>
+                )}
+                {wordDefinition?.audio && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6"
+                    onClick={playPronunciation}
+                    data-testid="button-play-pronunciation"
+                  >
+                    <Volume2 className="w-3 h-3" />
+                  </Button>
+                )}
+              </div>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6"
+                onClick={() => setShowDefinition(false)}
+                data-testid="button-close-definition"
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </div>
+            
+            {isLookingUp && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Looking up definition...
+              </div>
+            )}
+            
+            {lookupError && (
+              <div className="text-xs text-yellow-500" data-testid="definition-error">
+                {lookupError}
+              </div>
+            )}
+            
+            {wordDefinition && (
+              <div className="space-y-2 max-h-[150px] overflow-y-auto">
+                {wordDefinition.meanings.map((meaning, i) => (
+                  <div key={i} className="space-y-1">
+                    <span className="text-xs font-medium text-primary italic">
+                      {meaning.partOfSpeech}
+                    </span>
+                    {meaning.definitions.map((def, j) => (
+                      <div key={j} className="text-xs space-y-0.5 pl-2">
+                        <p data-testid={`definition-text-${i}-${j}`}>
+                          {j + 1}. {def.definition}
+                        </p>
+                        {def.example && (
+                          <p className="text-muted-foreground italic pl-2">
+                            "{def.example}"
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                    {meaning.synonyms.length > 0 && (
+                      <p className="text-xs text-muted-foreground pl-2">
+                        Synonyms: {meaning.synonyms.join(", ")}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
         
