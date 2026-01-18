@@ -189,17 +189,13 @@ export default function ConsolePage() {
   
   const totalDurationMinutes = slotDurations.reduce((sum, d) => sum + d, 0);
   
-  const normalizeDurations = () => {
-    const total = slotDurations.reduce((sum, d) => sum + d, 0);
-    if (total === 0) {
-      setSlotDurations([...DEFAULT_SLOT_DURATIONS]);
-      return;
-    }
-    // Normalize to 480 minutes: floor all but last, last gets remainder
-    const normalized = slotDurations.map(d => Math.floor((d / total) * TOTAL_PROGRAM_MINUTES));
-    const roundedSum = normalized.reduce((sum, d) => sum + d, 0);
-    normalized[9] = normalized[9] + (TOTAL_PROGRAM_MINUTES - roundedSum);
-    setSlotDurations(normalized);
+  const normalizeAll = () => {
+    // Clear frequencies to blank (0)
+    setCustomFrequencySlots([...DEFAULT_CUSTOM_FREQUENCIES]);
+    setFrequencyInputs(DEFAULT_CUSTOM_FREQUENCIES.map(() => ''));
+    
+    // Reset durations to blank (0)
+    setSlotDurations([...DEFAULT_SLOT_DURATIONS]);
   };
   
   const fillWithSolfeggio = () => {
@@ -1169,17 +1165,15 @@ export default function ConsolePage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {totalDurationMinutes !== TOTAL_PROGRAM_MINUTES && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={normalizeDurations}
-                            className="text-xs"
-                            data-testid="button-normalize"
-                          >
-                            Normalize ({totalDurationMinutes} min)
-                          </Button>
-                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={normalizeAll}
+                          className="text-xs"
+                          data-testid="button-clear"
+                        >
+                          Clear All
+                        </Button>
                         <Button
                           variant="secondary"
                           size="sm"
