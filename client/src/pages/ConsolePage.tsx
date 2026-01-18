@@ -6,6 +6,7 @@ import { WaveVisualizer } from "@/components/WaveVisualizer";
 import { AudioFilePlayer } from "@/components/AudioFilePlayer";
 import { StereoConfusionPlayer } from "@/components/StereoConfusionPlayer";
 import { SleepProgressChart, MiniHypnogram } from "@/components/SleepProgressChart";
+import { TTSLearningPlayer } from "@/components/TTSLearningPlayer";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -727,6 +728,10 @@ export default function ConsolePage() {
                     </div>
                   </motion.div>
                 </AnimatePresence>
+
+                <div className="h-px bg-white/10" />
+
+                <TTSLearningPlayer />
               </div>
             </TabsContent>
 

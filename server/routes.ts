@@ -2,6 +2,7 @@ import type { Express } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
+import { registerAudioRoutes } from "./replit_integrations/audio/routes";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -22,6 +23,9 @@ export async function registerRoutes(
     }
     res.json(program);
   });
+
+  // Register AI audio routes (TTS, STT, voice chat)
+  registerAudioRoutes(app);
 
   return httpServer;
 }

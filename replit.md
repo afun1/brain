@@ -54,6 +54,7 @@ The app uses a single-page console with four tabbed modes:
    - Duration options: 10, 15, 20, 30, 45, or 60 minutes
    - Dynamically generated stages based on settings
    - Progress tracking with current stage display
+   - **Text-to-Speech Learning**: Paste text from books/articles, convert to audio via OpenAI TTS, play at accelerated speeds (0.5x-10x) for enhanced learning during alpha/theta states
 
 3. **Daytime Mode** - Focus/alertness enhancement for active use
    - Target state selection: Beta (15-30 Hz) for focus or Gamma (30+ Hz) for peak flow

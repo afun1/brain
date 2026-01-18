@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { chatStorage } from "../chat/storage";
-import { openai, speechToText, voiceChatWithTextModel, convertWebmToWav } from "./client";
+import { openai, speechToText, voiceChatWithTextModel, convertWebmToWav, textToSpeech } from "./client";
 
 // Note: Set express.json({ limit: "50mb" }) for audio payloads.
 // Note: Use convertWebmToWav() to convert browser WebM to WAV before API calls.
@@ -187,6 +187,82 @@ export function registerAudioRoutes(app: Express): void {
       } else {
         res.status(500).json({ error: "Voice stream failed" });
       }
+    }
+  });
+
+  // Text-to-Speech endpoint for Learning Mode
+  // Converts text to speech audio for accelerated playback
+  app.post("/api/tts", async (req: Request, res: Response) => {
+    try {
+      const { text, voice = "alloy" } = req.body;
+
+      if (!text || typeof text !== "string") {
+        return res.status(400).json({ error: "Text is required" });
+      }
+
+      if (text.length > 4000) {
+        return res.status(400).json({ error: "Text too long. Maximum 4000 characters per request." });
+      }
+
+      const validVoices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"];
+      if (!validVoices.includes(voice)) {
+        return res.status(400).json({ error: "Invalid voice. Valid options: alloy, echo, fable, onyx, nova, shimmer" });
+      }
+
+      const audioBuffer = await textToSpeech(text, voice, "mp3");
+      
+      res.setHeader("Content-Type", "audio/mpeg");
+      res.setHeader("Content-Length", audioBuffer.length);
+      res.send(audioBuffer);
+    } catch (error) {
+      console.error("Error in TTS:", error);
+      res.status(500).json({ error: "Failed to convert text to speech" });
+    }
+  });
+
+  // Batch TTS endpoint for longer texts (splits into chunks)
+  app.post("/api/tts/batch", async (req: Request, res: Response) => {
+    try {
+      const { chunks, voice = "alloy" } = req.body;
+
+      if (!Array.isArray(chunks) || chunks.length === 0) {
+        return res.status(400).json({ error: "Chunks array is required" });
+      }
+
+      if (chunks.length > 50) {
+        return res.status(400).json({ error: "Maximum 50 chunks per batch" });
+      }
+
+      const validVoices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"];
+      if (!validVoices.includes(voice)) {
+        return res.status(400).json({ error: "Invalid voice" });
+      }
+
+      // Validate all chunks first
+      const validChunks = chunks.filter((chunk: unknown) => 
+        typeof chunk === "string" && chunk.length > 0 && chunk.length <= 4000
+      );
+
+      if (validChunks.length === 0) {
+        return res.status(400).json({ error: "No valid text chunks provided. Each chunk must be non-empty and under 4000 characters." });
+      }
+
+      // Process chunks sequentially to avoid rate limits
+      const audioBuffers: Buffer[] = [];
+      for (const chunk of validChunks) {
+        const buffer = await textToSpeech(chunk, voice, "mp3");
+        audioBuffers.push(buffer);
+      }
+
+      // Concatenate all audio buffers
+      const combinedBuffer = Buffer.concat(audioBuffers);
+      
+      res.setHeader("Content-Type", "audio/mpeg");
+      res.setHeader("Content-Length", combinedBuffer.length);
+      res.send(combinedBuffer);
+    } catch (error) {
+      console.error("Error in batch TTS:", error);
+      res.status(500).json({ error: "Failed to process batch TTS" });
     }
   });
 }
