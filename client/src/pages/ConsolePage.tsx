@@ -85,8 +85,8 @@ export default function ConsolePage() {
   const [includeWakeUp, setIncludeWakeUp] = useState(true);
   
   // Custom frequency slots for Full Night Rest (10 slots, localStorage persisted)
-  const DEFAULT_CUSTOM_FREQUENCIES = [432, 432, 432, 432, 432, 432, 432, 432, 432, 432];
-  const DEFAULT_SLOT_DURATIONS = [48, 48, 48, 48, 48, 48, 48, 48, 48, 48]; // minutes (480 total = 8 hours)
+  const DEFAULT_CUSTOM_FREQUENCIES = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  const DEFAULT_SLOT_DURATIONS = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]; // minutes (user fills in)
   const TOTAL_PROGRAM_MINUTES = 480; // 8 hours
   const CUSTOM_FREQ_STORAGE_KEY = "binauralSleep_customFrequencies";
   const CUSTOM_DURATION_STORAGE_KEY = "binauralSleep_slotDurationsMinutes";
@@ -148,8 +148,8 @@ export default function ConsolePage() {
   
   // Validate and commit frequency on blur
   const handleFrequencyBlur = (index: number) => {
-    const value = parseInt(frequencyInputs[index]) || 60;
-    const clamped = Math.max(60, Math.min(1000, value));
+    const value = parseInt(frequencyInputs[index]) || 0;
+    const clamped = Math.max(0, Math.min(1000, value));
     setCustomFrequencySlots(prev => {
       const newSlots = [...prev];
       newSlots[index] = clamped;
