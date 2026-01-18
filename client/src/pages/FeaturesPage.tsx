@@ -17,6 +17,14 @@ import {
   Sliders,
   Play,
   Download,
+  BookOpen,
+  Languages,
+  Zap,
+  FastForward,
+  Heart,
+  BookMarked,
+  FileText,
+  Clock,
 } from "lucide-react";
 
 export default function FeaturesPage() {
@@ -142,13 +150,99 @@ export default function FeaturesPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <p className="text-muted-foreground">Designed for meditation and relaxation:</p>
+                <p className="text-muted-foreground">Comprehensive learning enhancement with multiple tools:</p>
                 <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-2">
-                  <li><strong>Alpha (8-12 Hz):</strong> Relaxed focus, light meditation</li>
-                  <li><strong>Theta (4-8 Hz):</strong> Deep meditation, creativity</li>
+                  <li><strong>Alpha (8-12 Hz):</strong> Relaxed focus, ideal for reading with eyes open (research-backed)</li>
+                  <li><strong>Theta (4-8 Hz):</strong> Deep meditation, creativity, subconscious learning</li>
                   <li><strong>Wind-Down Option:</strong> Gradually transitions from alert beta (15 Hz) to your target state</li>
                   <li><strong>Duration Options:</strong> 10, 15, 20, 30, 45, or 60 minutes</li>
                 </ul>
+                
+                <div className="mt-4 space-y-3 border-t pt-3">
+                  <h4 className="font-medium text-foreground flex items-center gap-2">
+                    <BookOpen className="h-4 w-4" />
+                    PDF Reader with Multiple Reading Modes
+                  </h4>
+                  <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-2">
+                    <li><strong>Load PDFs:</strong> Drag-and-drop or click to browse for PDF documents</li>
+                    <li><strong>Word Lookup:</strong> Click any word to see its definition, phonetics, pronunciation audio, examples, and synonyms</li>
+                    <li><strong>TTS Read Mode:</strong> Text-to-speech with synchronized word highlighting (flash effect), adjustable speed 0.5x-5x for dyslexia support</li>
+                    <li><strong>RSVP Mode:</strong> Rapid Serial Visual Presentation - words flash center-screen at 100-3000 WPM with chunk options (1-5 words)</li>
+                    <li><strong>Page Flash Mode:</strong> PhotoReading-style subliminal absorption - pages auto-flip at 0.1-3 seconds per page for peripheral vision learning</li>
+                  </ul>
+                </div>
+                
+                <div className="mt-4 space-y-3 border-t pt-3">
+                  <h4 className="font-medium text-foreground flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Text-to-Speech Learning
+                  </h4>
+                  <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-2">
+                    <li>Paste text from books or articles</li>
+                    <li>Convert to audio via OpenAI TTS with 6 voice options</li>
+                    <li>Play at accelerated speeds (0.5x-10x) for enhanced learning in Alpha/Theta states</li>
+                  </ul>
+                </div>
+                
+                <div className="mt-4 space-y-3 border-t pt-3">
+                  <h4 className="font-medium text-foreground flex items-center gap-2">
+                    <Languages className="h-4 w-4" />
+                    Language Learning
+                  </h4>
+                  <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-2">
+                    <li><strong>Translation:</strong> Enter English text, translate to 24+ languages (Spanish, French, German, Japanese, Chinese, etc.)</li>
+                    <li><strong>Bilingual Audio:</strong> Hear foreign language sentence first, then English translation</li>
+                    <li><strong>Configurable Pauses:</strong> 0.5-5 seconds between sentences for repetition practice</li>
+                    <li><strong>Speed Control:</strong> Adjust playback 0.5x-3x for pronunciation learning</li>
+                    <li><strong>Visual Highlighting:</strong> See which sentence is currently playing (original vs translation)</li>
+                    <li><strong>6 Voice Options:</strong> Alloy, Echo, Fable, Onyx, Nova, Shimmer</li>
+                  </ul>
+                </div>
+                
+                <div className="mt-4 space-y-3 border-t pt-3">
+                  <h4 className="font-medium text-foreground flex items-center gap-2">
+                    <Headphones className="h-4 w-4" />
+                    Audiobook Player
+                  </h4>
+                  <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-2">
+                    <li>Load audiobook files for listening while in Alpha/Theta states</li>
+                    <li>Adjustable playback speed and volume</li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Heart className="h-5 w-5" />
+                  Healing Mode
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-muted-foreground">Deep delta frequencies for cellular repair and recovery:</p>
+                <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-2">
+                  <li><strong>Restoration (3 Hz):</strong> General recovery and immune support</li>
+                  <li><strong>Deep Healing (1.5 Hz):</strong> Maximum tissue repair and regeneration</li>
+                  <li><strong>Pain Relief (2 Hz):</strong> Cortisol reduction and pain management</li>
+                  <li><strong>Wind-Down Option:</strong> Alpha (10 Hz) → Theta (6 Hz) → Target delta</li>
+                  <li><strong>Duration Options:</strong> 30, 45, 60, 90, or 120 minutes</li>
+                </ul>
+                
+                <div className="mt-4 space-y-3 border-t pt-3">
+                  <h4 className="font-medium text-foreground">Customizable Frequency Systems</h4>
+                  <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-2">
+                    <li><strong>10-Slot Carrier System:</strong> Define Solfeggio frequencies (60-1000 Hz) with per-slot durations</li>
+                    <li><strong>10-Slot Brainwave System:</strong> Define delta frequencies (0.5-4 Hz) with per-slot durations</li>
+                    <li><strong>"Fill Solfeggio" Preset:</strong> Loads all 10 healing frequencies automatically</li>
+                    <li><strong>"Fill Delta" Preset:</strong> Cycles through therapeutic delta range</li>
+                    <li><strong>Visual Time Coverage:</strong> See how your frequencies map to the session duration</li>
+                  </ul>
+                </div>
+                
+                <div className="bg-muted/50 rounded-lg p-4 mt-2">
+                  <p className="text-sm text-foreground">Based on 2024 research: minimum 20-30 minute sessions, 7+ days for measurable healing benefits.</p>
+                </div>
               </CardContent>
             </Card>
 
@@ -178,13 +272,49 @@ export default function FeaturesPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <p className="text-muted-foreground">Pre-built journeys for sleep:</p>
-                <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-2">
-                  <li><strong>90-Minute Sleep Cycle:</strong> One complete sleep cycle from awake to deep sleep and back</li>
-                  <li><strong>8-Hour Full Night:</strong> Complete night's rest with all sleep stages</li>
-                  <li><strong>8-Hour Solfeggio Journey:</strong> Full night using healing Solfeggio frequencies through each chakra</li>
-                </ul>
-                <p className="text-sm text-muted-foreground">Each program displays current stage, progress, and remaining time.</p>
+                <p className="text-muted-foreground">Pre-built journeys for sleep based on circadian rhythm research:</p>
+                
+                <div className="mt-4 space-y-3 border-t pt-3">
+                  <h4 className="font-medium text-foreground flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Dynamic Sleep Duration
+                  </h4>
+                  <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-2">
+                    <li><strong>5-10 Hour Options:</strong> Choose duration based on your needs (maps to 3-6 optimal sleep cycles)</li>
+                    <li><strong>True REM Wake-Up:</strong> All durations end in REM state (9 Hz) for refreshed wake-up from dreams</li>
+                    <li><strong>Final Dreams Stage:</strong> 10-minute final REM ensures you wake from dream state, not theta</li>
+                    <li><strong>Proportional Scaling:</strong> Stage durations automatically scaled to selected duration</li>
+                  </ul>
+                </div>
+                
+                <div className="mt-4 space-y-3 border-t pt-3">
+                  <h4 className="font-medium text-foreground">Available Programs</h4>
+                  <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-2">
+                    <li><strong>8-Hour Full Night Rest:</strong> Complete night with customizable 10-slot carrier frequency system</li>
+                    <li><strong>8-Hour Solfeggio Healing Cycles:</strong> All 10 Solfeggio frequencies mapped to 5 sleep cycles</li>
+                  </ul>
+                </div>
+                
+                <div className="mt-4 space-y-3 border-t pt-3">
+                  <h4 className="font-medium text-foreground">Customizable Carrier Frequencies</h4>
+                  <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-2">
+                    <li><strong>10 Frequency Slots:</strong> Define your own carrier frequencies (60-1000 Hz)</li>
+                    <li><strong>Per-Slot Duration:</strong> Set how long each frequency plays</li>
+                    <li><strong>Visual Time Coverage:</strong> Colored meter shows frequency distribution</li>
+                    <li><strong>"Fill Solfeggio" Preset:</strong> Auto-load all 10 Solfeggio frequencies</li>
+                    <li><strong>Settings Persistence:</strong> Your preferences saved to localStorage</li>
+                  </ul>
+                </div>
+                
+                <div className="mt-4 space-y-3 border-t pt-3">
+                  <h4 className="font-medium text-foreground">Optional Wake-Up Sequence (+17 min)</h4>
+                  <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-2">
+                    <li><strong>Dream Fade:</strong> Gentle REM→Alpha transition (2 min, 9→10 Hz)</li>
+                    <li><strong>Progressive Beta:</strong> Low Beta (10→14), Mid Beta (14→18), Alert (18→20 Hz)</li>
+                  </ul>
+                </div>
+                
+                <p className="text-sm text-muted-foreground mt-4">Hypnogram chart displays current stage, progress, and remaining time with real-time indicator.</p>
               </CardContent>
             </Card>
           </section>
