@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { usePlaylistAudioPlayer, PlaylistTrack } from "@/hooks/use-playlist-audio-player";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -102,6 +102,7 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
   const player = usePlaylistAudioPlayer(storageKey);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const handleRecordingSave = (file: File, name: string) => {
     const dataTransfer = new DataTransfer();
@@ -115,6 +116,37 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
       player.addFiles(files);
     }
     e.target.value = "";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      const audioFiles = Array.from(files).filter(file => 
+        file.type.startsWith('audio/') || 
+        /\.(mp3|wav|ogg|m4a|flac|aac|wma)$/i.test(file.name)
+      );
+      if (audioFiles.length > 0) {
+        const dt = new DataTransfer();
+        audioFiles.forEach(f => dt.items.add(f));
+        player.addFiles(dt.files);
+      }
+    }
   };
 
   const handleExportM3U = async () => {
@@ -161,7 +193,15 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
                     player.loopMode === 'playlist' ? 'Loop All' : 'Loop Track';
 
   return (
-    <div className="glass-panel rounded-xl p-4 space-y-3">
+    <div 
+      className={`glass-panel rounded-xl p-4 space-y-3 transition-colors ${
+        isDragOver ? 'ring-2 ring-primary bg-primary/10' : ''
+      }`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      data-testid={`${testIdPrefix}-drop-zone`}
+    >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <IconComponent className="w-4 h-4 text-primary" />
@@ -206,45 +246,59 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
         </>
       )}
 
-      <div className="flex gap-2">
-        <Button
-          variant="outline"
-          size="sm"
+      {player.tracks.length === 0 && (
+        <div 
+          className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
+            isDragOver 
+              ? 'border-primary bg-primary/10' 
+              : 'border-white/20 hover:border-white/40'
+          }`}
           onClick={() => fileInputRef.current?.click()}
-          className="flex-1 gap-2"
-          data-testid={`${testIdPrefix}-upload-btn`}
+          data-testid={`${testIdPrefix}-upload-area`}
         >
-          <Upload className="w-4 h-4" />
-          {player.tracks.length === 0 ? 'Add Files' : 'Add More'}
-        </Button>
-        
-        {player.tracks.length > 0 && (
-          <>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportM3U}
-              className="gap-1"
-              title="Export as .m3u playlist"
-              data-testid={`${testIdPrefix}-export-m3u-btn`}
-            >
-              <Download className="w-3.5 h-3.5" />
-              .m3u
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportPLS}
-              className="gap-1"
-              title="Export as .pls playlist"
-              data-testid={`${testIdPrefix}-export-pls-btn`}
-            >
-              <Download className="w-3.5 h-3.5" />
-              .pls
-            </Button>
-          </>
-        )}
-      </div>
+          <Upload className="w-6 h-6 mx-auto mb-2 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            Drop audio files here or click to browse
+          </p>
+        </div>
+      )}
+
+      {player.tracks.length > 0 && (
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex-1 gap-2"
+            data-testid={`${testIdPrefix}-upload-btn`}
+          >
+            <Upload className="w-4 h-4" />
+            Add More
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportM3U}
+            className="gap-1"
+            title="Export as .m3u playlist"
+            data-testid={`${testIdPrefix}-export-m3u-btn`}
+          >
+            <Download className="w-3.5 h-3.5" />
+            .m3u
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportPLS}
+            className="gap-1"
+            title="Export as .pls playlist"
+            data-testid={`${testIdPrefix}-export-pls-btn`}
+          >
+            <Download className="w-3.5 h-3.5" />
+            .pls
+          </Button>
+        </div>
+      )}
 
       {player.tracks.length > 0 && (
         <>
