@@ -67,9 +67,10 @@ The app uses a single-page console with four tabbed modes:
 4. **Sleep Programs** - Pre-built sleep journeys
    - **8-Hour Full Night Rest** - Customizable carrier frequencies
      - 10 user-defined frequency slots (60-1000 Hz, default 432 Hz)
-     - Per-slot duration control (percentage-based, adjustable 0-100%)
-     - Visual time coverage meter showing colored segments for each slot
-     - "Normalize" button auto-adjusts percentages to sum to 100%
+     - Fully dynamic frequency input: type any number directly (validated on blur)
+     - Per-slot duration control in minutes (default 48 min each = 480 total)
+     - Visual time coverage meter showing colored segments as percentage of 8-hour total
+     - "Normalize" button auto-adjusts minutes to sum to 480 (8 hours)
      - "Fill Solfeggio" preset loads all 10 Solfeggio frequencies with equal durations
      - Settings saved to localStorage for persistence
    - **8-Hour Solfeggio Healing Cycles** - Preset Solfeggio frequencies mapped to 5 sleep cycles
