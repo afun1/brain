@@ -25,6 +25,7 @@ export function useAudioEngine(stages: AudioStage[] = []) {
   const masterGainRef = useRef<GainNode | null>(null);
   const leftGainRef = useRef<GainNode | null>(null);
   const rightGainRef = useRef<GainNode | null>(null);
+  const mergerRef = useRef<ChannelMergerNode | null>(null);
   
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0.5);
@@ -71,27 +72,30 @@ export function useAudioEngine(stages: AudioStage[] = []) {
     const rightOsc = ctx.createOscillator();
     const leftGain = ctx.createGain();
     const rightGain = ctx.createGain();
-    const leftPan = ctx.createStereoPanner();
-    const rightPan = ctx.createStereoPanner();
     const masterGain = ctx.createGain();
+    
+    // Use ChannelMergerNode for TRUE stereo isolation
+    // This ensures left oscillator ONLY goes to left speaker, right ONLY to right
+    const merger = ctx.createChannelMerger(2);
 
-    // Configure routing
+    // Route left oscillator to left channel ONLY (input 0)
     leftOsc.connect(leftGain);
-    leftGain.connect(leftPan);
-    leftPan.connect(masterGain);
+    leftGain.connect(merger, 0, 0);
     
+    // Route right oscillator to right channel ONLY (input 1)
     rightOsc.connect(rightGain);
-    rightGain.connect(rightPan);
-    rightPan.connect(masterGain);
+    rightGain.connect(merger, 0, 1);
     
+    // Merger outputs stereo signal to master gain
+    merger.connect(masterGain);
     masterGain.connect(ctx.destination);
 
     // Settings
-    leftPan.pan.value = -1; // Hard left
-    rightPan.pan.value = 1; // Hard right
-    masterGain.gain.value = volume; // Initial volume
+    masterGain.gain.value = volume;
     leftGain.gain.value = leftEnabled ? 1 : 0;
     rightGain.gain.value = rightEnabled ? 1 : 0;
+    
+    mergerRef.current = merger;
 
     // Schedule frequencies based on stages
     const now = ctx.currentTime;
@@ -178,10 +182,28 @@ export function useAudioEngine(stages: AudioStage[] = []) {
     if (leftOscillatorRef.current) {
       try { leftOscillatorRef.current.stop(); } catch(e) {}
       leftOscillatorRef.current.disconnect();
+      leftOscillatorRef.current = null;
     }
     if (rightOscillatorRef.current) {
       try { rightOscillatorRef.current.stop(); } catch(e) {}
       rightOscillatorRef.current.disconnect();
+      rightOscillatorRef.current = null;
+    }
+    if (leftGainRef.current) {
+      leftGainRef.current.disconnect();
+      leftGainRef.current = null;
+    }
+    if (rightGainRef.current) {
+      rightGainRef.current.disconnect();
+      rightGainRef.current = null;
+    }
+    if (mergerRef.current) {
+      mergerRef.current.disconnect();
+      mergerRef.current = null;
+    }
+    if (masterGainRef.current) {
+      masterGainRef.current.disconnect();
+      masterGainRef.current = null;
     }
     if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     
