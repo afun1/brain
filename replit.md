@@ -76,6 +76,16 @@ The app uses a single-page console with five tabbed modes:
        - Based on PhotoReading Whole Mind System techniques
      - Alpha state (10 Hz) recommended for reading with eyes open (research-backed)
    - **Text-to-Speech Learning**: Paste text from books/articles, convert to audio via OpenAI TTS, play at accelerated speeds (0.5x-10x) for enhanced learning during alpha/theta states
+   - **Language Learning** - Bilingual audio learning with translation
+     - Paste text in English to translate into any of 24+ languages
+     - Supported languages: Spanish, French, German, Italian, Portuguese, Dutch, Russian, Chinese (Simplified/Traditional), Japanese, Korean, Arabic, Hindi, Hebrew, Turkish, Polish, Vietnamese, Thai, Greek, Swedish, Norwegian, Danish, Finnish, Czech
+     - Sentence-by-sentence audio playback: hear foreign language first, then English translation
+     - Configurable pause between sentences (0.5-5 seconds) for repetition practice
+     - Playback speed control (0.5x-3x) for pronunciation learning
+     - 6 voice options (Alloy, Echo, Fable, Onyx, Nova, Shimmer) via OpenAI TTS
+     - Visual highlighting shows which sentence is playing (original vs translation)
+     - Voice selection clears cached audio to ensure playback matches selected voice
+     - Backend translation API using GPT-4o-mini with sentence-level processing
 
 3. **Healing Mode** - Deep delta frequencies for cellular repair and recovery
    - Target state selection: 
