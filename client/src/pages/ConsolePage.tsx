@@ -379,11 +379,24 @@ export default function ConsolePage() {
             <TabsContent value="custom" className="space-y-4 mt-0">
               <div className="glass-panel rounded-2xl p-4 space-y-4">
                 <div className="grid grid-cols-3 gap-3 text-center">
-                  <div className={`p-3 rounded-xl border ${customAudio.carrierSide === 'left' ? 'bg-primary/10 border-primary/20' : 'bg-white/5 border-white/10'}`}>
+                  <div 
+                    className={`p-3 rounded-xl border transition-opacity ${customAudio.carrierSide === 'left' ? 'bg-primary/10 border-primary/20' : 'bg-white/5 border-white/10'}`}
+                    style={{ opacity: customAudio.leftEnabled ? 1 : 0.4 }}
+                    data-testid="card-left-channel"
+                  >
                     <div className={`text-xl font-bold ${customAudio.carrierSide === 'left' ? 'text-primary' : 'text-muted-foreground'}`} data-testid="text-left-freq">
                       {customAudio.leftFreq} Hz
                     </div>
-                    <div className="text-xs text-muted-foreground" data-testid="label-left-ear">Left</div>
+                    <div className="text-xs text-muted-foreground mb-2" data-testid="label-left-ear">Left</div>
+                    <Button
+                      variant={customAudio.leftEnabled ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => customAudio.setLeftEnabled(!customAudio.leftEnabled)}
+                      className="text-xs"
+                      data-testid="button-toggle-left-channel"
+                    >
+                      {customAudio.leftEnabled ? "On" : "Off"}
+                    </Button>
                   </div>
                   <div className="p-3 rounded-xl bg-accent/10 border border-accent/20">
                     <div className="text-xl font-bold text-accent animate-pulse" data-testid="text-beat-freq">
@@ -391,11 +404,24 @@ export default function ConsolePage() {
                     </div>
                     <div className="text-xs text-muted-foreground" data-testid="label-beat-display">Beat</div>
                   </div>
-                  <div className={`p-3 rounded-xl border ${customAudio.carrierSide === 'right' ? 'bg-primary/10 border-primary/20' : 'bg-white/5 border-white/10'}`}>
+                  <div 
+                    className={`p-3 rounded-xl border transition-opacity ${customAudio.carrierSide === 'right' ? 'bg-primary/10 border-primary/20' : 'bg-white/5 border-white/10'}`}
+                    style={{ opacity: customAudio.rightEnabled ? 1 : 0.4 }}
+                    data-testid="card-right-channel"
+                  >
                     <div className={`text-xl font-bold ${customAudio.carrierSide === 'right' ? 'text-primary' : 'text-muted-foreground'}`} data-testid="text-right-freq">
                       {customAudio.rightFreq} Hz
                     </div>
-                    <div className="text-xs text-muted-foreground" data-testid="label-right-ear">Right</div>
+                    <div className="text-xs text-muted-foreground mb-2" data-testid="label-right-ear">Right</div>
+                    <Button
+                      variant={customAudio.rightEnabled ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => customAudio.setRightEnabled(!customAudio.rightEnabled)}
+                      className="text-xs"
+                      data-testid="button-toggle-right-channel"
+                    >
+                      {customAudio.rightEnabled ? "On" : "Off"}
+                    </Button>
                   </div>
                 </div>
 
@@ -593,6 +619,47 @@ export default function ConsolePage() {
                       <span>•</span>
                       <span data-testid="text-learning-carrier">{Math.round(learningAudio.currentCarrier)} Hz Carrier</span>
                     </div>
+
+                    <div className="grid grid-cols-2 gap-3 text-center pt-2">
+                      <div 
+                        className="p-3 rounded-xl border bg-white/5 border-white/10 transition-opacity"
+                        style={{ opacity: learningAudio.leftEnabled ? 1 : 0.4 }}
+                        data-testid="card-learning-left"
+                      >
+                        <div className="text-lg font-bold text-primary" data-testid="text-learning-left-freq">
+                          {Math.round(learningAudio.currentLeftFreq)} Hz
+                        </div>
+                        <div className="text-xs text-muted-foreground mb-2" data-testid="label-learning-left">Left</div>
+                        <Button
+                          variant={learningAudio.leftEnabled ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => learningAudio.setLeftEnabled(!learningAudio.leftEnabled)}
+                          className="text-xs"
+                          data-testid="button-toggle-learning-left"
+                        >
+                          {learningAudio.leftEnabled ? "On" : "Off"}
+                        </Button>
+                      </div>
+                      <div 
+                        className="p-3 rounded-xl border bg-white/5 border-white/10 transition-opacity"
+                        style={{ opacity: learningAudio.rightEnabled ? 1 : 0.4 }}
+                        data-testid="card-learning-right"
+                      >
+                        <div className="text-lg font-bold text-primary" data-testid="text-learning-right-freq">
+                          {Math.round(learningAudio.currentRightFreq)} Hz
+                        </div>
+                        <div className="text-xs text-muted-foreground mb-2" data-testid="label-learning-right">Right</div>
+                        <Button
+                          variant={learningAudio.rightEnabled ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => learningAudio.setRightEnabled(!learningAudio.rightEnabled)}
+                          className="text-xs"
+                          data-testid="button-toggle-learning-right"
+                        >
+                          {learningAudio.rightEnabled ? "On" : "Off"}
+                        </Button>
+                      </div>
+                    </div>
                   </motion.div>
                 </AnimatePresence>
               </div>
@@ -718,6 +785,47 @@ export default function ConsolePage() {
                       <span>•</span>
                       <span data-testid="text-daytime-carrier">{Math.round(daytimeAudio.currentCarrier)} Hz Carrier</span>
                     </div>
+
+                    <div className="grid grid-cols-2 gap-3 text-center pt-2">
+                      <div 
+                        className="p-3 rounded-xl border bg-white/5 border-white/10 transition-opacity"
+                        style={{ opacity: daytimeAudio.leftEnabled ? 1 : 0.4 }}
+                        data-testid="card-daytime-left"
+                      >
+                        <div className="text-lg font-bold text-primary" data-testid="text-daytime-left-freq">
+                          {Math.round(daytimeAudio.currentLeftFreq)} Hz
+                        </div>
+                        <div className="text-xs text-muted-foreground mb-2" data-testid="label-daytime-left">Left</div>
+                        <Button
+                          variant={daytimeAudio.leftEnabled ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => daytimeAudio.setLeftEnabled(!daytimeAudio.leftEnabled)}
+                          className="text-xs"
+                          data-testid="button-toggle-daytime-left"
+                        >
+                          {daytimeAudio.leftEnabled ? "On" : "Off"}
+                        </Button>
+                      </div>
+                      <div 
+                        className="p-3 rounded-xl border bg-white/5 border-white/10 transition-opacity"
+                        style={{ opacity: daytimeAudio.rightEnabled ? 1 : 0.4 }}
+                        data-testid="card-daytime-right"
+                      >
+                        <div className="text-lg font-bold text-primary" data-testid="text-daytime-right-freq">
+                          {Math.round(daytimeAudio.currentRightFreq)} Hz
+                        </div>
+                        <div className="text-xs text-muted-foreground mb-2" data-testid="label-daytime-right">Right</div>
+                        <Button
+                          variant={daytimeAudio.rightEnabled ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => daytimeAudio.setRightEnabled(!daytimeAudio.rightEnabled)}
+                          className="text-xs"
+                          data-testid="button-toggle-daytime-right"
+                        >
+                          {daytimeAudio.rightEnabled ? "On" : "Off"}
+                        </Button>
+                      </div>
+                    </div>
                   </motion.div>
                 </AnimatePresence>
               </div>
@@ -781,6 +889,47 @@ export default function ConsolePage() {
                         <span data-testid="text-program-beat">{Math.round(programAudio.currentBeat * 10) / 10} Hz Beat</span>
                         <span>•</span>
                         <span data-testid="text-program-carrier">{Math.round(programAudio.currentCarrier)} Hz Carrier</span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 text-center pt-2">
+                        <div 
+                          className="p-3 rounded-xl border bg-white/5 border-white/10 transition-opacity"
+                          style={{ opacity: programAudio.leftEnabled ? 1 : 0.4 }}
+                          data-testid="card-program-left"
+                        >
+                          <div className="text-lg font-bold text-primary" data-testid="text-program-left-freq">
+                            {Math.round(programAudio.currentLeftFreq)} Hz
+                          </div>
+                          <div className="text-xs text-muted-foreground mb-2" data-testid="label-program-left">Left</div>
+                          <Button
+                            variant={programAudio.leftEnabled ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => programAudio.setLeftEnabled(!programAudio.leftEnabled)}
+                            className="text-xs"
+                            data-testid="button-toggle-program-left"
+                          >
+                            {programAudio.leftEnabled ? "On" : "Off"}
+                          </Button>
+                        </div>
+                        <div 
+                          className="p-3 rounded-xl border bg-white/5 border-white/10 transition-opacity"
+                          style={{ opacity: programAudio.rightEnabled ? 1 : 0.4 }}
+                          data-testid="card-program-right"
+                        >
+                          <div className="text-lg font-bold text-primary" data-testid="text-program-right-freq">
+                            {Math.round(programAudio.currentRightFreq)} Hz
+                          </div>
+                          <div className="text-xs text-muted-foreground mb-2" data-testid="label-program-right">Right</div>
+                          <Button
+                            variant={programAudio.rightEnabled ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => programAudio.setRightEnabled(!programAudio.rightEnabled)}
+                            className="text-xs"
+                            data-testid="button-toggle-program-right"
+                          >
+                            {programAudio.rightEnabled ? "On" : "Off"}
+                          </Button>
+                        </div>
                       </div>
                     </motion.div>
                   </AnimatePresence>

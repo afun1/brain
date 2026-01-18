@@ -23,12 +23,16 @@ export function useAudioEngine(stages: AudioStage[] = []) {
   const leftOscillatorRef = useRef<OscillatorNode | null>(null);
   const rightOscillatorRef = useRef<OscillatorNode | null>(null);
   const masterGainRef = useRef<GainNode | null>(null);
+  const leftGainRef = useRef<GainNode | null>(null);
+  const rightGainRef = useRef<GainNode | null>(null);
   
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0.5);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [currentCarrier, setCurrentCarrier] = useState(0);
   const [currentBeat, setCurrentBeat] = useState(0);
+  const [leftEnabled, setLeftEnabledState] = useState(true);
+  const [rightEnabled, setRightEnabledState] = useState(true);
   
   const startTimeRef = useRef<number>(0);
   const pauseTimeRef = useRef<number>(0);
@@ -65,15 +69,19 @@ export function useAudioEngine(stages: AudioStage[] = []) {
     // Create nodes
     const leftOsc = ctx.createOscillator();
     const rightOsc = ctx.createOscillator();
+    const leftGain = ctx.createGain();
+    const rightGain = ctx.createGain();
     const leftPan = ctx.createStereoPanner();
     const rightPan = ctx.createStereoPanner();
     const masterGain = ctx.createGain();
 
     // Configure routing
-    leftOsc.connect(leftPan);
+    leftOsc.connect(leftGain);
+    leftGain.connect(leftPan);
     leftPan.connect(masterGain);
     
-    rightOsc.connect(rightPan);
+    rightOsc.connect(rightGain);
+    rightGain.connect(rightPan);
     rightPan.connect(masterGain);
     
     masterGain.connect(ctx.destination);
@@ -82,6 +90,8 @@ export function useAudioEngine(stages: AudioStage[] = []) {
     leftPan.pan.value = -1; // Hard left
     rightPan.pan.value = 1; // Hard right
     masterGain.gain.value = volume; // Initial volume
+    leftGain.gain.value = leftEnabled ? 1 : 0;
+    rightGain.gain.value = rightEnabled ? 1 : 0;
 
     // Schedule frequencies based on stages
     const now = ctx.currentTime;
@@ -116,6 +126,8 @@ export function useAudioEngine(stages: AudioStage[] = []) {
     // Store refs
     leftOscillatorRef.current = leftOsc;
     rightOscillatorRef.current = rightOsc;
+    leftGainRef.current = leftGain;
+    rightGainRef.current = rightGain;
     masterGainRef.current = masterGain;
     
     startTimeRef.current = Date.now();
@@ -160,7 +172,7 @@ export function useAudioEngine(stages: AudioStage[] = []) {
     
     updateLoop();
 
-  }, [stages, volume, totalDuration]);
+  }, [stages, volume, totalDuration, leftEnabled, rightEnabled]);
 
   const stopAudio = useCallback(() => {
     if (leftOscillatorRef.current) {
@@ -200,6 +212,24 @@ export function useAudioEngine(stages: AudioStage[] = []) {
     setCurrentBeat(0);
   }, [stopAudio]);
 
+  const setLeftEnabled = useCallback((enabled: boolean) => {
+    setLeftEnabledState(enabled);
+    if (leftGainRef.current && audioContextRef.current) {
+      leftGainRef.current.gain.setTargetAtTime(enabled ? 1 : 0, audioContextRef.current.currentTime, 0.05);
+    }
+  }, []);
+
+  const setRightEnabled = useCallback((enabled: boolean) => {
+    setRightEnabledState(enabled);
+    if (rightGainRef.current && audioContextRef.current) {
+      rightGainRef.current.gain.setTargetAtTime(enabled ? 1 : 0, audioContextRef.current.currentTime, 0.05);
+    }
+  }, []);
+
+  // Calculate current left and right frequencies for display
+  const currentLeftFreq = currentCarrier;
+  const currentRightFreq = currentCarrier + currentBeat;
+
   return {
     isPlaying,
     togglePlay,
@@ -210,6 +240,12 @@ export function useAudioEngine(stages: AudioStage[] = []) {
     currentCarrier,
     currentBeat,
     reset,
-    audioContext: audioContextRef.current
+    audioContext: audioContextRef.current,
+    leftEnabled,
+    setLeftEnabled,
+    rightEnabled,
+    setRightEnabled,
+    currentLeftFreq,
+    currentRightFreq,
   };
 }

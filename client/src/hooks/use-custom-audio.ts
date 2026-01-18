@@ -5,6 +5,8 @@ export function useCustomAudio() {
   const leftOscillatorRef = useRef<OscillatorNode | null>(null);
   const rightOscillatorRef = useRef<OscillatorNode | null>(null);
   const masterGainRef = useRef<GainNode | null>(null);
+  const leftGainRef = useRef<GainNode | null>(null);
+  const rightGainRef = useRef<GainNode | null>(null);
   const leftPanRef = useRef<StereoPannerNode | null>(null);
   const rightPanRef = useRef<StereoPannerNode | null>(null);
 
@@ -13,6 +15,8 @@ export function useCustomAudio() {
   const [carrierFreq, setCarrierFreqState] = useState(174);
   const [beatFreq, setBeatFreqState] = useState(4);
   const [carrierSide, setCarrierSideState] = useState<'left' | 'right'>('left');
+  const [leftEnabled, setLeftEnabledState] = useState(true);
+  const [rightEnabled, setRightEnabledState] = useState(true);
 
   const calculatedFreq = carrierFreq + beatFreq;
   const leftFreq = carrierSide === 'left' ? carrierFreq : calculatedFreq;
@@ -43,14 +47,18 @@ export function useCustomAudio() {
 
     const leftOsc = ctx.createOscillator();
     const rightOsc = ctx.createOscillator();
+    const leftGain = ctx.createGain();
+    const rightGain = ctx.createGain();
     const leftPan = ctx.createStereoPanner();
     const rightPan = ctx.createStereoPanner();
     const masterGain = ctx.createGain();
 
-    leftOsc.connect(leftPan);
+    leftOsc.connect(leftGain);
+    leftGain.connect(leftPan);
     leftPan.connect(masterGain);
 
-    rightOsc.connect(rightPan);
+    rightOsc.connect(rightGain);
+    rightGain.connect(rightPan);
     rightPan.connect(masterGain);
 
     masterGain.connect(ctx.destination);
@@ -58,6 +66,8 @@ export function useCustomAudio() {
     leftPan.pan.value = -1;
     rightPan.pan.value = 1;
     masterGain.gain.value = volume;
+    leftGain.gain.value = leftEnabled ? 1 : 0;
+    rightGain.gain.value = rightEnabled ? 1 : 0;
 
     leftOsc.frequency.value = leftFreq;
     rightOsc.frequency.value = rightFreq;
@@ -67,12 +77,14 @@ export function useCustomAudio() {
 
     leftOscillatorRef.current = leftOsc;
     rightOscillatorRef.current = rightOsc;
+    leftGainRef.current = leftGain;
+    rightGainRef.current = rightGain;
     leftPanRef.current = leftPan;
     rightPanRef.current = rightPan;
     masterGainRef.current = masterGain;
 
     setIsPlaying(true);
-  }, [carrierFreq, beatFreq, volume, initAudio, leftFreq, rightFreq, carrierSide]);
+  }, [carrierFreq, beatFreq, volume, initAudio, leftFreq, rightFreq, carrierSide, leftEnabled, rightEnabled]);
 
   const stop = useCallback(() => {
     if (leftOscillatorRef.current) {
@@ -131,6 +143,20 @@ export function useCustomAudio() {
     }
   }, []);
 
+  const setLeftEnabled = useCallback((enabled: boolean) => {
+    setLeftEnabledState(enabled);
+    if (leftGainRef.current && audioContextRef.current) {
+      leftGainRef.current.gain.setTargetAtTime(enabled ? 1 : 0, audioContextRef.current.currentTime, 0.05);
+    }
+  }, []);
+
+  const setRightEnabled = useCallback((enabled: boolean) => {
+    setRightEnabledState(enabled);
+    if (rightGainRef.current && audioContextRef.current) {
+      rightGainRef.current.gain.setTargetAtTime(enabled ? 1 : 0, audioContextRef.current.currentTime, 0.05);
+    }
+  }, []);
+
   return {
     isPlaying,
     togglePlay,
@@ -147,5 +173,9 @@ export function useCustomAudio() {
     leftFreq,
     rightFreq,
     calculatedFreq,
+    leftEnabled,
+    setLeftEnabled,
+    rightEnabled,
+    setRightEnabled,
   };
 }
