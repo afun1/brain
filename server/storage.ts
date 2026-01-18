@@ -59,6 +59,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async seedDefaultPrograms(): Promise<void> {
+    // First, remove any outdated programs that are no longer supported
+    const deprecatedNames = ["90-Minute Sleep Cycle"];
+    const allPrograms = await db.select().from(programs);
+    
+    for (const program of allPrograms) {
+      if (deprecatedNames.includes(program.name)) {
+        // Delete stages first, then the program
+        await db.delete(sleepStages).where(eq(sleepStages.programId, program.id));
+        await db.delete(programs).where(eq(programs.id, program.id));
+      }
+    }
+    
     const existing = await this.getPrograms();
     const existingNames = new Set(existing.map((p) => p.name));
 
@@ -209,6 +221,53 @@ export class DatabaseStorage implements IStorage {
         startBeatFreq: 10,
         endBeatFreq: 12,
       });
+    }
+
+    // Create the 8-Hour Full Night Rest program with scientifically accurate sleep cycles
+    if (!existingNames.has("8-Hour Full Night Rest")) {
+      const fullNight = await this.createProgram({
+        name: "8-Hour Full Night Rest",
+        description: "A complete 8-hour sleep cycle guiding you from Beta (Awake) down to Delta (Deep Sleep) and back to Theta (REM). Starts at 60Hz healing tone.",
+        isDefault: false,
+      });
+
+      // Full night follows N1 → N2 → N3 → N2 → REM pattern across 5 cycles
+      const stages = [
+        { name: "Settling In", order: 1, durationSeconds: 300, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 14, endBeatFreq: 12 },
+        { name: "N1 - Light Sleep", order: 2, durationSeconds: 420, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 12, endBeatFreq: 7 },
+        { name: "N2 - Deeper Relaxation", order: 3, durationSeconds: 1500, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 7, endBeatFreq: 5 },
+        { name: "N3 - Deep Sleep", order: 4, durationSeconds: 2100, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 5, endBeatFreq: 2 },
+        { name: "N2 - Transition", order: 5, durationSeconds: 480, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 2, endBeatFreq: 5 },
+        { name: "REM Cycle 1", order: 6, durationSeconds: 600, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 5, endBeatFreq: 9 },
+        { name: "N1 - Light", order: 7, durationSeconds: 180, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 9, endBeatFreq: 7 },
+        { name: "N2 - Settling", order: 8, durationSeconds: 1500, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 7, endBeatFreq: 5 },
+        { name: "N3 - Deep Sleep 2", order: 9, durationSeconds: 1800, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 5, endBeatFreq: 1 },
+        { name: "N2 - Rising", order: 10, durationSeconds: 600, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 1, endBeatFreq: 5 },
+        { name: "REM Cycle 2", order: 11, durationSeconds: 1080, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 5, endBeatFreq: 9 },
+        { name: "N1 - Brief", order: 12, durationSeconds: 180, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 9, endBeatFreq: 7 },
+        { name: "N2 - Extended", order: 13, durationSeconds: 1800, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 7, endBeatFreq: 5 },
+        { name: "N3 - Shallow Deep", order: 14, durationSeconds: 600, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 5, endBeatFreq: 2 },
+        { name: "N2 - Transition", order: 15, durationSeconds: 600, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 2, endBeatFreq: 5 },
+        { name: "REM Cycle 3", order: 16, durationSeconds: 1680, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 5, endBeatFreq: 9 },
+        { name: "N1 - Quick", order: 17, durationSeconds: 180, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 9, endBeatFreq: 7 },
+        { name: "N2 - Stable", order: 18, durationSeconds: 1800, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 7, endBeatFreq: 5 },
+        { name: "N3 - Brief Deep", order: 19, durationSeconds: 300, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 5, endBeatFreq: 3 },
+        { name: "N2 - Rising", order: 20, durationSeconds: 600, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 3, endBeatFreq: 5 },
+        { name: "REM Cycle 4", order: 21, durationSeconds: 2400, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 5, endBeatFreq: 9 },
+        { name: "N1 - Light", order: 22, durationSeconds: 180, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 9, endBeatFreq: 7 },
+        { name: "N2 - Final Light Sleep", order: 23, durationSeconds: 1500, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 7, endBeatFreq: 5 },
+        { name: "N2 - Transition", order: 24, durationSeconds: 300, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 5, endBeatFreq: 6 },
+        { name: "REM Cycle 5 - Long", order: 25, durationSeconds: 3600, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 6, endBeatFreq: 9 },
+        { name: "Final REM - Dreams", order: 26, durationSeconds: 900, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 9, endBeatFreq: 9 },
+        { name: "Gentle Awakening", order: 27, durationSeconds: 600, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 9, endBeatFreq: 12 },
+      ];
+
+      for (const stage of stages) {
+        await this.createSleepStage({
+          programId: fullNight.id,
+          ...stage,
+        });
+      }
     }
   }
 }
