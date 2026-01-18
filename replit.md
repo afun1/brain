@@ -36,7 +36,12 @@ Sleep programs contain multiple stages, each defining:
 - Carrier frequency (left ear base tone)
 - Binaural beat frequency (difference between ears)
 - Duration in seconds
-- Start/end frequencies for gradual transitions
+- Start/end frequencies for quick transitions (~60 seconds) then hold
+
+### Audio Engine Behavior
+- **Quick Transitions**: Frequency changes occur over ~60 seconds (or 1/3 of short stages)
+- **Hold Steady**: After transition, frequencies hold at target for remainder of stage
+- **Rationale**: Long gradual ramps (10-30 min) felt sluggish; quick transitions let users experience target frequencies sooner without jarring jumps
 
 ### Unified Console Interface
 The app uses a single-page console with four tabbed modes:

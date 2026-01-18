@@ -101,22 +101,31 @@ export function useAudioEngine(stages: AudioStage[] = []) {
     const now = ctx.currentTime;
     let accumulatedTime = now;
     
-    // If resuming, we need to handle the offset (omitted for MVP simplicity - restarting logic mostly)
-    // For a robust sleep timer, we usually restart from 0 or calculating offset is complex logic
+    // Transition time: how quickly to ramp to target frequency at start of each stage
+    // 60 seconds provides smooth but noticeable transition (not jarring, not glacially slow)
+    const TRANSITION_TIME = 60; // seconds
     
     stages.forEach((stage) => {
       const duration = stage.durationSeconds;
       
+      // Use quick transition at start of stage, then hold steady
+      // Transition time is capped to 1/3 of stage duration for short stages
+      const transitionDuration = Math.min(TRANSITION_TIME, duration / 3);
+      
       // Left Ear (Carrier)
       leftOsc.frequency.setValueAtTime(stage.startCarrierFreq, accumulatedTime);
-      leftOsc.frequency.linearRampToValueAtTime(stage.endCarrierFreq, accumulatedTime + duration);
+      leftOsc.frequency.linearRampToValueAtTime(stage.endCarrierFreq, accumulatedTime + transitionDuration);
+      // Hold at end frequency for remainder of stage
+      leftOsc.frequency.setValueAtTime(stage.endCarrierFreq, accumulatedTime + transitionDuration);
       
       // Right Ear (Carrier + Beat)
       const startRight = stage.startCarrierFreq + stage.startBeatFreq;
       const endRight = stage.endCarrierFreq + stage.endBeatFreq;
       
       rightOsc.frequency.setValueAtTime(startRight, accumulatedTime);
-      rightOsc.frequency.linearRampToValueAtTime(endRight, accumulatedTime + duration);
+      rightOsc.frequency.linearRampToValueAtTime(endRight, accumulatedTime + transitionDuration);
+      // Hold at end frequency for remainder of stage
+      rightOsc.frequency.setValueAtTime(endRight, accumulatedTime + transitionDuration);
       
       accumulatedTime += duration;
     });
@@ -159,9 +168,16 @@ export function useAudioEngine(stages: AudioStage[] = []) {
       }
 
       if (currentStage) {
-        // Linear interpolation for display
-        const curCar = currentStage.startCarrierFreq + (currentStage.endCarrierFreq - currentStage.startCarrierFreq) * stageProgress;
-        const curBeat = currentStage.startBeatFreq + (currentStage.endBeatFreq - currentStage.startBeatFreq) * stageProgress;
+        // Match the audio engine's quick transition then hold behavior
+        const stageDuration = currentStage.durationSeconds;
+        const transitionDuration = Math.min(60, stageDuration / 3); // Same as audio engine
+        const timeInStage = (secondsElapsed - timeScanner);
+        
+        // During transition period: interpolate. After: hold at end frequency.
+        const transitionProgress = Math.min(1, timeInStage / transitionDuration);
+        
+        const curCar = currentStage.startCarrierFreq + (currentStage.endCarrierFreq - currentStage.startCarrierFreq) * transitionProgress;
+        const curBeat = currentStage.startBeatFreq + (currentStage.endBeatFreq - currentStage.startBeatFreq) * transitionProgress;
         
         setCurrentCarrier(curCar);
         setCurrentBeat(curBeat);
