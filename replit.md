@@ -70,7 +70,7 @@ The app uses a single-page console with four tabbed modes:
    - Multi-stage frequency progressions with gradual transitions
 
 ### Audio Players
-Two independent audio players for ambient sound:
+Three independent audio players for ambient sound:
 
 1. **Background Music Player**
    - Load audio files via drag-drop or file picker
@@ -85,6 +85,15 @@ Two independent audio players for ambient sound:
    - Subliminal Track Conversion (1-20% volume, default 5%)
    - Recorded affirmations saved as WAV files
    - Note: Recordings persist in browser session only (lost on refresh)
+
+3. **Stereo Confusion Player**
+   - Dual playlist system for left and right audio channels
+   - Web Audio API with StereoPannerNode for proper stereo routing (pan -1 left, pan +1 right)
+   - Independent file uploads for each ear
+   - Per-channel volume controls plus master volume
+   - Synchronized playback controls (play/pause/seek/next/prev)
+   - Loop mode for continuous playback
+   - Creates "stereo confusion" effect by playing different content in each ear
 
 ### Solfeggio Frequencies (used in 8-Hour program)
 | Frequency | Chakra/Purpose |
