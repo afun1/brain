@@ -84,7 +84,43 @@ export default function ConsolePage() {
   // Sleep Program wake-up sequence toggle
   const [includeWakeUp, setIncludeWakeUp] = useState(true);
   
+  // Custom frequency slots for Full Night Rest (10 slots, localStorage persisted)
+  const DEFAULT_CUSTOM_FREQUENCIES = [174, 285, 396, 417, 432, 528, 639, 741, 852, 963];
+  const CUSTOM_FREQ_STORAGE_KEY = "binauralSleep_customFrequencies";
+  
+  const [customFrequencySlots, setCustomFrequencySlots] = useState<number[]>(() => {
+    try {
+      const stored = localStorage.getItem(CUSTOM_FREQ_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length === 10 && parsed.every(f => typeof f === 'number' && f >= 60 && f <= 1000)) {
+          return parsed;
+        }
+      }
+    } catch {}
+    return DEFAULT_CUSTOM_FREQUENCIES;
+  });
+  
+  // Persist custom frequencies to localStorage
+  useEffect(() => {
+    localStorage.setItem(CUSTOM_FREQ_STORAGE_KEY, JSON.stringify(customFrequencySlots));
+  }, [customFrequencySlots]);
+  
+  const updateFrequencySlot = (index: number, value: number) => {
+    const clamped = Math.max(60, Math.min(1000, value));
+    setCustomFrequencySlots(prev => {
+      const newSlots = [...prev];
+      newSlots[index] = clamped;
+      return newSlots;
+    });
+  };
+  
+  const fillWithSolfeggio = () => {
+    setCustomFrequencySlots([...DEFAULT_CUSTOM_FREQUENCIES]);
+  };
+  
   const selectedProgram = programs?.find(p => p.id === selectedProgramId);
+  const isFullNightRest = selectedProgram?.name === "8-Hour Full Night Rest";
   
   // Generate wake-up stages (15 min beta awakening phase)
   const wakeUpStages = useMemo((): SleepStage[] => {
@@ -128,11 +164,42 @@ export default function ConsolePage() {
     ];
   }, [includeWakeUp]);
   
-  // Combine program stages with wake-up stages
+  // Apply custom frequencies to Full Night Rest stages
+  // Frequencies are distributed evenly across the 8-hour program (10 slots = ~48 min each)
+  const applyCustomFrequencies = (stages: SleepStage[]): SleepStage[] => {
+    if (!isFullNightRest || stages.length === 0) return stages;
+    
+    // Calculate total duration
+    const totalDuration = stages.reduce((sum, s) => sum + s.durationSeconds, 0);
+    const slotDuration = totalDuration / 10; // Each slot covers 1/10th of total duration
+    
+    // Get frequency for a given time point
+    const getCustomFreqAtTime = (seconds: number): number => {
+      const slotIndex = Math.min(9, Math.floor(seconds / slotDuration));
+      return customFrequencySlots[slotIndex];
+    };
+    
+    // Transform stages with custom frequencies
+    let currentTime = 0;
+    return stages.map((stage, idx) => {
+      const stageStart = currentTime;
+      const stageEnd = currentTime + stage.durationSeconds;
+      currentTime = stageEnd;
+      
+      return {
+        ...stage,
+        startCarrierFreq: getCustomFreqAtTime(stageStart),
+        endCarrierFreq: getCustomFreqAtTime(Math.max(0, stageEnd - 1)),
+      };
+    });
+  };
+  
+  // Combine program stages with wake-up stages and apply custom frequencies
   const programStagesWithWakeUp = useMemo(() => {
     const programStages = (selectedProgram?.stages as SleepStage[]) || [];
-    return [...programStages, ...wakeUpStages];
-  }, [selectedProgram, wakeUpStages]);
+    const transformedStages = applyCustomFrequencies(programStages);
+    return [...transformedStages, ...wakeUpStages];
+  }, [selectedProgram, wakeUpStages, customFrequencySlots, isFullNightRest]);
   
   const programAudio = useAudioEngine(programStagesWithWakeUp);
   
@@ -988,6 +1055,67 @@ export default function ConsolePage() {
                     {includeWakeUp ? "Yes" : "No"}
                   </Button>
                 </div>
+
+                {isFullNightRest && (
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/10 mb-4" data-testid="section-custom-frequencies">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <div className="text-sm font-medium text-white">Custom Frequencies</div>
+                        <div className="text-[10px] text-muted-foreground">
+                          10 slots cycling through 8 hours (~48 min each)
+                        </div>
+                      </div>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={fillWithSolfeggio}
+                        className="text-xs"
+                        data-testid="button-fill-solfeggio"
+                      >
+                        Fill Solfeggio
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-5 gap-2">
+                      {customFrequencySlots.map((freq, idx) => {
+                        const solfeggio = SOLFEGGIO_PRESETS.find(s => s.freq === freq);
+                        return (
+                          <div key={idx} className="flex flex-col items-center" data-testid={`slot-${idx}`}>
+                            <div className="text-[10px] text-muted-foreground mb-1">#{idx + 1}</div>
+                            <input
+                              type="number"
+                              min={60}
+                              max={1000}
+                              value={freq}
+                              onChange={(e) => updateFrequencySlot(idx, parseInt(e.target.value) || 60)}
+                              className="w-full h-8 text-center text-xs bg-zinc-900 border border-white/20 rounded-md text-white focus:border-primary focus:outline-none"
+                              data-testid={`input-freq-${idx}`}
+                            />
+                            {solfeggio && (
+                              <div className="text-[9px] text-accent mt-0.5">{solfeggio.name}</div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-1 text-[9px] text-muted-foreground">
+                      <span>Quick presets:</span>
+                      {SOLFEGGIO_PRESETS.map((preset, presetIdx) => (
+                        <span
+                          key={preset.freq}
+                          onClick={() => updateFrequencySlot(presetIdx, preset.freq)}
+                          className={`px-1 cursor-pointer rounded ${
+                            customFrequencySlots[presetIdx] === preset.freq
+                              ? 'text-accent font-medium'
+                              : 'text-muted-foreground/60'
+                          }`}
+                          data-testid={`preset-${preset.freq}`}
+                        >
+                          {preset.freq}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {selectedProgram && (
                   <AnimatePresence mode="wait">
