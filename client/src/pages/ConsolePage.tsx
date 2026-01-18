@@ -79,8 +79,60 @@ export default function ConsolePage() {
   const [daytimeDuration, setDaytimeDuration] = useState(25); // minutes
   const [includeRampUp, setIncludeRampUp] = useState(true);
   
+  // Sleep Program wake-up sequence toggle
+  const [includeWakeUp, setIncludeWakeUp] = useState(true);
+  
   const selectedProgram = programs?.find(p => p.id === selectedProgramId);
-  const programAudio = useAudioEngine(selectedProgram?.stages as SleepStage[] || []);
+  
+  // Generate wake-up stages (15 min beta awakening phase)
+  const wakeUpStages = useMemo((): SleepStage[] => {
+    if (!includeWakeUp) return [];
+    
+    const baseOrder = 100; // Start after all program stages
+    return [
+      {
+        id: 9001,
+        programId: 0,
+        name: "Wake Up - Low Beta",
+        startBeatFreq: 12,
+        endBeatFreq: 14,
+        startCarrierFreq: 432,
+        endCarrierFreq: 432,
+        durationSeconds: 300, // 5 min
+        order: baseOrder + 1,
+      },
+      {
+        id: 9002,
+        programId: 0,
+        name: "Wake Up - Mid Beta",
+        startBeatFreq: 14,
+        endBeatFreq: 18,
+        startCarrierFreq: 432,
+        endCarrierFreq: 432,
+        durationSeconds: 300, // 5 min
+        order: baseOrder + 2,
+      },
+      {
+        id: 9003,
+        programId: 0,
+        name: "Wake Up - Alert",
+        startBeatFreq: 18,
+        endBeatFreq: 20,
+        startCarrierFreq: 432,
+        endCarrierFreq: 432,
+        durationSeconds: 300, // 5 min
+        order: baseOrder + 3,
+      },
+    ];
+  }, [includeWakeUp]);
+  
+  // Combine program stages with wake-up stages
+  const programStagesWithWakeUp = useMemo(() => {
+    const programStages = (selectedProgram?.stages as SleepStage[]) || [];
+    return [...programStages, ...wakeUpStages];
+  }, [selectedProgram, wakeUpStages]);
+  
+  const programAudio = useAudioEngine(programStagesWithWakeUp);
   
   // Generate learning mode stages dynamically
   const learningStages = useMemo((): SleepStage[] => {
@@ -870,6 +922,24 @@ export default function ConsolePage() {
                   ))}
                 </div>
 
+                <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10 mb-4">
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-white">Wake-Up Sequence</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      Add 15 min beta phase (432 Hz) to gently wake you up
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIncludeWakeUp(!includeWakeUp)}
+                    className={`text-xs ${includeWakeUp ? 'bg-green-500 hover:bg-green-600 text-white border-green-500' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border-zinc-700'}`}
+                    data-testid="button-toggle-wakeup"
+                  >
+                    {includeWakeUp ? "Yes" : "No"}
+                  </Button>
+                </div>
+
                 {selectedProgram && (
                   <AnimatePresence mode="wait">
                     <motion.div
@@ -894,7 +964,7 @@ export default function ConsolePage() {
                       </div>
 
                       <SleepProgressChart
-                        stages={selectedProgram.stages as any}
+                        stages={programStagesWithWakeUp}
                         elapsedTime={programAudio.elapsedTime}
                         currentBeat={programAudio.currentBeat}
                         currentStageName={getCurrentStageName()}
