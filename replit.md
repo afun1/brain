@@ -65,16 +65,22 @@ The app uses a single-page console with four tabbed modes:
    - Mode switching automatically stops other audio engines to prevent overlap
 
 4. **Sleep Programs** - Pre-built sleep journeys
+   - **Dynamic Sleep Duration** - 5h to 10h options based on circadian rhythm research
+     - Each duration maps to optimal sleep cycles (3-6 cycles)
+     - All durations end in REM-supportive theta state (6 Hz) for natural wake-up
+     - Pre-Wake REM stage (10 min at 6 Hz) injected before final stages
+     - Stage durations scaled proportionally to selected duration
+     - Settings persisted to localStorage
    - **8-Hour Full Night Rest** - Customizable carrier frequencies
-     - 10 user-defined frequency slots (60-1000 Hz, default 432 Hz)
+     - 10 user-defined frequency slots (60-1000 Hz, blank by default)
      - Fully dynamic frequency input: type any number directly (validated on blur)
-     - Per-slot duration control in minutes (default 48 min each = 480 total)
-     - Visual time coverage meter showing colored segments as percentage of 8-hour total
-     - "Normalize" button auto-adjusts minutes to sum to 480 (8 hours)
+     - Per-slot duration control in minutes (blank by default for easy entry)
+     - Visual time coverage meter showing colored segments as percentage of selected duration
+     - "Clear All" button resets both frequencies and durations to blank
      - "Fill Solfeggio" preset loads all 10 Solfeggio frequencies with equal durations
      - Settings saved to localStorage for persistence
    - **8-Hour Solfeggio Healing Cycles** - Preset Solfeggio frequencies mapped to 5 sleep cycles
-   - Optional 15-minute beta wake-up sequence
+   - Optional 15-minute beta wake-up sequence (+15 min added after base sleep duration)
    - Multi-stage frequency progressions with gradual transitions
 
 ### Audio Players

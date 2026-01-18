@@ -84,10 +84,42 @@ export default function ConsolePage() {
   // Sleep Program wake-up sequence toggle
   const [includeWakeUp, setIncludeWakeUp] = useState(true);
   
+  // Sleep duration options (in hours) - each ends in REM state for natural wake-up
+  const SLEEP_DURATION_OPTIONS = [
+    { hours: 5, cycles: 3, label: "5h (3 cycles)" },
+    { hours: 6, cycles: 4, label: "6h (4 cycles)" },
+    { hours: 7, cycles: 5, label: "7h (5 cycles)" },
+    { hours: 7.5, cycles: 5, label: "7.5h (5 cycles)" },
+    { hours: 8, cycles: 5, label: "8h (5 cycles)" },
+    { hours: 9, cycles: 6, label: "9h (6 cycles)" },
+    { hours: 10, cycles: 7, label: "10h (7 cycles)" },
+  ];
+  const SLEEP_DURATION_STORAGE_KEY = "binauralSleep_sleepDurationHours";
+  
+  const [sleepDurationHours, setSleepDurationHours] = useState<number>(() => {
+    try {
+      const stored = localStorage.getItem(SLEEP_DURATION_STORAGE_KEY);
+      if (stored) {
+        const parsed = parseFloat(stored);
+        if (SLEEP_DURATION_OPTIONS.some(opt => opt.hours === parsed)) {
+          return parsed;
+        }
+      }
+    } catch {}
+    return 8; // Default 8 hours
+  });
+  
+  // Persist sleep duration to localStorage
+  useEffect(() => {
+    localStorage.setItem(SLEEP_DURATION_STORAGE_KEY, sleepDurationHours.toString());
+  }, [sleepDurationHours]);
+  
+  // Dynamic total program minutes based on selected sleep duration
+  const totalProgramMinutes = sleepDurationHours * 60;
+  
   // Custom frequency slots for Full Night Rest (10 slots, localStorage persisted)
   const DEFAULT_CUSTOM_FREQUENCIES = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
   const DEFAULT_SLOT_DURATIONS = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]; // minutes (user fills in)
-  const TOTAL_PROGRAM_MINUTES = 480; // 8 hours
   const CUSTOM_FREQ_STORAGE_KEY = "binauralSleep_customFrequencies";
   const CUSTOM_DURATION_STORAGE_KEY = "binauralSleep_slotDurationsMinutes";
   
@@ -179,7 +211,7 @@ export default function ConsolePage() {
   };
   
   const updateSlotDuration = (index: number, value: number) => {
-    const clamped = Math.max(0, Math.min(480, value)); // Max 480 minutes
+    const clamped = Math.max(0, Math.min(600, value)); // Max 600 minutes (10 hours)
     setSlotDurations(prev => {
       const newDurations = [...prev];
       newDurations[index] = clamped;
@@ -249,22 +281,65 @@ export default function ConsolePage() {
     ];
   }, [includeWakeUp]);
   
-  // Apply custom frequencies to Full Night Rest stages
-  // Frequencies are distributed based on minute durations per slot
-  const applyCustomFrequencies = (stages: SleepStage[]): SleepStage[] => {
+  // Scale and transform Full Night Rest stages based on selected duration
+  // Also applies custom frequencies and ensures ending in REM state
+  const transformFullNightRestStages = (stages: SleepStage[]): SleepStage[] => {
     if (!isFullNightRest || stages.length === 0) return stages;
     
-    // Calculate total duration in seconds and total minutes from slots
-    const totalDurationSeconds = stages.reduce((sum, s) => sum + s.durationSeconds, 0);
+    // Calculate original total duration and target duration
+    const originalDurationSeconds = stages.reduce((sum, s) => sum + s.durationSeconds, 0);
+    const targetDurationSeconds = totalProgramMinutes * 60;
+    const scaleFactor = targetDurationSeconds / originalDurationSeconds;
+    
+    // Scale all stage durations proportionally using floor, then adjust last stage
+    let scaledStages = stages.map((stage) => ({
+      ...stage,
+      durationSeconds: Math.floor(stage.durationSeconds * scaleFactor),
+    }));
+    
+    // Ensure total duration exactly matches target by adjusting last stage
+    const scaledTotal = scaledStages.reduce((sum, s) => sum + s.durationSeconds, 0);
+    const durationDiff = targetDurationSeconds - scaledTotal;
+    if (scaledStages.length > 0) {
+      scaledStages[scaledStages.length - 1].durationSeconds += durationDiff;
+    }
+    
+    // Add a final REM/theta stage for natural wake-up (10 minutes)
+    // This ensures the program ends in REM-like theta state regardless of original stages
+    const remWakeStage: SleepStage = {
+      id: 9999,
+      programId: 0,
+      name: "Pre-Wake REM",
+      startBeatFreq: 6, // Theta/REM
+      endBeatFreq: 6,   // Stay in theta for natural wake
+      startCarrierFreq: 432,
+      endCarrierFreq: 432,
+      durationSeconds: 600, // 10 minutes
+      order: 999,
+    };
+    
+    // Reduce last stage by 10 min to make room for REM stage (if long enough)
+    if (scaledStages.length > 0 && scaledStages[scaledStages.length - 1].durationSeconds > 600) {
+      scaledStages[scaledStages.length - 1].durationSeconds -= 600;
+      scaledStages.push(remWakeStage);
+    } else {
+      // If last stage is short, just modify its end frequency
+      const lastStage = scaledStages[scaledStages.length - 1];
+      scaledStages[scaledStages.length - 1] = {
+        ...lastStage,
+        endBeatFreq: 6, // End in theta for natural wake-up
+      };
+    }
+    
+    // Apply custom frequencies based on slot durations
     const totalMinutes = slotDurations.reduce((sum, d) => sum + d, 0);
     
     // Build cumulative time boundaries for each slot (in seconds)
-    // Each slot's proportion is based on its minutes relative to total minutes
-    const slotBoundaries: number[] = []; // End times in seconds for each slot
+    const slotBoundaries: number[] = [];
     let cumulative = 0;
     for (let i = 0; i < 10; i++) {
       const slotProportion = totalMinutes > 0 ? slotDurations[i] / totalMinutes : 0.1;
-      cumulative += slotProportion * totalDurationSeconds;
+      cumulative += slotProportion * targetDurationSeconds;
       slotBoundaries.push(cumulative);
     }
     
@@ -272,33 +347,36 @@ export default function ConsolePage() {
     const getCustomFreqAtTime = (seconds: number): number => {
       for (let i = 0; i < 10; i++) {
         if (seconds < slotBoundaries[i]) {
-          return customFrequencySlots[i];
+          return customFrequencySlots[i] || 432; // Default to 432 Hz if slot is empty
         }
       }
-      return customFrequencySlots[9];
+      return customFrequencySlots[9] || 432;
     };
     
     // Transform stages with custom frequencies
     let currentTime = 0;
-    return stages.map((stage) => {
+    return scaledStages.map((stage) => {
       const stageStart = currentTime;
       const stageEnd = currentTime + stage.durationSeconds;
       currentTime = stageEnd;
       
+      const startFreq = getCustomFreqAtTime(stageStart);
+      const endFreq = getCustomFreqAtTime(Math.max(0, stageEnd - 1));
+      
       return {
         ...stage,
-        startCarrierFreq: getCustomFreqAtTime(stageStart),
-        endCarrierFreq: getCustomFreqAtTime(Math.max(0, stageEnd - 1)),
+        startCarrierFreq: startFreq > 0 ? startFreq : stage.startCarrierFreq,
+        endCarrierFreq: endFreq > 0 ? endFreq : stage.endCarrierFreq,
       };
     });
   };
   
-  // Combine program stages with wake-up stages and apply custom frequencies
+  // Combine program stages with wake-up stages and apply transformations
   const programStagesWithWakeUp = useMemo(() => {
     const programStages = (selectedProgram?.stages as SleepStage[]) || [];
-    const transformedStages = applyCustomFrequencies(programStages);
+    const transformedStages = transformFullNightRestStages(programStages);
     return [...transformedStages, ...wakeUpStages];
-  }, [selectedProgram, wakeUpStages, customFrequencySlots, slotDurations, isFullNightRest]);
+  }, [selectedProgram, wakeUpStages, customFrequencySlots, slotDurations, isFullNightRest, totalProgramMinutes]);
   
   const programAudio = useAudioEngine(programStagesWithWakeUp);
   
@@ -518,7 +596,8 @@ export default function ConsolePage() {
   const getCurrentStageName = () => {
     if (!selectedProgram || mode !== "program") return "";
     let timeScanner = 0;
-    for (const stage of selectedProgram.stages) {
+    // Use transformed stages (scaled to selected duration) instead of original
+    for (const stage of programStagesWithWakeUp) {
       if (programAudio.elapsedTime >= timeScanner && programAudio.elapsedTime < timeScanner + stage.durationSeconds) {
         return stage.name;
       }
@@ -1141,7 +1220,7 @@ export default function ConsolePage() {
                   <div className="flex-1">
                     <div className="text-sm font-medium text-white">Wake-Up Sequence</div>
                     <div className="text-[10px] text-muted-foreground">
-                      Add 15 min beta phase (432 Hz) to gently wake you up
+                      Add +15 min beta phase after sleep ends (total: {sleepDurationHours}h + 15 min)
                     </div>
                   </div>
                   <Button
@@ -1186,11 +1265,30 @@ export default function ConsolePage() {
                       </div>
                     </div>
                     
-                    {/* Time Coverage Meter - shows percentage of 8-hour total */}
+                    {/* Sleep Duration Selector */}
+                    <div className="mb-3 p-2 rounded-lg bg-white/5 border border-white/10" data-testid="sleep-duration-selector">
+                      <div className="text-[10px] text-muted-foreground mb-2">Sleep Duration (ends in REM for natural wake-up)</div>
+                      <div className="flex flex-wrap gap-1">
+                        {SLEEP_DURATION_OPTIONS.map((option) => (
+                          <Button
+                            key={option.hours}
+                            variant={sleepDurationHours === option.hours ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setSleepDurationHours(option.hours)}
+                            className="text-[10px] px-2"
+                            data-testid={`button-duration-${option.hours}`}
+                          >
+                            {option.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Time Coverage Meter - shows percentage of selected sleep duration */}
                     <div className="mb-3" data-testid="time-coverage-meter">
                       <div className="flex h-4 rounded-md overflow-hidden border border-white/20">
                         {slotDurations.map((duration, idx) => {
-                          const percent = TOTAL_PROGRAM_MINUTES > 0 ? (duration / TOTAL_PROGRAM_MINUTES) * 100 : 10;
+                          const percent = totalProgramMinutes > 0 ? (duration / totalProgramMinutes) * 100 : 10;
                           const colors = [
                             "bg-red-500", "bg-orange-500", "bg-amber-500", "bg-yellow-500", "bg-lime-500",
                             "bg-green-500", "bg-emerald-500", "bg-cyan-500", "bg-blue-500", "bg-purple-500"
@@ -1212,8 +1310,8 @@ export default function ConsolePage() {
                       </div>
                       <div className="flex justify-between mt-1 text-[9px] text-muted-foreground">
                         <span>0 min</span>
-                        <span>Total: {totalDurationMinutes} min ({((totalDurationMinutes / TOTAL_PROGRAM_MINUTES) * 100).toFixed(0)}%)</span>
-                        <span>480 min (8h)</span>
+                        <span>Total: {totalDurationMinutes} min ({((totalDurationMinutes / totalProgramMinutes) * 100).toFixed(0)}%)</span>
+                        <span>{totalProgramMinutes} min ({sleepDurationHours}h)</span>
                       </div>
                     </div>
                     
