@@ -128,6 +128,26 @@ export async function voiceChatStream(
 }
 
 /**
+ * Translate text to another language using GPT.
+ */
+export async function translateText(
+  text: string,
+  targetLanguage: string = "English"
+): Promise<string> {
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      { 
+        role: "system", 
+        content: `You are a professional translator. Translate the given text to ${targetLanguage}. Only output the translation, nothing else. Preserve the original meaning and tone.`
+      },
+      { role: "user", content: text },
+    ],
+  });
+  return response.choices[0]?.message?.content || "";
+}
+
+/**
  * Text-to-Speech: Converts text to speech verbatim.
  * Uses gpt-audio-mini model via Replit AI Integrations.
  */

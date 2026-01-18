@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { chatStorage } from "../chat/storage";
-import { openai, speechToText, voiceChatWithTextModel, convertWebmToWav, textToSpeech } from "./client";
+import { openai, speechToText, voiceChatWithTextModel, convertWebmToWav, textToSpeech, translateText } from "./client";
 
 // Note: Set express.json({ limit: "50mb" }) for audio payloads.
 // Note: Use convertWebmToWav() to convert browser WebM to WAV before API calls.
@@ -217,6 +217,62 @@ export function registerAudioRoutes(app: Express): void {
     } catch (error) {
       console.error("Error in TTS:", error);
       res.status(500).json({ error: "Failed to convert text to speech" });
+    }
+  });
+
+  // Translation endpoint for language learning
+  app.post("/api/translate", async (req: Request, res: Response) => {
+    try {
+      const { text, targetLanguage = "English" } = req.body;
+
+      if (!text || typeof text !== "string") {
+        return res.status(400).json({ error: "Text is required" });
+      }
+
+      if (text.length > 10000) {
+        return res.status(400).json({ error: "Text too long. Maximum 10000 characters." });
+      }
+
+      const translation = await translateText(text, targetLanguage);
+      res.json({ translation });
+    } catch (error) {
+      console.error("Error in translation:", error);
+      res.status(500).json({ error: "Failed to translate text" });
+    }
+  });
+
+  // Bilingual TTS endpoint - generates audio for both original and translation
+  app.post("/api/tts/bilingual", async (req: Request, res: Response) => {
+    try {
+      const { originalText, translatedText, voice = "alloy" } = req.body;
+
+      if (!originalText || !translatedText) {
+        return res.status(400).json({ error: "Both originalText and translatedText are required" });
+      }
+
+      if (originalText.length > 4000 || translatedText.length > 4000) {
+        return res.status(400).json({ error: "Text too long. Maximum 4000 characters each." });
+      }
+
+      const validVoices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"];
+      if (!validVoices.includes(voice)) {
+        return res.status(400).json({ error: "Invalid voice" });
+      }
+
+      // Generate audio for both texts
+      const [originalAudio, translatedAudio] = await Promise.all([
+        textToSpeech(originalText, voice, "mp3"),
+        textToSpeech(translatedText, voice, "mp3"),
+      ]);
+
+      // Return as JSON with base64 audio
+      res.json({
+        originalAudio: originalAudio.toString("base64"),
+        translatedAudio: translatedAudio.toString("base64"),
+      });
+    } catch (error) {
+      console.error("Error in bilingual TTS:", error);
+      res.status(500).json({ error: "Failed to generate bilingual audio" });
     }
   });
 

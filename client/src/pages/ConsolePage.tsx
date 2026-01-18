@@ -9,6 +9,7 @@ import { SleepProgressChart, MiniHypnogram } from "@/components/SleepProgressCha
 import { TTSLearningPlayer } from "@/components/TTSLearningPlayer";
 import { AudiobookPlayer } from "@/components/AudiobookPlayer";
 import { PDFReader } from "@/components/PDFReader";
+import { LanguageLearner } from "@/components/LanguageLearner";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -1523,6 +1524,10 @@ export default function ConsolePage() {
                 <div className="h-px bg-white/10" />
 
                 <TTSLearningPlayer />
+
+                <div className="h-px bg-white/10" />
+
+                <LanguageLearner />
 
                 <div className="h-px bg-white/10" />
 
