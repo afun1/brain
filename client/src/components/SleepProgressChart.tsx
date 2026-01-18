@@ -317,3 +317,129 @@ export function SleepProgressChart({
     </div>
   );
 }
+
+interface MiniHypnogramProps {
+  stages: SleepStage[];
+}
+
+export function MiniHypnogram({ stages }: MiniHypnogramProps) {
+  const chartData = useMemo(() => {
+    if (!stages || stages.length === 0) return { segments: [], totalDuration: 0 };
+    
+    const segments: { startTime: number; endTime: number; level: number; isREM: boolean }[] = [];
+    let accumulatedTime = 0;
+    
+    stages.forEach((stage) => {
+      const endLevel = beatToStageLevel(stage.endBeatFreq);
+      const isREM = stage.name.toLowerCase().includes('rem') || 
+                    (stage.endBeatFreq >= 8 && stage.endBeatFreq <= 10 && stage.startBeatFreq < 8);
+      const level = isREM ? 1 : endLevel;
+      
+      segments.push({
+        startTime: accumulatedTime,
+        endTime: accumulatedTime + stage.durationSeconds,
+        level,
+        isREM,
+      });
+      
+      accumulatedTime += stage.durationSeconds;
+    });
+    
+    return { segments, totalDuration: accumulatedTime };
+  }, [stages]);
+
+  if (chartData.segments.length === 0) return null;
+
+  const { segments, totalDuration } = chartData;
+  
+  const chartWidth = 200;
+  const chartHeight = 60;
+  const padding = { top: 5, right: 5, bottom: 15, left: 5 };
+  const innerWidth = chartWidth - padding.left - padding.right;
+  const innerHeight = chartHeight - padding.top - padding.bottom;
+
+  const xScale = (time: number) => padding.left + (time / totalDuration) * innerWidth;
+  const yScale = (level: number) => padding.top + (level / 4) * innerHeight;
+
+  const buildStepPath = () => {
+    const pathParts: string[] = [];
+    
+    segments.forEach((seg, i) => {
+      const x1 = xScale(seg.startTime);
+      const x2 = xScale(seg.endTime);
+      const y = yScale(seg.level);
+      
+      if (i === 0) {
+        pathParts.push(`M ${x1} ${y}`);
+      } else {
+        const prevY = yScale(segments[i - 1].level);
+        if (prevY !== y) {
+          pathParts.push(`L ${x1} ${prevY}`);
+          pathParts.push(`L ${x1} ${y}`);
+        }
+      }
+      pathParts.push(`L ${x2} ${y}`);
+    });
+    
+    return pathParts.join(' ');
+  };
+
+  const buildREMSegments = () => {
+    return segments.filter(seg => seg.isREM).map((seg, i) => {
+      const x1 = xScale(seg.startTime);
+      const x2 = xScale(seg.endTime);
+      const y = yScale(seg.level);
+      return (
+        <line
+          key={`rem-${i}`}
+          x1={x1}
+          y1={y}
+          x2={x2}
+          y2={y}
+          stroke="#ef4444"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      );
+    });
+  };
+
+  const totalHours = Math.round(totalDuration / 3600);
+
+  return (
+    <div className="w-full">
+      <svg 
+        viewBox={`0 0 ${chartWidth} ${chartHeight}`} 
+        className="w-full h-auto"
+        preserveAspectRatio="xMidYMid meet"
+      >
+        <path
+          d={buildStepPath()}
+          fill="none"
+          stroke="rgba(255,255,255,0.5)"
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+        />
+        
+        {buildREMSegments()}
+        
+        <text
+          x={padding.left}
+          y={chartHeight - 3}
+          fill="rgba(255,255,255,0.5)"
+          fontSize="8"
+        >
+          0h
+        </text>
+        <text
+          x={chartWidth - padding.right - 10}
+          y={chartHeight - 3}
+          fill="rgba(255,255,255,0.5)"
+          fontSize="8"
+        >
+          {totalHours}h
+        </text>
+      </svg>
+    </div>
+  );
+}

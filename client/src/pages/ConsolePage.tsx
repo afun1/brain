@@ -5,7 +5,7 @@ import { useAudioEngine } from "@/hooks/use-audio-engine";
 import { WaveVisualizer } from "@/components/WaveVisualizer";
 import { AudioFilePlayer } from "@/components/AudioFilePlayer";
 import { StereoConfusionPlayer } from "@/components/StereoConfusionPlayer";
-import { SleepProgressChart } from "@/components/SleepProgressChart";
+import { SleepProgressChart, MiniHypnogram } from "@/components/SleepProgressChart";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -846,21 +846,27 @@ export default function ConsolePage() {
 
             <TabsContent value="program" className="space-y-4 mt-0">
               <div className="glass-panel rounded-2xl p-4">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                   {programs?.map((program) => (
-                    <Button
+                    <div
                       key={program.id}
-                      variant={selectedProgramId === program.id ? "default" : "outline"}
-                      size="sm"
                       onClick={() => handleProgramSelect(program.id)}
-                      className="text-xs flex flex-col items-start text-left whitespace-normal"
+                      className={`cursor-pointer rounded-xl p-3 border transition-all ${
+                        selectedProgramId === program.id 
+                          ? 'bg-primary/20 border-primary' 
+                          : 'bg-white/5 border-white/10 hover:bg-white/10'
+                      }`}
                       data-testid={`button-program-${program.id}`}
                     >
-                      <span className="font-semibold">{program.name}</span>
-                      {program.isDefault && (
-                        <span className="text-[10px] opacity-70">Recommended</span>
-                      )}
-                    </Button>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold text-sm text-white">{program.name}</span>
+                        {program.isDefault && (
+                          <span className="text-[10px] bg-primary/30 text-primary px-2 py-0.5 rounded-full">Recommended</span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mb-2 line-clamp-2">{program.description}</p>
+                      <MiniHypnogram stages={program.stages as any} />
+                    </div>
                   ))}
                 </div>
 
