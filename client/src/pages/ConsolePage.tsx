@@ -236,6 +236,66 @@ export default function ConsolePage() {
     setSlotDurations([...DEFAULT_SLOT_DURATIONS]);
   };
   
+  // Generate preview stages for MiniHypnogram based on cycle count
+  // Each cycle: N1 → N2 → N3 → N2 → REM pattern (~90 min each)
+  const generatePreviewStages = (durationHours: number): SleepStage[] => {
+    const cycleOption = SLEEP_DURATION_OPTIONS.find(opt => opt.hours === durationHours);
+    const cycles = cycleOption?.cycles || 5;
+    const totalSeconds = durationHours * 3600;
+    const cycleLength = totalSeconds / cycles;
+    
+    const stages: SleepStage[] = [];
+    let stageId = 1;
+    let accumulatedDuration = 0;
+    
+    for (let c = 0; c < cycles; c++) {
+      // Realistic sleep cycle structure based on sleep science:
+      // Early cycles: More N3 (deep sleep), shorter REM
+      // Later cycles: Less N3, longer REM
+      const cycleProgress = c / Math.max(1, cycles - 1);
+      
+      // Fixed portions that sum to exactly 100%
+      const n1Portion = 0.08; // 8% - brief N1 transition
+      const n2aPortion = 0.17; // 17% - first N2 descent
+      const n3Portion = 0.35 - cycleProgress * 0.15; // 35%→20% deep sleep decreases
+      const n2bPortion = 0.15; // 15% - second N2 ascent
+      const remPortion = 0.25 + cycleProgress * 0.15; // 25%→40% REM increases
+      
+      const stagesInCycle = [
+        { name: `N1`, portion: n1Portion, startFreq: c === 0 ? 12 : 9, endFreq: 7 },
+        { name: `N2`, portion: n2aPortion, startFreq: 7, endFreq: 5 },
+        { name: `N3`, portion: n3Portion, startFreq: 5, endFreq: 1 },
+        { name: `N2`, portion: n2bPortion, startFreq: 1, endFreq: 5 },
+        { name: `REM`, portion: remPortion, startFreq: 5, endFreq: 9 },
+      ];
+      
+      stagesInCycle.forEach((s) => {
+        const duration = Math.round(cycleLength * s.portion);
+        stages.push({
+          id: stageId,
+          programId: 0,
+          order: stageId,
+          name: `${s.name} Cycle ${c + 1}`,
+          durationSeconds: duration,
+          startBeatFreq: s.startFreq,
+          endBeatFreq: s.endFreq,
+          startCarrierFreq: 432,
+          endCarrierFreq: 432,
+        });
+        accumulatedDuration += duration;
+        stageId++;
+      });
+    }
+    
+    // Adjust final stage to match exact duration (fix rounding drift)
+    const durationDiff = totalSeconds - accumulatedDuration;
+    if (stages.length > 0 && durationDiff !== 0) {
+      stages[stages.length - 1].durationSeconds += durationDiff;
+    }
+    
+    return stages;
+  };
+  
   const selectedProgram = programs?.find(p => p.id === selectedProgramId);
   const isFullNightRest = selectedProgram?.name === "8-Hour Full Night Rest";
   
@@ -1224,7 +1284,7 @@ export default function ConsolePage() {
                         )}
                       </div>
                       <p className="text-[10px] text-muted-foreground mb-2 line-clamp-2">{program.description}</p>
-                      <MiniHypnogram stages={program.stages as any} />
+                      <MiniHypnogram stages={generatePreviewStages(sleepDurationHours)} />
                     </div>
                   ))}
                 </div>
