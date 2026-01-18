@@ -41,16 +41,19 @@ export function TTSLearningPlayer() {
   const [speed, setSpeed] = useState(1);
   const [volume, setVolume] = useState(80);
   const [isConverting, setIsConverting] = useState(false);
+  const [conversionProgress, setConversionProgress] = useState({ current: 0, total: 0 });
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isAudioReady, setIsAudioReady] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
-  const splitTextIntoChunks = (text: string, maxLength: number = 3500): string[] => {
-    const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+  const splitTextIntoChunks = useCallback((inputText: string, maxLength: number = 3500): string[] => {
+    if (!inputText.trim()) return [];
+    const sentences = inputText.match(/[^.!?]+[.!?]+/g) || [inputText];
     const chunks: string[] = [];
     let currentChunk = "";
 
@@ -64,7 +67,21 @@ export function TTSLearningPlayer() {
     }
     if (currentChunk) chunks.push(currentChunk.trim());
     return chunks;
-  };
+  }, []);
+
+  const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const estimatedChunks = text.trim() ? Math.max(1, splitTextIntoChunks(text).length) : 0;
+  const estimatedMinutes = Math.ceil(wordCount / 150);
+
+  // Cleanup interval on unmount
+  useEffect(() => {
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+    };
+  }, []);
 
   const handleConvert = useCallback(async () => {
     if (!text.trim()) {
@@ -73,22 +90,40 @@ export function TTSLearningPlayer() {
     }
 
     setIsConverting(true);
+    setConversionProgress({ current: 0, total: 0 });
+    
     try {
       const chunks = splitTextIntoChunks(text);
+      setConversionProgress({ current: 0, total: chunks.length });
       
       let response: Response;
       if (chunks.length === 1) {
+        setConversionProgress({ current: 1, total: 1 });
         response = await fetch("/api/tts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: chunks[0], voice }),
         });
       } else {
+        // For batch, show estimated progress as server processes
+        progressIntervalRef.current = setInterval(() => {
+          setConversionProgress(prev => ({
+            ...prev,
+            current: Math.min(prev.current + 1, prev.total - 1)
+          }));
+        }, 2000); // Estimate ~2 sec per chunk
+        
         response = await fetch("/api/tts/batch", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ chunks, voice }),
         });
+        
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+          progressIntervalRef.current = null;
+        }
+        setConversionProgress({ current: chunks.length, total: chunks.length });
       }
 
       if (!response.ok) {
@@ -113,9 +148,15 @@ export function TTSLearningPlayer() {
         variant: "destructive" 
       });
     } finally {
+      // Always clean up interval
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
       setIsConverting(false);
+      setConversionProgress({ current: 0, total: 0 });
     }
-  }, [text, voice, audioUrl, toast]);
+  }, [text, voice, audioUrl, toast, splitTextIntoChunks]);
 
   const handlePlay = useCallback(async () => {
     if (audioRef.current) {
@@ -282,7 +323,9 @@ export function TTSLearningPlayer() {
               {isConverting ? (
                 <>
                   <Loader2 className="w-3 h-3 animate-spin mr-1" />
-                  Converting...
+                  {conversionProgress.total > 1 
+                    ? `Converting ${conversionProgress.current}/${conversionProgress.total}...`
+                    : "Converting..."}
                 </>
               ) : (
                 <>
@@ -387,9 +430,17 @@ export function TTSLearningPlayer() {
           )}
 
           {text && (
-            <p className="text-[10px] text-right text-muted-foreground">
-              {text.length} characters • ~{Math.ceil(text.length / 150)} min audio
-            </p>
+            <div className="text-[10px] text-muted-foreground space-y-1" data-testid="text-stats">
+              <div className="flex justify-between">
+                <span>{wordCount.toLocaleString()} words • {text.length.toLocaleString()} characters</span>
+                <span>~{estimatedMinutes} min audio</span>
+              </div>
+              {estimatedChunks > 1 && (
+                <div className="text-muted-foreground/60">
+                  Will be processed in {estimatedChunks} parts (~{Math.ceil(estimatedChunks * 2)} sec to convert)
+                </div>
+              )}
+            </div>
           )}
         </div>
       </CollapsibleContent>
