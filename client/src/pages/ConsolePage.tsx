@@ -136,102 +136,108 @@ export default function ConsolePage() {
   
   const programAudio = useAudioEngine(programStagesWithWakeUp);
   
-  // Solfeggio frequencies cycle for Learning Mode - cycles through all 10, then loops
+  // Solfeggio frequencies cycle for Learning Mode - changes every ~9 minutes
   const SOLFEGGIO_FREQUENCIES = [174, 285, 396, 417, 432, 528, 639, 741, 852, 963];
-  const SOLFEGGIO_NAMES = [
-    "Foundation (174Hz)", "Healing (285Hz)", "Liberation (396Hz)", 
-    "Change (417Hz)", "Harmony (432Hz)", "Love (528Hz)", 
-    "Connection (639Hz)", "Clarity (741Hz)", "Intuition (852Hz)", "Cosmic (963Hz)"
-  ];
+  const FREQ_CHANGE_INTERVAL = 540; // 9 minutes per frequency
   
-  // Generate learning mode stages: cycles through Solfeggio frequencies, looping after 10
+  // Helper: Get Solfeggio frequency at a given time point (cycles through all 10)
+  const getFrequencyAtTime = (seconds: number) => {
+    const freqIndex = Math.floor(seconds / FREQ_CHANGE_INTERVAL) % 10;
+    return SOLFEGGIO_FREQUENCIES[freqIndex];
+  };
+  
+  // Generate learning mode stages: brainwave stages with Solfeggio cycling within
   const learningStages = useMemo((): SleepStage[] => {
     const stages: SleepStage[] = [];
     const totalSeconds = learningDuration * 60;
     
-    // Each frequency stage is ~2 minutes (allows full cycle in 20 min session)
-    const freqStageDuration = 120; // 2 minutes per frequency
+    // Define brainwave stage structure based on target
+    // Stage timing: wind-down (10%), alpha entry/theta transition (10%), sustain (80%)
+    const windDownDuration = includeWindDown ? Math.min(300, Math.round(totalSeconds * 0.1)) : 0;
+    const transitionDuration = Math.min(180, Math.round(totalSeconds * 0.1));
+    const sustainDuration = totalSeconds - windDownDuration - transitionDuration;
     
-    // Determine beat frequencies based on target
-    const targetBeat = learningTarget === "alpha" ? 10 : 6;
-    const stateName = learningTarget === "alpha" ? "Alpha" : "Theta";
-    
+    let timeOffset = 0;
     let stageOrder = 1;
-    let freqIndex = 0;
-    let remainingSeconds = totalSeconds;
     
-    // Stage 1: Wind-down with 174Hz (first Solfeggio) - always starts the cycle
-    if (includeWindDown) {
-      const windDownSeconds = Math.min(180, totalSeconds * 0.1); // 3 min or 10% max
+    // Stage 1: Wind-down (Beta 15Hz → Alpha 10Hz)
+    if (includeWindDown && windDownDuration > 0) {
       stages.push({
         id: stageOrder,
         programId: 0,
-        name: `Wind Down - ${SOLFEGGIO_NAMES[freqIndex]}`,
+        name: "Wind Down",
         startBeatFreq: 15,
         endBeatFreq: 10,
-        startCarrierFreq: SOLFEGGIO_FREQUENCIES[freqIndex],
-        endCarrierFreq: SOLFEGGIO_FREQUENCIES[freqIndex],
-        durationSeconds: Math.round(windDownSeconds),
+        startCarrierFreq: getFrequencyAtTime(timeOffset),
+        endCarrierFreq: getFrequencyAtTime(timeOffset + windDownDuration),
+        durationSeconds: windDownDuration,
         order: stageOrder,
       });
+      timeOffset += windDownDuration;
       stageOrder++;
-      freqIndex = 1; // Next stage uses 285Hz
-      remainingSeconds -= windDownSeconds;
     }
     
-    // Stage 2: Alpha entry or Alpha-to-Theta transition
-    if (remainingSeconds > 0) {
-      const transitionSeconds = Math.min(120, remainingSeconds * 0.1); // 2 min or 10%
-      
+    // Stage 2: Alpha Entry or Alpha-to-Theta transition
+    if (transitionDuration > 0) {
       if (learningTarget === "theta") {
         stages.push({
           id: stageOrder,
           programId: 0,
-          name: `Alpha to Theta - ${SOLFEGGIO_NAMES[freqIndex % 10]}`,
+          name: "Alpha to Theta",
           startBeatFreq: 10,
           endBeatFreq: 6,
-          startCarrierFreq: SOLFEGGIO_FREQUENCIES[freqIndex % 10],
-          endCarrierFreq: SOLFEGGIO_FREQUENCIES[freqIndex % 10],
-          durationSeconds: Math.round(transitionSeconds),
+          startCarrierFreq: getFrequencyAtTime(timeOffset),
+          endCarrierFreq: getFrequencyAtTime(timeOffset + transitionDuration),
+          durationSeconds: transitionDuration,
           order: stageOrder,
         });
       } else {
         stages.push({
           id: stageOrder,
           programId: 0,
-          name: `Alpha Entry - ${SOLFEGGIO_NAMES[freqIndex % 10]}`,
+          name: "Alpha Entry",
           startBeatFreq: 10,
           endBeatFreq: 10,
-          startCarrierFreq: SOLFEGGIO_FREQUENCIES[freqIndex % 10],
-          endCarrierFreq: SOLFEGGIO_FREQUENCIES[freqIndex % 10],
-          durationSeconds: Math.round(transitionSeconds),
+          startCarrierFreq: getFrequencyAtTime(timeOffset),
+          endCarrierFreq: getFrequencyAtTime(timeOffset + transitionDuration),
+          durationSeconds: transitionDuration,
           order: stageOrder,
         });
       }
+      timeOffset += transitionDuration;
       stageOrder++;
-      freqIndex++;
-      remainingSeconds -= transitionSeconds;
     }
     
-    // Remaining stages: continue cycling through Solfeggio frequencies
-    // Each stage uses the next frequency, looping back to 174Hz after 963Hz
-    while (remainingSeconds > 30) { // Keep creating stages until less than 30 seconds remain
-      const stageDuration = Math.min(freqStageDuration, remainingSeconds);
+    // Stage 3+: Sustained Alpha or Theta state
+    // Break into segments aligned with frequency changes (~9 min each)
+    const targetBeat = learningTarget === "alpha" ? 10 : 6;
+    const stateName = learningTarget === "alpha" ? "Alpha Sustain" : "Deep Theta";
+    
+    let remainingSustain = sustainDuration;
+    while (remainingSustain > 30) {
+      // Calculate time until next frequency change
+      const currentFreqStart = Math.floor(timeOffset / FREQ_CHANGE_INTERVAL);
+      const nextFreqChangeAt = (currentFreqStart + 1) * FREQ_CHANGE_INTERVAL;
+      const timeUntilChange = nextFreqChangeAt - timeOffset;
+      
+      // Stage duration: either until next freq change or remaining time
+      const stageDuration = Math.min(timeUntilChange, remainingSustain);
       
       stages.push({
         id: stageOrder,
         programId: 0,
-        name: `${stateName} - ${SOLFEGGIO_NAMES[freqIndex % 10]}`,
+        name: stateName,
         startBeatFreq: targetBeat,
         endBeatFreq: targetBeat,
-        startCarrierFreq: SOLFEGGIO_FREQUENCIES[freqIndex % 10],
-        endCarrierFreq: SOLFEGGIO_FREQUENCIES[freqIndex % 10],
+        startCarrierFreq: getFrequencyAtTime(timeOffset),
+        endCarrierFreq: getFrequencyAtTime(timeOffset + stageDuration - 1), // Same freq within stage
         durationSeconds: Math.round(stageDuration),
         order: stageOrder,
       });
+      
+      timeOffset += stageDuration;
+      remainingSustain -= stageDuration;
       stageOrder++;
-      freqIndex++; // Advances through frequencies, loops via modulo
-      remainingSeconds -= stageDuration;
     }
     
     return stages;
