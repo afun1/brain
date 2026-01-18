@@ -389,10 +389,10 @@ export default function ConsolePage() {
                     </div>
                     <div className="text-xs text-muted-foreground mb-2" data-testid="label-left-ear">Left</div>
                     <Button
-                      variant={customAudio.leftEnabled ? "default" : "outline"}
+                      variant="outline"
                       size="sm"
                       onClick={() => customAudio.setLeftEnabled(!customAudio.leftEnabled)}
-                      className="text-xs"
+                      className={`text-xs ${customAudio.leftEnabled ? 'bg-green-500 hover:bg-green-600 text-white border-green-500' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border-zinc-700'}`}
                       data-testid="button-toggle-left-channel"
                     >
                       {customAudio.leftEnabled ? "On" : "Off"}
@@ -414,10 +414,10 @@ export default function ConsolePage() {
                     </div>
                     <div className="text-xs text-muted-foreground mb-2" data-testid="label-right-ear">Right</div>
                     <Button
-                      variant={customAudio.rightEnabled ? "default" : "outline"}
+                      variant="outline"
                       size="sm"
                       onClick={() => customAudio.setRightEnabled(!customAudio.rightEnabled)}
-                      className="text-xs"
+                      className={`text-xs ${customAudio.rightEnabled ? 'bg-green-500 hover:bg-green-600 text-white border-green-500' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border-zinc-700'}`}
                       data-testid="button-toggle-right-channel"
                     >
                       {customAudio.rightEnabled ? "On" : "Off"}
@@ -631,10 +631,10 @@ export default function ConsolePage() {
                         </div>
                         <div className="text-xs text-muted-foreground mb-2" data-testid="label-learning-left">Left</div>
                         <Button
-                          variant={learningAudio.leftEnabled ? "default" : "outline"}
+                          variant="outline"
                           size="sm"
                           onClick={() => learningAudio.setLeftEnabled(!learningAudio.leftEnabled)}
-                          className="text-xs"
+                          className={`text-xs ${learningAudio.leftEnabled ? 'bg-green-500 hover:bg-green-600 text-white border-green-500' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border-zinc-700'}`}
                           data-testid="button-toggle-learning-left"
                         >
                           {learningAudio.leftEnabled ? "On" : "Off"}
@@ -650,10 +650,10 @@ export default function ConsolePage() {
                         </div>
                         <div className="text-xs text-muted-foreground mb-2" data-testid="label-learning-right">Right</div>
                         <Button
-                          variant={learningAudio.rightEnabled ? "default" : "outline"}
+                          variant="outline"
                           size="sm"
                           onClick={() => learningAudio.setRightEnabled(!learningAudio.rightEnabled)}
-                          className="text-xs"
+                          className={`text-xs ${learningAudio.rightEnabled ? 'bg-green-500 hover:bg-green-600 text-white border-green-500' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border-zinc-700'}`}
                           data-testid="button-toggle-learning-right"
                         >
                           {learningAudio.rightEnabled ? "On" : "Off"}
@@ -797,10 +797,10 @@ export default function ConsolePage() {
                         </div>
                         <div className="text-xs text-muted-foreground mb-2" data-testid="label-daytime-left">Left</div>
                         <Button
-                          variant={daytimeAudio.leftEnabled ? "default" : "outline"}
+                          variant="outline"
                           size="sm"
                           onClick={() => daytimeAudio.setLeftEnabled(!daytimeAudio.leftEnabled)}
-                          className="text-xs"
+                          className={`text-xs ${daytimeAudio.leftEnabled ? 'bg-green-500 hover:bg-green-600 text-white border-green-500' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border-zinc-700'}`}
                           data-testid="button-toggle-daytime-left"
                         >
                           {daytimeAudio.leftEnabled ? "On" : "Off"}
@@ -816,10 +816,10 @@ export default function ConsolePage() {
                         </div>
                         <div className="text-xs text-muted-foreground mb-2" data-testid="label-daytime-right">Right</div>
                         <Button
-                          variant={daytimeAudio.rightEnabled ? "default" : "outline"}
+                          variant="outline"
                           size="sm"
                           onClick={() => daytimeAudio.setRightEnabled(!daytimeAudio.rightEnabled)}
-                          className="text-xs"
+                          className={`text-xs ${daytimeAudio.rightEnabled ? 'bg-green-500 hover:bg-green-600 text-white border-green-500' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border-zinc-700'}`}
                           data-testid="button-toggle-daytime-right"
                         >
                           {daytimeAudio.rightEnabled ? "On" : "Off"}
@@ -902,10 +902,10 @@ export default function ConsolePage() {
                           </div>
                           <div className="text-xs text-muted-foreground mb-2" data-testid="label-program-left">Left</div>
                           <Button
-                            variant={programAudio.leftEnabled ? "default" : "outline"}
+                            variant="outline"
                             size="sm"
                             onClick={() => programAudio.setLeftEnabled(!programAudio.leftEnabled)}
-                            className="text-xs"
+                            className={`text-xs ${programAudio.leftEnabled ? 'bg-green-500 hover:bg-green-600 text-white border-green-500' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border-zinc-700'}`}
                             data-testid="button-toggle-program-left"
                           >
                             {programAudio.leftEnabled ? "On" : "Off"}
@@ -921,10 +921,10 @@ export default function ConsolePage() {
                           </div>
                           <div className="text-xs text-muted-foreground mb-2" data-testid="label-program-right">Right</div>
                           <Button
-                            variant={programAudio.rightEnabled ? "default" : "outline"}
+                            variant="outline"
                             size="sm"
                             onClick={() => programAudio.setRightEnabled(!programAudio.rightEnabled)}
-                            className="text-xs"
+                            className={`text-xs ${programAudio.rightEnabled ? 'bg-green-500 hover:bg-green-600 text-white border-green-500' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border-zinc-700'}`}
                             data-testid="button-toggle-program-right"
                           >
                             {programAudio.rightEnabled ? "On" : "Off"}
