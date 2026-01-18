@@ -44,7 +44,7 @@ Sleep programs contain multiple stages, each defining:
 - **Rationale**: Long gradual ramps (10-30 min) felt sluggish; quick transitions let users experience target frequencies sooner without jarring jumps
 
 ### Unified Console Interface
-The app uses a single-page console with four tabbed modes:
+The app uses a single-page console with five tabbed modes:
 
 1. **Custom Mode** - Manual frequency adjustment
    - Carrier (Solfeggio) frequency: 60-1000 Hz with presets (174, 285, 396, 417, 432, 528, 639, 741, 852, 963 Hz)
@@ -61,7 +61,27 @@ The app uses a single-page console with four tabbed modes:
    - Progress tracking with current stage display
    - **Text-to-Speech Learning**: Paste text from books/articles, convert to audio via OpenAI TTS, play at accelerated speeds (0.5x-10x) for enhanced learning during alpha/theta states
 
-3. **Daytime Mode** - Focus/alertness enhancement for active use
+3. **Healing Mode** - Deep delta frequencies for cellular repair and recovery
+   - Target state selection: 
+     - Restoration (3 Hz) - General recovery and immune support
+     - Deep Healing (1.5 Hz) - Maximum tissue repair and regeneration
+     - Pain Relief (2 Hz) - Cortisol reduction and pain management
+   - Optional wind-down phase: Alpha (10 Hz) → Theta (6 Hz) → Target delta
+   - Duration options: 30, 45, 60, 90, or 120 minutes
+   - **10-slot Carrier Frequency System** (like Sleep Mode)
+     - User-defined Solfeggio frequencies (60-1000 Hz)
+     - Per-slot duration controls
+     - "Fill Solfeggio" preset for all 10 healing frequencies
+     - Visual time coverage meter
+   - **10-slot Brainwave Frequency System**
+     - User-defined delta frequencies (0.5-4 Hz)
+     - Per-slot duration controls
+     - "Fill Delta" preset cycles through therapeutic delta range
+     - Delta presets: 0.5 (Ultra Deep), 1-2 (Deep Delta), 2-3 (Recovery/Restoration), 3-4 (Immune/Theta Edge)
+   - Based on 2024 research: minimum 20-30 min sessions, 7+ days for measurable benefits
+   - Settings persisted to localStorage
+
+4. **Daytime Mode** - Focus/alertness enhancement for active use
    - Target state selection: Beta (15-30 Hz) for focus or Gamma (30+ Hz) for peak flow
    - Optional ramp-up phase: gradual transition from low beta (12 Hz) to target
    - Duration options for work sessions: 15, 25, 45, 60, 90, or 120 minutes
@@ -69,7 +89,7 @@ The app uses a single-page console with four tabbed modes:
    - Gamma mode: alternating 40-42 Hz across stages for engagement
    - Mode switching automatically stops other audio engines to prevent overlap
 
-4. **Sleep Programs** - Pre-built sleep journeys
+5. **Sleep Programs** - Pre-built sleep journeys
    - **Dynamic Sleep Duration** - 5h to 10h options based on circadian rhythm research
      - Each duration maps to optimal sleep cycles (3-6 cycles)
      - All durations end in true REM state (9 Hz) for refreshed wake-up from dreams

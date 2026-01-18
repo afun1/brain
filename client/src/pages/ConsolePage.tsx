@@ -13,7 +13,7 @@ import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Play, Pause, Volume2, Sliders, Headphones, 
-  ArrowLeftRight, Moon, Brain, Timer, Sun, Zap, HelpCircle
+  ArrowLeftRight, Moon, Brain, Timer, Sun, Zap, HelpCircle, Heart
 } from "lucide-react";
 import { Link } from "wouter";
 import { AnimatePresence, motion } from "framer-motion";
@@ -43,9 +43,10 @@ const BEAT_PRESETS = [
   { freq: 12, label: "12", name: "Beta" },
 ];
 
-type Mode = "custom" | "program" | "learning" | "daytime";
+type Mode = "custom" | "program" | "learning" | "daytime" | "healing";
 type LearningTarget = "alpha" | "theta";
 type DaytimeTarget = "beta" | "gamma";
+type HealingTarget = "restoration" | "deepHealing" | "painRelief";
 
 const DURATION_OPTIONS = [
   { minutes: 10, label: "10 min" },
@@ -65,6 +66,25 @@ const DAYTIME_DURATION_OPTIONS = [
   { minutes: 120, label: "2 hours" },
 ];
 
+const HEALING_DURATION_OPTIONS = [
+  { minutes: 30, label: "30 min" },
+  { minutes: 45, label: "45 min" },
+  { minutes: 60, label: "1 hour" },
+  { minutes: 90, label: "90 min" },
+  { minutes: 120, label: "2 hours" },
+];
+
+const DELTA_PRESETS = [
+  { freq: 0.5, label: "0.5", name: "Ultra Deep" },
+  { freq: 1, label: "1", name: "Deep Delta" },
+  { freq: 1.5, label: "1.5", name: "Regeneration" },
+  { freq: 2, label: "2", name: "Pain Relief" },
+  { freq: 2.5, label: "2.5", name: "Recovery" },
+  { freq: 3, label: "3", name: "Restoration" },
+  { freq: 3.5, label: "3.5", name: "Immune" },
+  { freq: 4, label: "4", name: "Theta Edge" },
+];
+
 export default function ConsolePage() {
   const { data: programs } = usePrograms();
   const customAudio = useCustomAudio();
@@ -80,6 +100,194 @@ export default function ConsolePage() {
   const [daytimeTarget, setDaytimeTarget] = useState<DaytimeTarget>("beta");
   const [daytimeDuration, setDaytimeDuration] = useState(25); // minutes
   const [includeRampUp, setIncludeRampUp] = useState(true);
+  
+  // Healing Mode state
+  const [healingTarget, setHealingTarget] = useState<HealingTarget>("restoration");
+  const [healingDuration, setHealingDuration] = useState(60); // minutes
+  const [includeHealingWindDown, setIncludeHealingWindDown] = useState(true);
+  
+  // Healing Mode 10-slot carrier frequency system (like Sleep Mode)
+  const HEALING_FREQ_STORAGE_KEY = "binauralSleep_healingFrequencies";
+  const HEALING_DURATION_STORAGE_KEY = "binauralSleep_healingSlotDurations";
+  const HEALING_BEAT_STORAGE_KEY = "binauralSleep_healingBeatFrequencies";
+  const HEALING_BEAT_DURATION_STORAGE_KEY = "binauralSleep_healingBeatDurations";
+  const DEFAULT_HEALING_FREQUENCIES = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  const DEFAULT_HEALING_DURATIONS = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  const DEFAULT_HEALING_BEATS = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  
+  const [healingFrequencySlots, setHealingFrequencySlots] = useState<number[]>(() => {
+    try {
+      const stored = localStorage.getItem(HEALING_FREQ_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length === 10) return parsed;
+      }
+    } catch {}
+    return DEFAULT_HEALING_FREQUENCIES;
+  });
+  
+  const [healingFreqInputs, setHealingFreqInputs] = useState<string[]>(() => 
+    DEFAULT_HEALING_FREQUENCIES.map(f => f === 0 ? '' : f.toString())
+  );
+  
+  const [healingSlotDurations, setHealingSlotDurations] = useState<number[]>(() => {
+    try {
+      const stored = localStorage.getItem(HEALING_DURATION_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length === 10) return parsed;
+      }
+    } catch {}
+    return DEFAULT_HEALING_DURATIONS;
+  });
+  
+  const [healingBeatSlots, setHealingBeatSlots] = useState<number[]>(() => {
+    try {
+      const stored = localStorage.getItem(HEALING_BEAT_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length === 10) return parsed;
+      }
+    } catch {}
+    return DEFAULT_HEALING_BEATS;
+  });
+  
+  const [healingBeatInputs, setHealingBeatInputs] = useState<string[]>(() => 
+    DEFAULT_HEALING_BEATS.map(f => f === 0 ? '' : f.toString())
+  );
+  
+  const [healingBeatDurations, setHealingBeatDurations] = useState<number[]>(() => {
+    try {
+      const stored = localStorage.getItem(HEALING_BEAT_DURATION_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length === 10) return parsed;
+      }
+    } catch {}
+    return DEFAULT_HEALING_DURATIONS;
+  });
+  
+  // Sync healing inputs on mount
+  useEffect(() => {
+    setHealingFreqInputs(healingFrequencySlots.map(f => f === 0 ? '' : f.toString()));
+  }, [healingFrequencySlots]);
+  
+  useEffect(() => {
+    setHealingBeatInputs(healingBeatSlots.map(f => f === 0 ? '' : f.toString()));
+  }, [healingBeatSlots]);
+  
+  // Persist healing settings
+  useEffect(() => {
+    localStorage.setItem(HEALING_FREQ_STORAGE_KEY, JSON.stringify(healingFrequencySlots));
+  }, [healingFrequencySlots]);
+  
+  useEffect(() => {
+    localStorage.setItem(HEALING_DURATION_STORAGE_KEY, JSON.stringify(healingSlotDurations));
+  }, [healingSlotDurations]);
+  
+  useEffect(() => {
+    localStorage.setItem(HEALING_BEAT_STORAGE_KEY, JSON.stringify(healingBeatSlots));
+  }, [healingBeatSlots]);
+  
+  useEffect(() => {
+    localStorage.setItem(HEALING_BEAT_DURATION_STORAGE_KEY, JSON.stringify(healingBeatDurations));
+  }, [healingBeatDurations]);
+  
+  // Healing frequency input handlers
+  const handleHealingFreqChange = (index: number, value: string) => {
+    setHealingFreqInputs(prev => {
+      const newInputs = [...prev];
+      newInputs[index] = value;
+      return newInputs;
+    });
+  };
+  
+  const handleHealingFreqBlur = (index: number) => {
+    const value = parseInt(healingFreqInputs[index]) || 0;
+    // Allow 0 (empty) or valid range 60-1000 Hz
+    const clamped = value === 0 ? 0 : Math.max(60, Math.min(1000, value));
+    setHealingFrequencySlots(prev => {
+      const newSlots = [...prev];
+      newSlots[index] = clamped;
+      return newSlots;
+    });
+    // Update input to reflect clamped value
+    if (value !== 0 && clamped !== value) {
+      setHealingFreqInputs(prev => {
+        const newInputs = [...prev];
+        newInputs[index] = clamped.toString();
+        return newInputs;
+      });
+    }
+  };
+  
+  const updateHealingSlotDuration = (index: number, value: number) => {
+    setHealingSlotDurations(prev => {
+      const newDurations = [...prev];
+      newDurations[index] = Math.max(0, Math.min(600, value));
+      return newDurations;
+    });
+  };
+  
+  const handleHealingBeatChange = (index: number, value: string) => {
+    setHealingBeatInputs(prev => {
+      const newInputs = [...prev];
+      newInputs[index] = value;
+      return newInputs;
+    });
+  };
+  
+  const handleHealingBeatBlur = (index: number) => {
+    const value = parseFloat(healingBeatInputs[index]) || 0;
+    // Allow 0 (empty) or valid delta range 0.5-4 Hz
+    const clamped = value === 0 ? 0 : Math.max(0.5, Math.min(4, value));
+    setHealingBeatSlots(prev => {
+      const newSlots = [...prev];
+      newSlots[index] = clamped;
+      return newSlots;
+    });
+    // Update input to reflect clamped value
+    if (value !== 0 && clamped !== value) {
+      setHealingBeatInputs(prev => {
+        const newInputs = [...prev];
+        newInputs[index] = clamped.toString();
+        return newInputs;
+      });
+    }
+  };
+  
+  const updateHealingBeatDuration = (index: number, value: number) => {
+    setHealingBeatDurations(prev => {
+      const newDurations = [...prev];
+      newDurations[index] = Math.max(0, Math.min(600, value));
+      return newDurations;
+    });
+  };
+  
+  const clearHealingFrequencies = () => {
+    setHealingFrequencySlots([...DEFAULT_HEALING_FREQUENCIES]);
+    setHealingFreqInputs(DEFAULT_HEALING_FREQUENCIES.map(() => ''));
+    setHealingSlotDurations([...DEFAULT_HEALING_DURATIONS]);
+  };
+  
+  const fillHealingSolfeggio = () => {
+    setHealingFrequencySlots([174, 285, 396, 417, 432, 528, 639, 741, 852, 963]);
+    setHealingFreqInputs(["174", "285", "396", "417", "432", "528", "639", "741", "852", "963"]);
+  };
+  
+  const clearHealingBeats = () => {
+    setHealingBeatSlots([...DEFAULT_HEALING_BEATS]);
+    setHealingBeatInputs(DEFAULT_HEALING_BEATS.map(() => ''));
+    setHealingBeatDurations([...DEFAULT_HEALING_DURATIONS]);
+  };
+  
+  const fillHealingDelta = () => {
+    setHealingBeatSlots([0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 3, 2]);
+    setHealingBeatInputs(["0.5", "1", "1.5", "2", "2.5", "3", "3.5", "4", "3", "2"]);
+  };
+  
+  const healingTotalCarrierMinutes = healingSlotDurations.reduce((sum, d) => sum + d, 0);
+  const healingTotalBeatMinutes = healingBeatDurations.reduce((sum, d) => sum + d, 0);
   
   // Sleep Program wake-up sequence toggle
   const [includeWakeUp, setIncludeWakeUp] = useState(true);
@@ -634,6 +842,194 @@ export default function ConsolePage() {
   }, [daytimeTarget, daytimeDuration, includeRampUp]);
   
   const daytimeAudio = useAudioEngine(daytimeStages);
+  
+  // Generate healing mode stages dynamically
+  // Uses 10-slot carrier frequencies and 10-slot brainwave frequencies, normalized to session length
+  const healingStages = useMemo((): SleepStage[] => {
+    const stages: SleepStage[] = [];
+    const totalSeconds = healingDuration * 60;
+    
+    // Target delta frequencies based on healing target
+    const targetBeat = healingTarget === "restoration" ? 3 
+      : healingTarget === "deepHealing" ? 1.5 
+      : 2; // painRelief
+    
+    // Wind-down: 10% of total (max 5 min alpha-theta) + 5% transition (max 3 min theta-delta)
+    const windDownSeconds = includeHealingWindDown ? Math.min(300, Math.round(totalSeconds * 0.1)) : 0;
+    const transitionSeconds = includeHealingWindDown ? Math.min(180, Math.round(totalSeconds * 0.05)) : 0;
+    const mainHealingSeconds = totalSeconds - windDownSeconds - transitionSeconds;
+    
+    let stageOrder = 1;
+    
+    // Check if custom slots are configured with durations
+    const validCarrierSlots = healingFrequencySlots.map((f, i) => ({ freq: f, duration: healingSlotDurations[i], idx: i }))
+      .filter(s => s.freq > 0 && s.duration > 0);
+    const validBeatSlots = healingBeatSlots.map((f, i) => ({ freq: f, duration: healingBeatDurations[i], idx: i }))
+      .filter(s => s.freq > 0 && s.duration > 0);
+    
+    const hasCustomCarriers = validCarrierSlots.length > 0;
+    const hasCustomBeats = validBeatSlots.length > 0;
+    
+    // Normalize carrier slot durations to fit the main healing phase
+    const carrierTotalUserMinutes = validCarrierSlots.reduce((sum, s) => sum + s.duration, 0);
+    const carrierScale = carrierTotalUserMinutes > 0 ? mainHealingSeconds / (carrierTotalUserMinutes * 60) : 1;
+    
+    // Normalize beat slot durations to fit the main healing phase
+    const beatTotalUserMinutes = validBeatSlots.reduce((sum, s) => sum + s.duration, 0);
+    const beatScale = beatTotalUserMinutes > 0 ? mainHealingSeconds / (beatTotalUserMinutes * 60) : 1;
+    
+    // Build carrier timeline (normalized) - maps time position to carrier frequency
+    const carrierTimeline: { startSec: number; endSec: number; freq: number }[] = [];
+    if (hasCustomCarriers) {
+      let carrierOffset = windDownSeconds + transitionSeconds;
+      for (const slot of validCarrierSlots) {
+        const scaledDuration = Math.round(slot.duration * 60 * carrierScale);
+        carrierTimeline.push({
+          startSec: carrierOffset,
+          endSec: carrierOffset + scaledDuration,
+          freq: slot.freq,
+        });
+        carrierOffset += scaledDuration;
+      }
+      // Adjust last slot to exactly fill remaining time
+      if (carrierTimeline.length > 0) {
+        carrierTimeline[carrierTimeline.length - 1].endSec = totalSeconds;
+      }
+    }
+    
+    // Build beat timeline (normalized) - maps time position to beat frequency
+    const beatTimeline: { startSec: number; endSec: number; freq: number }[] = [];
+    if (hasCustomBeats) {
+      let beatOffset = windDownSeconds + transitionSeconds;
+      for (const slot of validBeatSlots) {
+        const scaledDuration = Math.round(slot.duration * 60 * beatScale);
+        beatTimeline.push({
+          startSec: beatOffset,
+          endSec: beatOffset + scaledDuration,
+          freq: slot.freq,
+        });
+        beatOffset += scaledDuration;
+      }
+      // Adjust last slot to exactly fill remaining time
+      if (beatTimeline.length > 0) {
+        beatTimeline[beatTimeline.length - 1].endSec = totalSeconds;
+      }
+    }
+    
+    // Get carrier frequency at a given time
+    const getCarrierAtTime = (seconds: number): number => {
+      if (!hasCustomCarriers) return 432; // Default Universal Harmony
+      for (const slot of carrierTimeline) {
+        if (seconds >= slot.startSec && seconds < slot.endSec) return slot.freq;
+      }
+      return carrierTimeline.length > 0 ? carrierTimeline[carrierTimeline.length - 1].freq : 432;
+    };
+    
+    // Get beat frequency at a given time
+    const getBeatAtTime = (seconds: number): number => {
+      if (!hasCustomBeats) return targetBeat;
+      for (const slot of beatTimeline) {
+        if (seconds >= slot.startSec && seconds < slot.endSec) return slot.freq;
+      }
+      return beatTimeline.length > 0 ? beatTimeline[beatTimeline.length - 1].freq : targetBeat;
+    };
+    
+    // Wind-down stage: Alpha to Theta
+    if (includeHealingWindDown && windDownSeconds > 0) {
+      stages.push({
+        id: stageOrder,
+        programId: 0,
+        name: "Wind Down (Alpha→Theta)",
+        startBeatFreq: 10, // Alpha
+        endBeatFreq: 6, // Theta
+        startCarrierFreq: getCarrierAtTime(0),
+        endCarrierFreq: getCarrierAtTime(windDownSeconds - 1),
+        durationSeconds: windDownSeconds,
+        order: stageOrder,
+      });
+      stageOrder++;
+      
+      // Theta to delta transition
+      if (transitionSeconds > 0) {
+        const transStart = windDownSeconds;
+        const transEnd = windDownSeconds + transitionSeconds;
+        stages.push({
+          id: stageOrder,
+          programId: 0,
+          name: "Theta→Delta",
+          startBeatFreq: 6,
+          endBeatFreq: getBeatAtTime(transEnd),
+          startCarrierFreq: getCarrierAtTime(transStart),
+          endCarrierFreq: getCarrierAtTime(transEnd - 1),
+          durationSeconds: transitionSeconds,
+          order: stageOrder,
+        });
+        stageOrder++;
+      }
+    }
+    
+    // Main healing phase - generate segments at frequency change points
+    const mainStart = windDownSeconds + transitionSeconds;
+    
+    // Collect all change points from both carrier and beat timelines
+    const changePoints = new Set<number>([mainStart, totalSeconds]);
+    for (const slot of carrierTimeline) {
+      if (slot.startSec >= mainStart) changePoints.add(slot.startSec);
+      if (slot.endSec > mainStart && slot.endSec <= totalSeconds) changePoints.add(slot.endSec);
+    }
+    for (const slot of beatTimeline) {
+      if (slot.startSec >= mainStart) changePoints.add(slot.startSec);
+      if (slot.endSec > mainStart && slot.endSec <= totalSeconds) changePoints.add(slot.endSec);
+    }
+    
+    // If no custom slots, use 9-minute segments
+    if (!hasCustomCarriers && !hasCustomBeats) {
+      const segmentDuration = 540; // 9 minutes
+      let seg = mainStart;
+      while (seg < totalSeconds) {
+        changePoints.add(seg);
+        seg += segmentDuration;
+      }
+    }
+    
+    const sortedPoints = Array.from(changePoints).sort((a, b) => a - b);
+    
+    // Generate stages between each pair of change points
+    for (let i = 0; i < sortedPoints.length - 1; i++) {
+      const segStart = sortedPoints[i];
+      const segEnd = sortedPoints[i + 1];
+      const segDuration = segEnd - segStart;
+      
+      if (segDuration < 10) continue; // Skip tiny segments
+      
+      const targetName = healingTarget === "restoration" ? "Restoration"
+        : healingTarget === "deepHealing" ? "Deep Healing"
+        : "Pain Relief";
+      
+      stages.push({
+        id: stageOrder,
+        programId: 0,
+        name: hasCustomBeats || hasCustomCarriers ? "Delta Healing" : targetName,
+        startBeatFreq: getBeatAtTime(segStart),
+        endBeatFreq: getBeatAtTime(segEnd - 1),
+        startCarrierFreq: getCarrierAtTime(segStart),
+        endCarrierFreq: getCarrierAtTime(segEnd - 1),
+        durationSeconds: Math.round(segDuration),
+        order: stageOrder,
+      });
+      stageOrder++;
+    }
+    
+    // Ensure total duration exactly matches
+    const totalStageDuration = stages.reduce((sum, s) => sum + s.durationSeconds, 0);
+    if (stages.length > 0 && totalStageDuration !== totalSeconds) {
+      stages[stages.length - 1].durationSeconds += (totalSeconds - totalStageDuration);
+    }
+    
+    return stages;
+  }, [healingTarget, healingDuration, includeHealingWindDown, healingFrequencySlots, healingSlotDurations, healingBeatSlots, healingBeatDurations]);
+  
+  const healingAudio = useAudioEngine(healingStages);
 
   // Stop all other audio engines when switching modes to prevent overlap
   useEffect(() => {
@@ -649,6 +1045,9 @@ export default function ConsolePage() {
     if (mode !== "daytime" && daytimeAudio.isPlaying) {
       daytimeAudio.togglePlay();
     }
+    if (mode !== "healing" && healingAudio.isPlaying) {
+      healingAudio.togglePlay();
+    }
   }, [mode]);
 
   const isPlaying = mode === "custom" 
@@ -657,14 +1056,18 @@ export default function ConsolePage() {
       ? programAudio.isPlaying 
       : mode === "learning"
         ? learningAudio.isPlaying
-        : daytimeAudio.isPlaying;
+        : mode === "daytime"
+          ? daytimeAudio.isPlaying
+          : healingAudio.isPlaying;
   const beatFreq = mode === "custom" 
     ? customAudio.beatFreq 
     : mode === "program" 
       ? programAudio.currentBeat 
       : mode === "learning"
         ? learningAudio.currentBeat
-        : daytimeAudio.currentBeat;
+        : mode === "daytime"
+          ? daytimeAudio.currentBeat
+          : healingAudio.currentBeat;
 
   const getCurrentStageName = () => {
     if (!selectedProgram || mode !== "program") return "";
@@ -725,6 +1128,21 @@ export default function ConsolePage() {
     }
     return "Ready";
   };
+  
+  const getHealingCurrentStage = () => {
+    if (mode !== "healing") return "";
+    let timeScanner = 0;
+    for (const stage of healingStages) {
+      if (healingAudio.elapsedTime >= timeScanner && healingAudio.elapsedTime < timeScanner + stage.durationSeconds) {
+        return stage.name;
+      }
+      timeScanner += stage.durationSeconds;
+    }
+    if (healingAudio.elapsedTime >= healingAudio.totalDuration && healingAudio.totalDuration > 0) {
+      return "Complete";
+    }
+    return "Ready";
+  };
 
   const handleTogglePlay = () => {
     if (mode === "custom") {
@@ -733,8 +1151,10 @@ export default function ConsolePage() {
       programAudio.togglePlay();
     } else if (mode === "learning") {
       learningAudio.togglePlay();
-    } else {
+    } else if (mode === "daytime") {
       daytimeAudio.togglePlay();
+    } else {
+      healingAudio.togglePlay();
     }
   };
 
@@ -745,8 +1165,10 @@ export default function ConsolePage() {
       programAudio.setVolume(val);
     } else if (mode === "learning") {
       learningAudio.setVolume(val);
-    } else {
+    } else if (mode === "daytime") {
       daytimeAudio.setVolume(val);
+    } else {
+      healingAudio.setVolume(val);
     }
   };
 
@@ -756,7 +1178,9 @@ export default function ConsolePage() {
       ? programAudio.volume 
       : mode === "learning"
         ? learningAudio.volume
-        : daytimeAudio.volume;
+        : mode === "daytime"
+          ? daytimeAudio.volume
+          : healingAudio.volume;
 
   return (
     <div className="relative min-h-screen bg-background overflow-hidden flex flex-col">
@@ -781,7 +1205,7 @@ export default function ConsolePage() {
         <div className="w-full max-w-4xl mx-auto space-y-4">
           
           <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)} className="w-full">
-            <TabsList className="grid w-full grid-cols-4 mb-4">
+            <TabsList className="grid w-full grid-cols-5 mb-4">
               <TabsTrigger value="custom" className="gap-2" data-testid="tab-custom">
                 <Sliders className="w-4 h-4" />
                 <span className="hidden sm:inline">Custom</span>
@@ -789,6 +1213,10 @@ export default function ConsolePage() {
               <TabsTrigger value="learning" className="gap-2" data-testid="tab-learning">
                 <Brain className="w-4 h-4" />
                 <span className="hidden sm:inline">Learning</span>
+              </TabsTrigger>
+              <TabsTrigger value="healing" className="gap-2" data-testid="tab-healing">
+                <Heart className="w-4 h-4" />
+                <span className="hidden sm:inline">Healing</span>
               </TabsTrigger>
               <TabsTrigger value="daytime" className="gap-2" data-testid="tab-daytime">
                 <Sun className="w-4 h-4" />
@@ -1263,6 +1691,395 @@ export default function ConsolePage() {
               </div>
             </TabsContent>
 
+            <TabsContent value="healing" className="space-y-4 mt-0">
+              <div className="glass-panel rounded-2xl p-4 space-y-4">
+                <div className="text-center mb-2">
+                  <h3 className="text-lg font-display text-white" data-testid="text-healing-title">Healing Mode</h3>
+                  <p className="text-xs text-muted-foreground" data-testid="text-healing-description">
+                    Deep delta frequencies for cellular repair, immune support, and pain relief
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-xs font-medium text-white" data-testid="label-healing-target">Target State</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Button
+                      variant={healingTarget === "restoration" ? "default" : "outline"}
+                      onClick={() => {
+                        healingAudio.reset();
+                        setHealingTarget("restoration");
+                      }}
+                      className="flex flex-col items-center gap-1 whitespace-normal"
+                      data-testid="button-target-restoration"
+                    >
+                      <span className="font-semibold">Restoration</span>
+                      <span className="text-[10px] opacity-70">3 Hz - General recovery</span>
+                    </Button>
+                    <Button
+                      variant={healingTarget === "deepHealing" ? "default" : "outline"}
+                      onClick={() => {
+                        healingAudio.reset();
+                        setHealingTarget("deepHealing");
+                      }}
+                      className="flex flex-col items-center gap-1 whitespace-normal"
+                      data-testid="button-target-deep-healing"
+                    >
+                      <span className="font-semibold">Deep Healing</span>
+                      <span className="text-[10px] opacity-70">1.5 Hz - Tissue repair</span>
+                    </Button>
+                    <Button
+                      variant={healingTarget === "painRelief" ? "default" : "outline"}
+                      onClick={() => {
+                        healingAudio.reset();
+                        setHealingTarget("painRelief");
+                      }}
+                      className="flex flex-col items-center gap-1 whitespace-normal"
+                      data-testid="button-target-pain-relief"
+                    >
+                      <span className="font-semibold">Pain Relief</span>
+                      <span className="text-[10px] opacity-70">2 Hz - Reduce pain</span>
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-white" data-testid="label-healing-winddown">Wind Down</label>
+                    <Button
+                      variant={includeHealingWindDown ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        healingAudio.reset();
+                        setIncludeHealingWindDown(!includeHealingWindDown);
+                      }}
+                      className="text-xs"
+                      data-testid="button-toggle-healing-winddown"
+                    >
+                      {includeHealingWindDown ? "On" : "Off"}
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground" data-testid="text-healing-winddown-description">
+                    Gradual transition from alpha through theta to deep delta
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Timer className="w-4 h-4 text-muted-foreground" />
+                    <label className="text-xs font-medium text-white" data-testid="label-healing-duration">Duration</label>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {HEALING_DURATION_OPTIONS.map((opt) => (
+                      <Button
+                        key={opt.minutes}
+                        variant={healingDuration === opt.minutes ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          healingAudio.reset();
+                          setHealingDuration(opt.minutes);
+                        }}
+                        className="text-xs"
+                        data-testid={`button-healing-duration-${opt.minutes}`}
+                      >
+                        {opt.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="h-px bg-white/10" />
+
+                <div className="p-3 rounded-xl bg-white/5 border border-white/10" data-testid="section-healing-carriers">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <div className="text-sm font-medium text-white">Carrier Frequencies (Solfeggio)</div>
+                      <div className="text-[10px] text-muted-foreground">
+                        Set Hz and duration (min) for each slot
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={clearHealingFrequencies}
+                        className="text-xs"
+                        data-testid="button-clear-healing-freq"
+                      >
+                        Clear All
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={fillHealingSolfeggio}
+                        className="text-xs"
+                        data-testid="button-fill-healing-solfeggio"
+                      >
+                        Fill Solfeggio
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="mb-3" data-testid="healing-carrier-meter">
+                    <div className="flex h-3 rounded-md overflow-hidden border border-white/20">
+                      {healingSlotDurations.map((duration, idx) => {
+                        const totalMins = healingTotalCarrierMinutes || healingDuration;
+                        const percent = totalMins > 0 ? (duration / totalMins) * 100 : 10;
+                        const colors = [
+                          "bg-red-500", "bg-orange-500", "bg-amber-500", "bg-yellow-500", "bg-lime-500",
+                          "bg-green-500", "bg-emerald-500", "bg-cyan-500", "bg-blue-500", "bg-purple-500"
+                        ];
+                        return (
+                          <div
+                            key={idx}
+                            className={`${colors[idx]} transition-all duration-300`}
+                            style={{ width: `${percent}%` }}
+                            title={`Slot ${idx + 1}: ${healingFrequencySlots[idx]} Hz - ${duration} min`}
+                            data-testid={`healing-carrier-segment-${idx}`}
+                          />
+                        );
+                      })}
+                    </div>
+                    <div className="flex justify-between mt-1 text-[9px] text-muted-foreground">
+                      <span>Total: {healingTotalCarrierMinutes} min</span>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-5 gap-2">
+                    {healingFrequencySlots.map((freq, idx) => {
+                      const solfeggio = SOLFEGGIO_PRESETS.find(s => s.freq === freq);
+                      const colors = [
+                        "border-red-500/50", "border-orange-500/50", "border-amber-500/50", "border-yellow-500/50", "border-lime-500/50",
+                        "border-green-500/50", "border-emerald-500/50", "border-cyan-500/50", "border-blue-500/50", "border-purple-500/50"
+                      ];
+                      return (
+                        <div key={idx} className={`flex flex-col items-center p-1.5 rounded-lg border ${colors[idx]} bg-white/5`} data-testid={`healing-carrier-slot-${idx}`}>
+                          <div className="text-[10px] text-muted-foreground mb-1">#{idx + 1}</div>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={healingFreqInputs[idx]}
+                            onChange={(e) => handleHealingFreqChange(idx, e.target.value)}
+                            onBlur={() => handleHealingFreqBlur(idx)}
+                            className="w-full py-1 text-center text-xs bg-zinc-900 border border-white/20 rounded text-white focus:border-primary focus:outline-none"
+                            placeholder="Hz"
+                            data-testid={`healing-carrier-input-${idx}`}
+                          />
+                          {solfeggio && (
+                            <div className="text-[8px] text-accent mt-0.5 truncate w-full text-center">{solfeggio.name}</div>
+                          )}
+                          <div className="flex items-center gap-0.5 mt-1">
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={healingSlotDurations[idx] === 0 ? '' : healingSlotDurations[idx]}
+                              onChange={(e) => updateHealingSlotDuration(idx, parseInt(e.target.value) || 0)}
+                              className="w-10 py-0.5 text-center text-[10px] bg-zinc-800 border border-white/10 rounded text-white focus:border-primary focus:outline-none"
+                              placeholder="min"
+                              data-testid={`healing-carrier-duration-${idx}`}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-white/5 border border-white/10" data-testid="section-healing-beats">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <div className="text-sm font-medium text-white">Brainwave Frequencies (Delta)</div>
+                      <div className="text-[10px] text-muted-foreground">
+                        Set Hz (0.5-4) and duration (min) for each slot
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={clearHealingBeats}
+                        className="text-xs"
+                        data-testid="button-clear-healing-beats"
+                      >
+                        Clear All
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={fillHealingDelta}
+                        className="text-xs"
+                        data-testid="button-fill-healing-delta"
+                      >
+                        Fill Delta
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="mb-3" data-testid="healing-beat-meter">
+                    <div className="flex h-3 rounded-md overflow-hidden border border-white/20">
+                      {healingBeatDurations.map((duration, idx) => {
+                        const totalMins = healingTotalBeatMinutes || healingDuration;
+                        const percent = totalMins > 0 ? (duration / totalMins) * 100 : 10;
+                        const colors = [
+                          "bg-indigo-500", "bg-indigo-400", "bg-violet-500", "bg-violet-400", "bg-purple-500",
+                          "bg-purple-400", "bg-fuchsia-500", "bg-fuchsia-400", "bg-pink-500", "bg-pink-400"
+                        ];
+                        return (
+                          <div
+                            key={idx}
+                            className={`${colors[idx]} transition-all duration-300`}
+                            style={{ width: `${percent}%` }}
+                            title={`Slot ${idx + 1}: ${healingBeatSlots[idx]} Hz - ${duration} min`}
+                            data-testid={`healing-beat-segment-${idx}`}
+                          />
+                        );
+                      })}
+                    </div>
+                    <div className="flex justify-between mt-1 text-[9px] text-muted-foreground">
+                      <span>Total: {healingTotalBeatMinutes} min</span>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-5 gap-2">
+                    {healingBeatSlots.map((freq, idx) => {
+                      const deltaPreset = DELTA_PRESETS.find(d => d.freq === freq);
+                      const colors = [
+                        "border-indigo-500/50", "border-indigo-400/50", "border-violet-500/50", "border-violet-400/50", "border-purple-500/50",
+                        "border-purple-400/50", "border-fuchsia-500/50", "border-fuchsia-400/50", "border-pink-500/50", "border-pink-400/50"
+                      ];
+                      return (
+                        <div key={idx} className={`flex flex-col items-center p-1.5 rounded-lg border ${colors[idx]} bg-white/5`} data-testid={`healing-beat-slot-${idx}`}>
+                          <div className="text-[10px] text-muted-foreground mb-1">#{idx + 1}</div>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={healingBeatInputs[idx]}
+                            onChange={(e) => handleHealingBeatChange(idx, e.target.value)}
+                            onBlur={() => handleHealingBeatBlur(idx)}
+                            className="w-full py-1 text-center text-xs bg-zinc-900 border border-white/20 rounded text-white focus:border-primary focus:outline-none"
+                            placeholder="Hz"
+                            data-testid={`healing-beat-input-${idx}`}
+                          />
+                          {deltaPreset && (
+                            <div className="text-[8px] text-accent mt-0.5 truncate w-full text-center">{deltaPreset.name}</div>
+                          )}
+                          <div className="flex items-center gap-0.5 mt-1">
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={healingBeatDurations[idx] === 0 ? '' : healingBeatDurations[idx]}
+                              onChange={(e) => updateHealingBeatDuration(idx, parseInt(e.target.value) || 0)}
+                              className="w-10 py-0.5 text-center text-[10px] bg-zinc-800 border border-white/10 rounded text-white focus:border-primary focus:outline-none"
+                              placeholder="min"
+                              data-testid={`healing-beat-duration-${idx}`}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  <div className="mt-2 flex flex-wrap gap-1 text-[9px] text-muted-foreground">
+                    <span>Presets:</span>
+                    {DELTA_PRESETS.map((preset) => (
+                      <span
+                        key={preset.freq}
+                        className="px-1 cursor-pointer rounded hover:text-accent"
+                        onClick={() => {
+                          const emptyIdx = healingBeatSlots.findIndex(s => s === 0);
+                          if (emptyIdx >= 0) {
+                            const newSlots = [...healingBeatSlots];
+                            newSlots[emptyIdx] = preset.freq;
+                            setHealingBeatSlots(newSlots);
+                            setHealingBeatInputs(newSlots.map(f => f === 0 ? '' : f.toString()));
+                          }
+                        }}
+                        data-testid={`healing-delta-preset-${preset.freq}`}
+                      >
+                        {preset.label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="h-px bg-white/10" />
+
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={`${healingTarget}-${healingDuration}-${includeHealingWindDown}`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="space-y-3"
+                  >
+                    <div className="text-center py-2">
+                      <div className="text-xl font-bold text-accent" data-testid="text-healing-stage">
+                        {getHealingCurrentStage()}
+                      </div>
+                      <div className="text-xs text-muted-foreground" data-testid="label-healing-current-stage">Current Stage</div>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span data-testid="text-healing-elapsed">{formatTime(healingAudio.elapsedTime)}</span>
+                      <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden" data-testid="progress-bar-healing">
+                        <div 
+                          className="h-full bg-primary transition-all"
+                          style={{ width: `${healingAudio.totalDuration > 0 ? (healingAudio.elapsedTime / healingAudio.totalDuration) * 100 : 0}%` }}
+                        />
+                      </div>
+                      <span data-testid="text-healing-total">{formatTime(healingAudio.totalDuration)}</span>
+                    </div>
+
+                    <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground/60 font-mono">
+                      <span data-testid="text-healing-beat">{Math.round(healingAudio.currentBeat * 10) / 10} Hz Beat</span>
+                      <span>•</span>
+                      <span data-testid="text-healing-carrier">{Math.round(healingAudio.currentCarrier)} Hz Carrier</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 text-center pt-2">
+                      <div 
+                        className="p-3 rounded-xl border bg-white/5 border-white/10 transition-opacity"
+                        style={{ opacity: healingAudio.leftEnabled ? 1 : 0.4 }}
+                        data-testid="card-healing-left"
+                      >
+                        <div className="text-lg font-bold text-primary" data-testid="text-healing-left-freq">
+                          {Math.round(healingAudio.currentLeftFreq)} Hz
+                        </div>
+                        <div className="text-xs text-muted-foreground mb-2" data-testid="label-healing-left">Left</div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => healingAudio.setLeftEnabled(!healingAudio.leftEnabled)}
+                          className={`text-xs ${healingAudio.leftEnabled ? 'bg-green-500 hover:bg-green-600 text-white border-green-500' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border-zinc-700'}`}
+                          data-testid="button-toggle-healing-left"
+                        >
+                          {healingAudio.leftEnabled ? "On" : "Off"}
+                        </Button>
+                      </div>
+                      <div 
+                        className="p-3 rounded-xl border bg-white/5 border-white/10 transition-opacity"
+                        style={{ opacity: healingAudio.rightEnabled ? 1 : 0.4 }}
+                        data-testid="card-healing-right"
+                      >
+                        <div className="text-lg font-bold text-primary" data-testid="text-healing-right-freq">
+                          {Math.round(healingAudio.currentRightFreq)} Hz
+                        </div>
+                        <div className="text-xs text-muted-foreground mb-2" data-testid="label-healing-right">Right</div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => healingAudio.setRightEnabled(!healingAudio.rightEnabled)}
+                          className={`text-xs ${healingAudio.rightEnabled ? 'bg-green-500 hover:bg-green-600 text-white border-green-500' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border-zinc-700'}`}
+                          data-testid="button-toggle-healing-right"
+                        >
+                          {healingAudio.rightEnabled ? "On" : "Off"}
+                        </Button>
+                      </div>
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            </TabsContent>
+
             <TabsContent value="program" className="space-y-4 mt-0">
               <div className="glass-panel rounded-2xl p-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
@@ -1602,7 +2419,9 @@ export default function ConsolePage() {
                     ? `Learning: ${learningTarget === "alpha" ? "Alpha" : "Theta"}`
                     : mode === "daytime"
                       ? `Daytime: ${daytimeTarget === "beta" ? "Beta" : "Gamma"}`
-                      : selectedProgram?.name || "Program"}
+                      : mode === "healing"
+                        ? `Healing: ${healingTarget === "restoration" ? "Restoration" : healingTarget === "deepHealing" ? "Deep" : "Pain Relief"}`
+                        : selectedProgram?.name || "Program"}
               </div>
             </div>
           </div>
