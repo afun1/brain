@@ -65,9 +65,13 @@ The app uses a single-page console with four tabbed modes:
    - Mode switching automatically stops other audio engines to prevent overlap
 
 4. **Sleep Programs** - Pre-built sleep journeys
-   - 90-Minute Sleep Cycle
-   - 8-Hour Full Night
-   - 8-Hour Solfeggio Journey
+   - **8-Hour Full Night Rest** - Customizable carrier frequencies
+     - 10 user-defined frequency slots (60-1000 Hz)
+     - Frequencies cycle every ~48 minutes across the 8-hour program
+     - "Fill Solfeggio" preset loads all 10 Solfeggio frequencies
+     - Settings saved to localStorage for persistence
+   - **8-Hour Solfeggio Healing Cycles** - Preset Solfeggio frequencies mapped to 5 sleep cycles
+   - Optional 15-minute beta wake-up sequence
    - Multi-stage frequency progressions with gradual transitions
 
 ### Audio Players
