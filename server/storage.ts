@@ -60,7 +60,7 @@ export class DatabaseStorage implements IStorage {
 
   async seedDefaultPrograms(): Promise<void> {
     // First, remove any outdated programs that are no longer supported
-    const deprecatedNames = ["90-Minute Sleep Cycle"];
+    const deprecatedNames = ["90-Minute Sleep Cycle", "8-Hour Solfeggio Sleep Journey"];
     const allPrograms = await db.select().from(programs);
     
     for (const program of allPrograms) {
@@ -74,153 +74,72 @@ export class DatabaseStorage implements IStorage {
     const existing = await this.getPrograms();
     const existingNames = new Set(existing.map((p) => p.name));
 
-    if (!existingNames.has("8-Hour Solfeggio Sleep Journey")) {
-      // Create the 8-Hour Solfeggio Program
+    if (!existingNames.has("8-Hour Solfeggio Healing Cycles")) {
+      // Create the 8-Hour Solfeggio Program with 5 proper sleep cycles
+      // Each cycle uses 2 Solfeggio frequencies, progressing through all 10 throughout the night
       const program8h = await this.createProgram({
-        name: "8-Hour Solfeggio Sleep Journey",
-        description: "A complete 8-hour healing journey using Solfeggio frequencies. Progresses through chakra-aligned tones from 396Hz (Root) to 432Hz (Harmony).",
+        name: "8-Hour Solfeggio Healing Cycles",
+        description: "Combines scientifically-accurate sleep cycles with all 10 Solfeggio healing frequencies. Each cycle features different chakra-aligned tones for complete healing.",
         isDefault: true,
       });
 
-      // Stage 1: Release & Ground (30 min) - Beta -> Theta
-      // Left: 396Hz (Root Chakra - Release fear/guilt)
-      // Right: 396+15=411Hz -> 396+6=402Hz
-      await this.createSleepStage({
-        programId: program8h.id,
-        name: "Release & Ground (396Hz)",
-        order: 1,
-        durationSeconds: 1800,
-        startCarrierFreq: 396,
-        endCarrierFreq: 396,
-        startBeatFreq: 15,
-        endBeatFreq: 6,
-      });
+      // 5 Sleep Cycles with Solfeggio frequencies distributed across the night
+      // Cycle 1: 174 Hz (Foundation) & 285 Hz (Cellular Healing) - Heavy N3
+      // Cycle 2: 396 Hz (Root) & 417 Hz (Sacral) - Heavy N3  
+      // Cycle 3: 432 Hz (Harmony) & 528 Hz (DNA Repair) - Moderate N3
+      // Cycle 4: 639 Hz (Heart) & 741 Hz (Throat) - Light N3
+      // Cycle 5: 852 Hz (Third Eye) & 963 Hz (Crown) - Long REM, Minimal N3
+      
+      const stages = [
+        // === CYCLE 1: Foundation & Cellular Healing (174 Hz, 285 Hz) ===
+        // Heavy N3 (35 min), Short REM (10 min) - Total ~90 min
+        { name: "Settling In (174Hz)", order: 1, durationSeconds: 300, startCarrierFreq: 174, endCarrierFreq: 174, startBeatFreq: 14, endBeatFreq: 12 },
+        { name: "N1 - Foundation (174Hz)", order: 2, durationSeconds: 420, startCarrierFreq: 174, endCarrierFreq: 174, startBeatFreq: 12, endBeatFreq: 7 },
+        { name: "N2 - Grounding (174Hz)", order: 3, durationSeconds: 1500, startCarrierFreq: 174, endCarrierFreq: 174, startBeatFreq: 7, endBeatFreq: 5 },
+        { name: "N3 - Deep Healing (285Hz)", order: 4, durationSeconds: 2100, startCarrierFreq: 285, endCarrierFreq: 285, startBeatFreq: 5, endBeatFreq: 1 },
+        { name: "N2 - Rising (285Hz)", order: 5, durationSeconds: 480, startCarrierFreq: 285, endCarrierFreq: 285, startBeatFreq: 1, endBeatFreq: 5 },
+        { name: "REM Cycle 1 (285Hz)", order: 6, durationSeconds: 600, startCarrierFreq: 285, endCarrierFreq: 285, startBeatFreq: 5, endBeatFreq: 9 },
+        
+        // === CYCLE 2: Root & Sacral Chakra (396 Hz, 417 Hz) ===
+        // Heavy N3 (30 min), Growing REM (18 min) - Total ~95 min
+        { name: "N1 - Release (396Hz)", order: 7, durationSeconds: 180, startCarrierFreq: 396, endCarrierFreq: 396, startBeatFreq: 9, endBeatFreq: 7 },
+        { name: "N2 - Let Go (396Hz)", order: 8, durationSeconds: 1500, startCarrierFreq: 396, endCarrierFreq: 396, startBeatFreq: 7, endBeatFreq: 5 },
+        { name: "N3 - Deep Release (417Hz)", order: 9, durationSeconds: 1800, startCarrierFreq: 417, endCarrierFreq: 417, startBeatFreq: 5, endBeatFreq: 1 },
+        { name: "N2 - Breaking Patterns (417Hz)", order: 10, durationSeconds: 600, startCarrierFreq: 417, endCarrierFreq: 417, startBeatFreq: 1, endBeatFreq: 5 },
+        { name: "REM Cycle 2 (417Hz)", order: 11, durationSeconds: 1080, startCarrierFreq: 417, endCarrierFreq: 417, startBeatFreq: 5, endBeatFreq: 9 },
+        
+        // === CYCLE 3: Universal Harmony & DNA Repair (432 Hz, 528 Hz) ===
+        // Moderate N3 (10 min), Growing REM (28 min) - Total ~90 min
+        { name: "N1 - Harmony (432Hz)", order: 12, durationSeconds: 180, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 9, endBeatFreq: 7 },
+        { name: "N2 - Universal Tune (432Hz)", order: 13, durationSeconds: 1800, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 7, endBeatFreq: 5 },
+        { name: "N3 - DNA Repair (528Hz)", order: 14, durationSeconds: 600, startCarrierFreq: 528, endCarrierFreq: 528, startBeatFreq: 5, endBeatFreq: 2 },
+        { name: "N2 - Love Frequency (528Hz)", order: 15, durationSeconds: 600, startCarrierFreq: 528, endCarrierFreq: 528, startBeatFreq: 2, endBeatFreq: 5 },
+        { name: "REM Cycle 3 (528Hz)", order: 16, durationSeconds: 1680, startCarrierFreq: 528, endCarrierFreq: 528, startBeatFreq: 5, endBeatFreq: 9 },
+        
+        // === CYCLE 4: Heart & Throat Chakra (639 Hz, 741 Hz) ===
+        // Brief N3 (5 min), Long REM (40 min) - Total ~90 min
+        { name: "N1 - Heart Opening (639Hz)", order: 17, durationSeconds: 180, startCarrierFreq: 639, endCarrierFreq: 639, startBeatFreq: 9, endBeatFreq: 7 },
+        { name: "N2 - Relationships (639Hz)", order: 18, durationSeconds: 1800, startCarrierFreq: 639, endCarrierFreq: 639, startBeatFreq: 7, endBeatFreq: 5 },
+        { name: "N3 - Clarity (741Hz)", order: 19, durationSeconds: 300, startCarrierFreq: 741, endCarrierFreq: 741, startBeatFreq: 5, endBeatFreq: 3 },
+        { name: "N2 - Expression (741Hz)", order: 20, durationSeconds: 600, startCarrierFreq: 741, endCarrierFreq: 741, startBeatFreq: 3, endBeatFreq: 5 },
+        { name: "REM Cycle 4 (741Hz)", order: 21, durationSeconds: 2400, startCarrierFreq: 741, endCarrierFreq: 741, startBeatFreq: 5, endBeatFreq: 9 },
+        
+        // === CYCLE 5: Third Eye & Crown Chakra (852 Hz, 963 Hz) ===
+        // No N3, Very Long REM (75 min) + Awakening - Total ~105 min
+        { name: "N1 - Intuition (852Hz)", order: 22, durationSeconds: 180, startCarrierFreq: 852, endCarrierFreq: 852, startBeatFreq: 9, endBeatFreq: 7 },
+        { name: "N2 - Third Eye (852Hz)", order: 23, durationSeconds: 1500, startCarrierFreq: 852, endCarrierFreq: 852, startBeatFreq: 7, endBeatFreq: 5 },
+        { name: "N2 - Transition (963Hz)", order: 24, durationSeconds: 300, startCarrierFreq: 963, endCarrierFreq: 963, startBeatFreq: 5, endBeatFreq: 6 },
+        { name: "REM Cycle 5 - Dreams (963Hz)", order: 25, durationSeconds: 3600, startCarrierFreq: 963, endCarrierFreq: 963, startBeatFreq: 6, endBeatFreq: 9 },
+        { name: "Final REM - Cosmic (963Hz)", order: 26, durationSeconds: 900, startCarrierFreq: 963, endCarrierFreq: 963, startBeatFreq: 9, endBeatFreq: 9 },
+        { name: "Gentle Awakening (432Hz)", order: 27, durationSeconds: 600, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 9, endBeatFreq: 12 },
+      ];
 
-      // Stage 2: Let Go of Past (30 min) - Theta -> Delta Entry
-      // Left: 396Hz -> 417Hz (Sacral - Break negative patterns)
-      // Right: 402Hz -> 421Hz
-      await this.createSleepStage({
-        programId: program8h.id,
-        name: "Let Go (417Hz)",
-        order: 2,
-        durationSeconds: 1800,
-        startCarrierFreq: 396,
-        endCarrierFreq: 417,
-        startBeatFreq: 6,
-        endBeatFreq: 4,
-      });
-
-      // Stage 3: Foundation & Security (90 min) - Delta
-      // Left: 174Hz (Foundation Frequency)
-      // Right: 174+4=178Hz -> 174+1=175Hz
-      await this.createSleepStage({
-        programId: program8h.id,
-        name: "Foundation (174Hz)",
-        order: 3,
-        durationSeconds: 5400,
-        startCarrierFreq: 174,
-        endCarrierFreq: 174,
-        startBeatFreq: 4,
-        endBeatFreq: 1,
-      });
-
-      // Stage 4: Cellular Healing (90 min) - Deep Delta
-      // Left: 285Hz (Healing/Tissue Restoration)
-      // Right: 285+1=286Hz -> 285+2=287Hz
-      await this.createSleepStage({
-        programId: program8h.id,
-        name: "Cellular Healing (285Hz)",
-        order: 4,
-        durationSeconds: 5400,
-        startCarrierFreq: 285,
-        endCarrierFreq: 285,
-        startBeatFreq: 1,
-        endBeatFreq: 2,
-      });
-
-      // Stage 5: DNA Repair & Love (90 min) - Delta
-      // Left: 528Hz (Love Frequency / DNA Repair)
-      // Right: 528+2=530Hz -> 528+1=529Hz
-      await this.createSleepStage({
-        programId: program8h.id,
-        name: "DNA Repair (528Hz)",
-        order: 5,
-        durationSeconds: 5400,
-        startCarrierFreq: 528,
-        endCarrierFreq: 528,
-        startBeatFreq: 2,
-        endBeatFreq: 1,
-      });
-
-      // Stage 6: Emotional Healing (60 min) - Delta/Theta Mix
-      // Left: 639Hz (Heart Chakra - Relationships)
-      // Right: 639+1=640Hz -> 639+4=643Hz
-      await this.createSleepStage({
-        programId: program8h.id,
-        name: "Emotional Healing (639Hz)",
-        order: 6,
-        durationSeconds: 3600,
-        startCarrierFreq: 639,
-        endCarrierFreq: 639,
-        startBeatFreq: 1,
-        endBeatFreq: 4,
-      });
-
-      // Stage 7: Dream & Intuition (60 min) - Theta/REM
-      // Left: 852Hz (Third Eye - Intuition)
-      // Right: 852+4=856Hz -> 852+7=859Hz
-      await this.createSleepStage({
-        programId: program8h.id,
-        name: "Intuition & Dreams (852Hz)",
-        order: 7,
-        durationSeconds: 3600,
-        startCarrierFreq: 852,
-        endCarrierFreq: 852,
-        startBeatFreq: 4,
-        endBeatFreq: 7,
-      });
-
-      // Stage 8: Spiritual Connection (30 min) - Theta
-      // Left: 963Hz (Crown Chakra - Universe)
-      // Right: 963+7=970Hz -> 963+6=969Hz
-      await this.createSleepStage({
-        programId: program8h.id,
-        name: "Spiritual Connection (963Hz)",
-        order: 8,
-        durationSeconds: 1800,
-        startCarrierFreq: 963,
-        endCarrierFreq: 963,
-        startBeatFreq: 7,
-        endBeatFreq: 6,
-      });
-
-      // Stage 9: Awakening Clarity (20 min) - Alpha
-      // Left: 741Hz (Throat - Clarity/Awakening)
-      // Right: 741+8=749Hz -> 741+10=751Hz
-      await this.createSleepStage({
-        programId: program8h.id,
-        name: "Awakening Clarity (741Hz)",
-        order: 9,
-        durationSeconds: 1200,
-        startCarrierFreq: 741,
-        endCarrierFreq: 741,
-        startBeatFreq: 8,
-        endBeatFreq: 10,
-      });
-
-      // Stage 10: Gentle Rise (10 min) - Alpha -> Light Beta
-      // Left: 432Hz (Universal Harmony)
-      // Right: 432+10=442Hz -> 432+12=444Hz
-      await this.createSleepStage({
-        programId: program8h.id,
-        name: "Gentle Rise (432Hz)",
-        order: 10,
-        durationSeconds: 600,
-        startCarrierFreq: 432,
-        endCarrierFreq: 432,
-        startBeatFreq: 10,
-        endBeatFreq: 12,
-      });
+      for (const stage of stages) {
+        await this.createSleepStage({
+          programId: program8h.id,
+          ...stage,
+        });
+      }
     }
 
     // Create the 8-Hour Full Night Rest program with scientifically accurate sleep cycles
