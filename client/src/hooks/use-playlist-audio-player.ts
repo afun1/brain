@@ -44,6 +44,7 @@ export function usePlaylistAudioPlayer(storageKey: string) {
   const [tuning, setTuningState] = useState<Tuning>(440);
   const [shuffle, setShuffle] = useState(false);
   const [shuffledIndices, setShuffledIndices] = useState<number[]>([]);
+  const [shuffleActive, setShuffleActive] = useState(false);
 
   const currentTrack = tracks[currentIndex] || null;
 
@@ -64,13 +65,6 @@ export function usePlaylistAudioPlayer(storageKey: string) {
     const settings: PersistedSettings = { loopMode, volume, tuning, shuffle };
     localStorage.setItem(storageKey, JSON.stringify(settings));
   }, [loopMode, volume, tuning, shuffle, storageKey]);
-
-  useEffect(() => {
-    if (shuffle && tracks.length > 0) {
-      const indices = Array.from({ length: tracks.length }, (_, i) => i);
-      setShuffledIndices(shuffleArray(indices));
-    }
-  }, [shuffle, tracks.length]);
 
   // Apply playback rate based on tuning (432/440 = ~0.9818 for A=432 Hz)
   useEffect(() => {
@@ -117,11 +111,18 @@ export function usePlaylistAudioPlayer(storageKey: string) {
       if (loopMode === 'track') return;
       
       setTracks(currentTracks => {
-        if (shuffle && shuffledIndices.length > 0) {
+        if (shuffleActive && shuffledIndices.length > 0) {
           const currentShufflePos = shuffledIndices.indexOf(currentIndex);
           if (currentShufflePos === -1) {
             if (loopMode === 'playlist') {
-              setCurrentIndex(shuffledIndices[0] ?? 0);
+              if (shuffle) {
+                const newIndices = shuffleArray(Array.from({ length: currentTracks.length }, (_, i) => i));
+                setShuffledIndices(newIndices);
+                setCurrentIndex(newIndices[0] ?? 0);
+              } else {
+                setShuffleActive(false);
+                setCurrentIndex(0);
+              }
             } else {
               setIsPlaying(false);
             }
@@ -130,7 +131,14 @@ export function usePlaylistAudioPlayer(storageKey: string) {
             if (nextShufflePos < shuffledIndices.length) {
               setCurrentIndex(shuffledIndices[nextShufflePos] ?? 0);
             } else if (loopMode === 'playlist') {
-              setCurrentIndex(shuffledIndices[0] ?? 0);
+              if (shuffle) {
+                const newIndices = shuffleArray(Array.from({ length: currentTracks.length }, (_, i) => i));
+                setShuffledIndices(newIndices);
+                setCurrentIndex(newIndices[0] ?? 0);
+              } else {
+                setShuffleActive(false);
+                setCurrentIndex(0);
+              }
             } else {
               setIsPlaying(false);
             }
@@ -140,7 +148,14 @@ export function usePlaylistAudioPlayer(storageKey: string) {
           if (nextIdx < currentTracks.length) {
             setCurrentIndex(nextIdx);
           } else if (loopMode === 'playlist' && currentTracks.length > 0) {
-            setCurrentIndex(0);
+            if (shuffle && !shuffleActive) {
+              const newIndices = shuffleArray(Array.from({ length: currentTracks.length }, (_, i) => i));
+              setShuffledIndices(newIndices);
+              setShuffleActive(true);
+              setCurrentIndex(newIndices[0] ?? 0);
+            } else {
+              setCurrentIndex(0);
+            }
           } else {
             setIsPlaying(false);
           }
@@ -151,7 +166,7 @@ export function usePlaylistAudioPlayer(storageKey: string) {
 
     audioRef.current = audio;
     setCurrentTime(0);
-  }, [volume, loopMode, currentIndex, tuning, shuffle, shuffledIndices]);
+  }, [volume, loopMode, currentIndex, tuning, shuffle, shuffleActive, shuffledIndices]);
 
   useEffect(() => {
     if (currentTrack) {
@@ -261,7 +276,7 @@ export function usePlaylistAudioPlayer(storageKey: string) {
 
   const getNextIndex = useCallback((): number => {
     if (tracks.length === 0) return 0;
-    if (shuffle && shuffledIndices.length > 0) {
+    if (shuffleActive && shuffledIndices.length > 0) {
       const currentShufflePos = shuffledIndices.indexOf(currentIndex);
       if (currentShufflePos === -1) {
         return shuffledIndices[0] ?? 0;
@@ -270,11 +285,11 @@ export function usePlaylistAudioPlayer(storageKey: string) {
       return shuffledIndices[nextShufflePos] ?? 0;
     }
     return (currentIndex + 1) % tracks.length;
-  }, [tracks.length, currentIndex, shuffle, shuffledIndices]);
+  }, [tracks.length, currentIndex, shuffleActive, shuffledIndices]);
 
   const getPrevIndex = useCallback((): number => {
     if (tracks.length === 0) return 0;
-    if (shuffle && shuffledIndices.length > 0) {
+    if (shuffleActive && shuffledIndices.length > 0) {
       const currentShufflePos = shuffledIndices.indexOf(currentIndex);
       if (currentShufflePos === -1) {
         return shuffledIndices[shuffledIndices.length - 1] ?? 0;
@@ -283,7 +298,7 @@ export function usePlaylistAudioPlayer(storageKey: string) {
       return shuffledIndices[prevShufflePos] ?? 0;
     }
     return (currentIndex - 1 + tracks.length) % tracks.length;
-  }, [tracks.length, currentIndex, shuffle, shuffledIndices]);
+  }, [tracks.length, currentIndex, shuffleActive, shuffledIndices]);
 
   const next = useCallback(() => {
     if (tracks.length === 0) return;
@@ -344,13 +359,13 @@ export function usePlaylistAudioPlayer(storageKey: string) {
 
   const toggleShuffle = useCallback(() => {
     setShuffle(prev => {
-      if (!prev && tracks.length > 0) {
-        const indices = Array.from({ length: tracks.length }, (_, i) => i);
-        setShuffledIndices(shuffleArray(indices));
+      if (prev) {
+        setShuffleActive(false);
+        setShuffledIndices([]);
       }
       return !prev;
     });
-  }, [tracks.length]);
+  }, []);
 
   return {
     tracks,
