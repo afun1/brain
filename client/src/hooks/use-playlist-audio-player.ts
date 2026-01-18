@@ -15,6 +15,16 @@ interface PersistedSettings {
   loopMode: LoopMode;
   volume: number;
   tuning?: Tuning;
+  shuffle?: boolean;
+}
+
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
 }
 
 function generateId(): string {
@@ -32,6 +42,8 @@ export function usePlaylistAudioPlayer(storageKey: string) {
   const [duration, setDuration] = useState(0);
   const [loopMode, setLoopMode] = useState<LoopMode>('playlist');
   const [tuning, setTuningState] = useState<Tuning>(440);
+  const [shuffle, setShuffle] = useState(false);
+  const [shuffledIndices, setShuffledIndices] = useState<number[]>([]);
 
   const currentTrack = tracks[currentIndex] || null;
 
@@ -43,14 +55,22 @@ export function usePlaylistAudioPlayer(storageKey: string) {
         setLoopMode(settings.loopMode || 'playlist');
         setVolumeState(settings.volume ?? 0.5);
         setTuningState(settings.tuning ?? 440);
+        setShuffle(settings.shuffle ?? false);
       } catch {}
     }
   }, [storageKey]);
 
   useEffect(() => {
-    const settings: PersistedSettings = { loopMode, volume, tuning };
+    const settings: PersistedSettings = { loopMode, volume, tuning, shuffle };
     localStorage.setItem(storageKey, JSON.stringify(settings));
-  }, [loopMode, volume, tuning, storageKey]);
+  }, [loopMode, volume, tuning, shuffle, storageKey]);
+
+  useEffect(() => {
+    if (shuffle && tracks.length > 0) {
+      const indices = Array.from({ length: tracks.length }, (_, i) => i);
+      setShuffledIndices(shuffleArray(indices));
+    }
+  }, [shuffle, tracks.length]);
 
   // Apply playback rate based on tuning (432/440 = ~0.9818 for A=432 Hz)
   useEffect(() => {
@@ -97,13 +117,33 @@ export function usePlaylistAudioPlayer(storageKey: string) {
       if (loopMode === 'track') return;
       
       setTracks(currentTracks => {
-        const nextIndex = currentIndex + 1;
-        if (nextIndex < currentTracks.length) {
-          setCurrentIndex(nextIndex);
-        } else if (loopMode === 'playlist' && currentTracks.length > 0) {
-          setCurrentIndex(0);
+        if (shuffle && shuffledIndices.length > 0) {
+          const currentShufflePos = shuffledIndices.indexOf(currentIndex);
+          if (currentShufflePos === -1) {
+            if (loopMode === 'playlist') {
+              setCurrentIndex(shuffledIndices[0] ?? 0);
+            } else {
+              setIsPlaying(false);
+            }
+          } else {
+            const nextShufflePos = currentShufflePos + 1;
+            if (nextShufflePos < shuffledIndices.length) {
+              setCurrentIndex(shuffledIndices[nextShufflePos] ?? 0);
+            } else if (loopMode === 'playlist') {
+              setCurrentIndex(shuffledIndices[0] ?? 0);
+            } else {
+              setIsPlaying(false);
+            }
+          }
         } else {
-          setIsPlaying(false);
+          const nextIdx = currentIndex + 1;
+          if (nextIdx < currentTracks.length) {
+            setCurrentIndex(nextIdx);
+          } else if (loopMode === 'playlist' && currentTracks.length > 0) {
+            setCurrentIndex(0);
+          } else {
+            setIsPlaying(false);
+          }
         }
         return currentTracks;
       });
@@ -111,7 +151,7 @@ export function usePlaylistAudioPlayer(storageKey: string) {
 
     audioRef.current = audio;
     setCurrentTime(0);
-  }, [volume, loopMode, currentIndex, tuning]);
+  }, [volume, loopMode, currentIndex, tuning, shuffle, shuffledIndices]);
 
   useEffect(() => {
     if (currentTrack) {
@@ -219,11 +259,36 @@ export function usePlaylistAudioPlayer(storageKey: string) {
     }
   }, [isPlaying, play, pause]);
 
+  const getNextIndex = useCallback((): number => {
+    if (tracks.length === 0) return 0;
+    if (shuffle && shuffledIndices.length > 0) {
+      const currentShufflePos = shuffledIndices.indexOf(currentIndex);
+      if (currentShufflePos === -1) {
+        return shuffledIndices[0] ?? 0;
+      }
+      const nextShufflePos = (currentShufflePos + 1) % shuffledIndices.length;
+      return shuffledIndices[nextShufflePos] ?? 0;
+    }
+    return (currentIndex + 1) % tracks.length;
+  }, [tracks.length, currentIndex, shuffle, shuffledIndices]);
+
+  const getPrevIndex = useCallback((): number => {
+    if (tracks.length === 0) return 0;
+    if (shuffle && shuffledIndices.length > 0) {
+      const currentShufflePos = shuffledIndices.indexOf(currentIndex);
+      if (currentShufflePos === -1) {
+        return shuffledIndices[shuffledIndices.length - 1] ?? 0;
+      }
+      const prevShufflePos = (currentShufflePos - 1 + shuffledIndices.length) % shuffledIndices.length;
+      return shuffledIndices[prevShufflePos] ?? 0;
+    }
+    return (currentIndex - 1 + tracks.length) % tracks.length;
+  }, [tracks.length, currentIndex, shuffle, shuffledIndices]);
+
   const next = useCallback(() => {
     if (tracks.length === 0) return;
-    const nextIndex = (currentIndex + 1) % tracks.length;
-    setCurrentIndex(nextIndex);
-  }, [tracks.length, currentIndex]);
+    setCurrentIndex(getNextIndex());
+  }, [tracks.length, getNextIndex]);
 
   const prev = useCallback(() => {
     if (tracks.length === 0) return;
@@ -231,9 +296,8 @@ export function usePlaylistAudioPlayer(storageKey: string) {
       audioRef.current.currentTime = 0;
       return;
     }
-    const prevIndex = (currentIndex - 1 + tracks.length) % tracks.length;
-    setCurrentIndex(prevIndex);
-  }, [tracks.length, currentIndex]);
+    setCurrentIndex(getPrevIndex());
+  }, [tracks.length, getPrevIndex]);
 
   const setVolume = useCallback((val: number) => {
     setVolumeState(val);
@@ -278,6 +342,16 @@ export function usePlaylistAudioPlayer(storageKey: string) {
     setTuningState(prev => prev === 440 ? 432 : 440);
   }, []);
 
+  const toggleShuffle = useCallback(() => {
+    setShuffle(prev => {
+      if (!prev && tracks.length > 0) {
+        const indices = Array.from({ length: tracks.length }, (_, i) => i);
+        setShuffledIndices(shuffleArray(indices));
+      }
+      return !prev;
+    });
+  }, [tracks.length]);
+
   return {
     tracks,
     currentTrack,
@@ -288,6 +362,7 @@ export function usePlaylistAudioPlayer(storageKey: string) {
     duration,
     loopMode,
     tuning,
+    shuffle,
     addFiles,
     removeTrack,
     moveTrack,
@@ -302,5 +377,6 @@ export function usePlaylistAudioPlayer(storageKey: string) {
     cycleLoopMode,
     clearPlaylist,
     toggleTuning,
+    toggleShuffle,
   };
 }

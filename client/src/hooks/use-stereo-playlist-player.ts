@@ -14,6 +14,15 @@ function generateId(): string {
   return Math.random().toString(36).substring(2, 11);
 }
 
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 export function useStereoPlaylistPlayer() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const leftAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -37,6 +46,9 @@ export function useStereoPlaylistPlayer() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [loopMode, setLoopMode] = useState<LoopMode>('playlist');
+  const [shuffle, setShuffle] = useState(false);
+  const [leftShuffledIndices, setLeftShuffledIndices] = useState<number[]>([]);
+  const [rightShuffledIndices, setRightShuffledIndices] = useState<number[]>([]);
 
   const leftTrack = leftTracks[leftIndex] || null;
   const rightTrack = rightTracks[rightIndex] || null;
@@ -152,6 +164,19 @@ export function useStereoPlaylistPlayer() {
     }
   }, [volume, leftVolume, rightVolume]);
 
+  useEffect(() => {
+    if (shuffle) {
+      if (leftTracks.length > 0) {
+        const indices = Array.from({ length: leftTracks.length }, (_, i) => i);
+        setLeftShuffledIndices(shuffleArray(indices));
+      }
+      if (rightTracks.length > 0) {
+        const indices = Array.from({ length: rightTracks.length }, (_, i) => i);
+        setRightShuffledIndices(shuffleArray(indices));
+      }
+    }
+  }, [shuffle, leftTracks.length, rightTracks.length]);
+
   const loadLeftTrack = useCallback((track: StereoTrack) => {
     if (!leftAudioRef.current) return;
     
@@ -177,16 +202,32 @@ export function useStereoPlaylistPlayer() {
       if (loopMode === 'track') return;
       
       setLeftTracks(currentTracks => {
-        const nextIdx = leftIndex + 1;
-        if (nextIdx < currentTracks.length) {
-          setLeftIndex(nextIdx);
-        } else if (loopMode === 'playlist' && currentTracks.length > 0) {
-          setLeftIndex(0);
+        if (shuffle && leftShuffledIndices.length > 0) {
+          const currentShufflePos = leftShuffledIndices.indexOf(leftIndex);
+          if (currentShufflePos === -1) {
+            if (loopMode === 'playlist') {
+              setLeftIndex(leftShuffledIndices[0] ?? 0);
+            }
+          } else {
+            const nextShufflePos = currentShufflePos + 1;
+            if (nextShufflePos < leftShuffledIndices.length) {
+              setLeftIndex(leftShuffledIndices[nextShufflePos] ?? 0);
+            } else if (loopMode === 'playlist') {
+              setLeftIndex(leftShuffledIndices[0] ?? 0);
+            }
+          }
+        } else {
+          const nextIdx = leftIndex + 1;
+          if (nextIdx < currentTracks.length) {
+            setLeftIndex(nextIdx);
+          } else if (loopMode === 'playlist' && currentTracks.length > 0) {
+            setLeftIndex(0);
+          }
         }
         return currentTracks;
       });
     };
-  }, [loopMode, leftIndex]);
+  }, [loopMode, leftIndex, shuffle, leftShuffledIndices]);
 
   const loadRightTrack = useCallback((track: StereoTrack) => {
     if (!rightAudioRef.current) return;
@@ -209,16 +250,32 @@ export function useStereoPlaylistPlayer() {
       if (loopMode === 'track') return;
       
       setRightTracks(currentTracks => {
-        const nextIdx = rightIndex + 1;
-        if (nextIdx < currentTracks.length) {
-          setRightIndex(nextIdx);
-        } else if (loopMode === 'playlist' && currentTracks.length > 0) {
-          setRightIndex(0);
+        if (shuffle && rightShuffledIndices.length > 0) {
+          const currentShufflePos = rightShuffledIndices.indexOf(rightIndex);
+          if (currentShufflePos === -1) {
+            if (loopMode === 'playlist') {
+              setRightIndex(rightShuffledIndices[0] ?? 0);
+            }
+          } else {
+            const nextShufflePos = currentShufflePos + 1;
+            if (nextShufflePos < rightShuffledIndices.length) {
+              setRightIndex(rightShuffledIndices[nextShufflePos] ?? 0);
+            } else if (loopMode === 'playlist') {
+              setRightIndex(rightShuffledIndices[0] ?? 0);
+            }
+          }
+        } else {
+          const nextIdx = rightIndex + 1;
+          if (nextIdx < currentTracks.length) {
+            setRightIndex(nextIdx);
+          } else if (loopMode === 'playlist' && currentTracks.length > 0) {
+            setRightIndex(0);
+          }
         }
         return currentTracks;
       });
     };
-  }, [loopMode, rightIndex]);
+  }, [loopMode, rightIndex, shuffle, rightShuffledIndices]);
 
   useEffect(() => {
     if (leftTrack && isInitializedRef.current && leftAudioRef.current) {
@@ -415,18 +472,36 @@ export function useStereoPlaylistPlayer() {
 
   const nextBoth = useCallback(() => {
     if (leftTracks.length > 0) {
-      const nextLeft = (leftIndex + 1) % leftTracks.length;
-      setLeftIndex(nextLeft);
+      if (shuffle && leftShuffledIndices.length > 0) {
+        const currentPos = leftShuffledIndices.indexOf(leftIndex);
+        if (currentPos === -1) {
+          setLeftIndex(leftShuffledIndices[0] ?? 0);
+        } else {
+          const nextPos = (currentPos + 1) % leftShuffledIndices.length;
+          setLeftIndex(leftShuffledIndices[nextPos] ?? 0);
+        }
+      } else {
+        setLeftIndex((leftIndex + 1) % leftTracks.length);
+      }
     }
     if (rightTracks.length > 0) {
-      const nextRight = (rightIndex + 1) % rightTracks.length;
-      setRightIndex(nextRight);
+      if (shuffle && rightShuffledIndices.length > 0) {
+        const currentPos = rightShuffledIndices.indexOf(rightIndex);
+        if (currentPos === -1) {
+          setRightIndex(rightShuffledIndices[0] ?? 0);
+        } else {
+          const nextPos = (currentPos + 1) % rightShuffledIndices.length;
+          setRightIndex(rightShuffledIndices[nextPos] ?? 0);
+        }
+      } else {
+        setRightIndex((rightIndex + 1) % rightTracks.length);
+      }
     }
     
     if (leftAudioRef.current) leftAudioRef.current.currentTime = 0;
     if (rightAudioRef.current) rightAudioRef.current.currentTime = 0;
     setCurrentTime(0);
-  }, [leftTracks.length, rightTracks.length, leftIndex, rightIndex]);
+  }, [leftTracks.length, rightTracks.length, leftIndex, rightIndex, shuffle, leftShuffledIndices, rightShuffledIndices]);
 
   const prevBoth = useCallback(() => {
     if (leftAudioRef.current && leftAudioRef.current.currentTime > 3) {
@@ -436,18 +511,36 @@ export function useStereoPlaylistPlayer() {
       return;
     }
     if (leftTracks.length > 0) {
-      const prevLeft = (leftIndex - 1 + leftTracks.length) % leftTracks.length;
-      setLeftIndex(prevLeft);
+      if (shuffle && leftShuffledIndices.length > 0) {
+        const currentPos = leftShuffledIndices.indexOf(leftIndex);
+        if (currentPos === -1) {
+          setLeftIndex(leftShuffledIndices[leftShuffledIndices.length - 1] ?? 0);
+        } else {
+          const prevPos = (currentPos - 1 + leftShuffledIndices.length) % leftShuffledIndices.length;
+          setLeftIndex(leftShuffledIndices[prevPos] ?? 0);
+        }
+      } else {
+        setLeftIndex((leftIndex - 1 + leftTracks.length) % leftTracks.length);
+      }
     }
     if (rightTracks.length > 0) {
-      const prevRight = (rightIndex - 1 + rightTracks.length) % rightTracks.length;
-      setRightIndex(prevRight);
+      if (shuffle && rightShuffledIndices.length > 0) {
+        const currentPos = rightShuffledIndices.indexOf(rightIndex);
+        if (currentPos === -1) {
+          setRightIndex(rightShuffledIndices[rightShuffledIndices.length - 1] ?? 0);
+        } else {
+          const prevPos = (currentPos - 1 + rightShuffledIndices.length) % rightShuffledIndices.length;
+          setRightIndex(rightShuffledIndices[prevPos] ?? 0);
+        }
+      } else {
+        setRightIndex((rightIndex - 1 + rightTracks.length) % rightTracks.length);
+      }
     }
     
     if (leftAudioRef.current) leftAudioRef.current.currentTime = 0;
     if (rightAudioRef.current) rightAudioRef.current.currentTime = 0;
     setCurrentTime(0);
-  }, [leftTracks.length, rightTracks.length, leftIndex, rightIndex]);
+  }, [leftTracks.length, rightTracks.length, leftIndex, rightIndex, shuffle, leftShuffledIndices, rightShuffledIndices]);
 
   const setVolume = useCallback((val: number) => {
     setVolumeState(val);
@@ -493,6 +586,22 @@ export function useStereoPlaylistPlayer() {
     setDuration(0);
   }, [leftTracks, rightTracks, cleanupAudioNodes]);
 
+  const toggleShuffle = useCallback(() => {
+    setShuffle(prev => {
+      if (!prev) {
+        if (leftTracks.length > 0) {
+          const indices = Array.from({ length: leftTracks.length }, (_, i) => i);
+          setLeftShuffledIndices(shuffleArray(indices));
+        }
+        if (rightTracks.length > 0) {
+          const indices = Array.from({ length: rightTracks.length }, (_, i) => i);
+          setRightShuffledIndices(shuffleArray(indices));
+        }
+      }
+      return !prev;
+    });
+  }, [leftTracks.length, rightTracks.length]);
+
   return {
     leftTracks,
     rightTracks,
@@ -507,6 +616,7 @@ export function useStereoPlaylistPlayer() {
     currentTime,
     duration,
     loopMode,
+    shuffle,
     addLeftFiles,
     addRightFiles,
     addBothFiles,
@@ -525,5 +635,6 @@ export function useStereoPlaylistPlayer() {
     seek,
     cycleLoopMode,
     clearAll,
+    toggleShuffle,
   };
 }

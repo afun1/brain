@@ -5,7 +5,7 @@ import { Slider } from "@/components/ui/slider";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Play, Pause, Volume2, Upload, X, Headphones,
-  SkipBack, SkipForward, Repeat, Repeat1, Trash2, Copy
+  SkipBack, SkipForward, Repeat, Repeat1, Trash2, Copy, Shuffle
 } from "lucide-react";
 
 function formatTime(seconds: number): string {
@@ -340,6 +340,17 @@ export function StereoConfusionPlayer() {
           </div>
 
           <div className="flex items-center justify-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={player.toggleShuffle}
+              className={player.shuffle ? 'text-primary' : 'text-muted-foreground'}
+              title={player.shuffle ? 'Shuffle On' : 'Shuffle Off'}
+              data-testid="stereo-shuffle-btn"
+            >
+              <Shuffle className="w-4 h-4" />
+            </Button>
+            
             <Button
               variant="ghost"
               size="icon"
