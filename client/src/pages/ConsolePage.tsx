@@ -239,17 +239,29 @@ export default function ConsolePage() {
   const selectedProgram = programs?.find(p => p.id === selectedProgramId);
   const isFullNightRest = selectedProgram?.name === "8-Hour Full Night Rest";
   
-  // Generate wake-up stages (15 min beta awakening phase)
+  // Generate wake-up stages (17 min total: 2 min REM→Alpha transition + 15 min beta awakening)
+  // Starts from REM (9 Hz) to ensure smooth transition from dream state
   const wakeUpStages = useMemo((): SleepStage[] => {
     if (!includeWakeUp) return [];
     
     const baseOrder = 100; // Start after all program stages
     return [
       {
+        id: 9000,
+        programId: 0,
+        name: "Dream Fade (REM→Alpha)",
+        startBeatFreq: 9,  // Start from REM (dream state)
+        endBeatFreq: 10,   // Gentle transition to Alpha
+        startCarrierFreq: 432,
+        endCarrierFreq: 432,
+        durationSeconds: 120, // 2 min gentle transition
+        order: baseOrder,
+      },
+      {
         id: 9001,
         programId: 0,
         name: "Wake Up - Low Beta",
-        startBeatFreq: 12,
+        startBeatFreq: 10,
         endBeatFreq: 14,
         startCarrierFreq: 432,
         endCarrierFreq: 432,
@@ -304,14 +316,15 @@ export default function ConsolePage() {
       scaledStages[scaledStages.length - 1].durationSeconds += durationDiff;
     }
     
-    // Add a final REM/theta stage for natural wake-up (10 minutes)
-    // This ensures the program ends in REM-like theta state regardless of original stages
+    // Add a final REM stage for refreshed wake-up (10 minutes at 9 Hz = true REM)
+    // REM is 8-10 Hz range - waking from REM means waking from dreams = refreshed
+    // Theta (4-7 Hz) causes grogginess - avoid ending in theta!
     const remWakeStage: SleepStage = {
       id: 9999,
       programId: 0,
-      name: "Pre-Wake REM",
-      startBeatFreq: 6, // Theta/REM
-      endBeatFreq: 6,   // Stay in theta for natural wake
+      name: "Final REM (Dreams)",
+      startBeatFreq: 9, // True REM frequency
+      endBeatFreq: 9,   // Stay in REM for refreshed wake-up
       startCarrierFreq: 432,
       endCarrierFreq: 432,
       durationSeconds: 600, // 10 minutes
@@ -323,11 +336,11 @@ export default function ConsolePage() {
       scaledStages[scaledStages.length - 1].durationSeconds -= 600;
       scaledStages.push(remWakeStage);
     } else {
-      // If last stage is short, just modify its end frequency
+      // If last stage is short, just modify its end frequency to REM
       const lastStage = scaledStages[scaledStages.length - 1];
       scaledStages[scaledStages.length - 1] = {
         ...lastStage,
-        endBeatFreq: 6, // End in theta for natural wake-up
+        endBeatFreq: 9, // End in REM (not theta) for refreshed wake-up
       };
     }
     
@@ -1220,7 +1233,7 @@ export default function ConsolePage() {
                   <div className="flex-1">
                     <div className="text-sm font-medium text-white">Wake-Up Sequence</div>
                     <div className="text-[10px] text-muted-foreground">
-                      Add +15 min beta phase after sleep ends (total: {sleepDurationHours}h + 15 min)
+                      Gentle REM→Beta transition (+17 min after {sleepDurationHours}h sleep)
                     </div>
                   </div>
                   <Button

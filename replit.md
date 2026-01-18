@@ -67,8 +67,8 @@ The app uses a single-page console with four tabbed modes:
 4. **Sleep Programs** - Pre-built sleep journeys
    - **Dynamic Sleep Duration** - 5h to 10h options based on circadian rhythm research
      - Each duration maps to optimal sleep cycles (3-6 cycles)
-     - All durations end in REM-supportive theta state (6 Hz) for natural wake-up
-     - Pre-Wake REM stage (10 min at 6 Hz) injected before final stages
+     - All durations end in true REM state (9 Hz) for refreshed wake-up from dreams
+     - "Final REM (Dreams)" stage (10 min at 9 Hz) ensures user wakes from dream state, not theta
      - Stage durations scaled proportionally to selected duration
      - Settings persisted to localStorage
    - **8-Hour Full Night Rest** - Customizable carrier frequencies
@@ -80,7 +80,9 @@ The app uses a single-page console with four tabbed modes:
      - "Fill Solfeggio" preset loads all 10 Solfeggio frequencies with equal durations
      - Settings saved to localStorage for persistence
    - **8-Hour Solfeggio Healing Cycles** - Preset Solfeggio frequencies mapped to 5 sleep cycles
-   - Optional 15-minute beta wake-up sequence (+15 min added after base sleep duration)
+   - Optional 17-minute beta wake-up sequence (+17 min added after base sleep duration)
+     - Gentle "Dream Fade" REM→Alpha transition (2 min, 9→10 Hz)
+     - Progressive beta increase: Low Beta (10→14), Mid Beta (14→18), Alert (18→20 Hz)
    - Multi-stage frequency progressions with gradual transitions
 
 ### Audio Players

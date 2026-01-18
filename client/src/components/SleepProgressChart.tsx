@@ -43,7 +43,8 @@ export function SleepProgressChart({
     stages.forEach((stage) => {
       const endLevel = beatToStageLevel(stage.endBeatFreq);
       const isREM = stage.name.toLowerCase().includes('rem') || 
-                    (stage.endBeatFreq >= 8 && stage.endBeatFreq <= 10 && stage.startBeatFreq < 8);
+                    stage.name.toLowerCase().includes('dream') ||
+                    (stage.endBeatFreq >= 8 && stage.endBeatFreq <= 10);
       const level = isREM ? 1 : endLevel;
       
       segments.push({
@@ -332,7 +333,8 @@ export function MiniHypnogram({ stages }: MiniHypnogramProps) {
     stages.forEach((stage) => {
       const endLevel = beatToStageLevel(stage.endBeatFreq);
       const isREM = stage.name.toLowerCase().includes('rem') || 
-                    (stage.endBeatFreq >= 8 && stage.endBeatFreq <= 10 && stage.startBeatFreq < 8);
+                    stage.name.toLowerCase().includes('dream') ||
+                    (stage.endBeatFreq >= 8 && stage.endBeatFreq <= 10);
       const level = isREM ? 1 : endLevel;
       
       segments.push({
