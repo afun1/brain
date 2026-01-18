@@ -358,8 +358,10 @@ export default function ConsolePage() {
           <span className="text-sm tracking-widest uppercase font-semibold text-primary/80" data-testid="text-header-title">Binaural Sleep Console</span>
         </div>
         <Link href="/features">
-          <Button variant="ghost" size="icon" data-testid="button-features-help">
-            <HelpCircle className="w-5 h-5" />
+          <Button variant="outline" size="sm" className="gap-2" data-testid="button-features-help">
+            <HelpCircle className="w-4 h-4" />
+            <span className="hidden sm:inline">Features & Instructions</span>
+            <span className="sm:hidden">Help</span>
           </Button>
         </Link>
       </header>
