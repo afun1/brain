@@ -46,6 +46,7 @@ The app uses a single-page console with four tabbed modes:
    - Binaural beat frequency: 0.5-40 Hz with presets (0.5, 1, 2, 4, 6, 8, 10, 12 Hz)
    - Swap carrier between left/right ear
    - Real-time frequency adjustment while audio is playing
+   - Individual left/right channel controls to mute channels and experience single tones
 
 2. **Learning Mode** - Meditation/focus enhancement
    - Target state selection: Alpha (8-12 Hz) or Theta (4-8 Hz)
