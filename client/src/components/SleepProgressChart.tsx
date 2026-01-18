@@ -8,12 +8,25 @@ interface SleepProgressChartProps {
   currentStageName: string;
 }
 
-const BRAINWAVE_ZONES = [
-  { name: "Delta", min: 0, max: 4, color: "rgba(139, 92, 246, 0.3)" },
-  { name: "Theta", min: 4, max: 8, color: "rgba(59, 130, 246, 0.3)" },
-  { name: "Alpha", min: 8, max: 12, color: "rgba(34, 197, 94, 0.3)" },
-  { name: "Beta", min: 12, max: 30, color: "rgba(251, 191, 36, 0.3)" },
+const SLEEP_STAGES = [
+  { name: "Awake", level: 0, minBeat: 12 },
+  { name: "REM", level: 1, minBeat: 8 },
+  { name: "N1", level: 2, minBeat: 6 },
+  { name: "N2", level: 3, minBeat: 4 },
+  { name: "N3", level: 4, minBeat: 0 },
 ];
+
+function beatToStageLevel(beat: number): number {
+  if (beat >= 12) return 0;
+  if (beat >= 8) return 1;
+  if (beat >= 6) return 2;
+  if (beat >= 4) return 3;
+  return 4;
+}
+
+function getStageName(level: number): string {
+  return SLEEP_STAGES.find(s => s.level === level)?.name || "N3";
+}
 
 export function SleepProgressChart({ 
   stages, 
@@ -22,73 +35,117 @@ export function SleepProgressChart({
   currentStageName 
 }: SleepProgressChartProps) {
   const chartData = useMemo(() => {
-    if (!stages || stages.length === 0) return { points: [], totalDuration: 0 };
+    if (!stages || stages.length === 0) return { segments: [], totalDuration: 0 };
     
-    const points: { time: number; beat: number; stageName: string }[] = [];
+    const segments: { startTime: number; endTime: number; level: number; isREM: boolean }[] = [];
     let accumulatedTime = 0;
     
     stages.forEach((stage) => {
-      points.push({
-        time: accumulatedTime,
-        beat: stage.startBeatFreq,
-        stageName: stage.name,
+      const startLevel = beatToStageLevel(stage.startBeatFreq);
+      const endLevel = beatToStageLevel(stage.endBeatFreq);
+      const avgBeat = (stage.startBeatFreq + stage.endBeatFreq) / 2;
+      const level = beatToStageLevel(avgBeat);
+      const isREM = level === 1;
+      
+      segments.push({
+        startTime: accumulatedTime,
+        endTime: accumulatedTime + stage.durationSeconds,
+        level,
+        isREM,
       });
       
       accumulatedTime += stage.durationSeconds;
-      
-      points.push({
-        time: accumulatedTime,
-        beat: stage.endBeatFreq,
-        stageName: stage.name,
-      });
     });
     
-    return { points, totalDuration: accumulatedTime };
+    return { segments, totalDuration: accumulatedTime };
   }, [stages]);
 
-  if (chartData.points.length === 0) return null;
+  if (chartData.segments.length === 0) return null;
 
-  const { points, totalDuration } = chartData;
-  const maxBeat = Math.max(...points.map(p => p.beat), 16);
-  const minBeat = 0;
-  const beatRange = maxBeat - minBeat;
+  const { segments, totalDuration } = chartData;
   
-  const chartWidth = 100;
-  const chartHeight = 60;
-  const padding = { top: 5, right: 5, bottom: 20, left: 30 };
+  const chartWidth = 400;
+  const chartHeight = 140;
+  const padding = { top: 15, right: 20, bottom: 30, left: 50 };
   const innerWidth = chartWidth - padding.left - padding.right;
   const innerHeight = chartHeight - padding.top - padding.bottom;
 
   const xScale = (time: number) => padding.left + (time / totalDuration) * innerWidth;
-  const yScale = (beat: number) => padding.top + innerHeight - ((beat - minBeat) / beatRange) * innerHeight;
+  const yScale = (level: number) => padding.top + (level / 4) * innerHeight;
 
-  const pathD = points.map((point, i) => {
-    const x = xScale(point.time);
-    const y = yScale(point.beat);
-    return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
-  }).join(' ');
-
-  const areaD = pathD + ` L ${xScale(totalDuration)} ${yScale(0)} L ${xScale(0)} ${yScale(0)} Z`;
-
-  const currentX = xScale(Math.min(elapsedTime, totalDuration));
-  const currentY = yScale(currentBeat);
-
-  const getBrainwaveState = (freq: number): string => {
-    if (freq < 4) return "Delta";
-    if (freq < 8) return "Theta";
-    if (freq < 12) return "Alpha";
-    if (freq < 30) return "Beta";
-    return "Gamma";
+  const buildStepPath = () => {
+    const pathParts: string[] = [];
+    
+    segments.forEach((seg, i) => {
+      const x1 = xScale(seg.startTime);
+      const x2 = xScale(seg.endTime);
+      const y = yScale(seg.level);
+      
+      if (i === 0) {
+        pathParts.push(`M ${x1} ${y}`);
+      } else {
+        const prevY = yScale(segments[i - 1].level);
+        if (prevY !== y) {
+          pathParts.push(`L ${x1} ${prevY}`);
+          pathParts.push(`L ${x1} ${y}`);
+        }
+      }
+      pathParts.push(`L ${x2} ${y}`);
+    });
+    
+    return pathParts.join(' ');
   };
 
-  const currentState = getBrainwaveState(currentBeat);
+  const buildREMSegments = () => {
+    return segments.filter(seg => seg.isREM).map((seg, i) => {
+      const x1 = xScale(seg.startTime);
+      const x2 = xScale(seg.endTime);
+      const y = yScale(seg.level);
+      return (
+        <line
+          key={`rem-${i}`}
+          x1={x1}
+          y1={y}
+          x2={x2}
+          y2={y}
+          stroke="#ef4444"
+          strokeWidth="3"
+          strokeLinecap="round"
+        />
+      );
+    });
+  };
 
-  const formatDuration = (seconds: number): string => {
+  const totalHours = totalDuration / 3600;
+  const hourMarks: number[] = [];
+  for (let h = 0; h <= Math.ceil(totalHours); h++) {
+    if (h * 3600 <= totalDuration) {
+      hourMarks.push(h);
+    }
+  }
+  if (hourMarks[hourMarks.length - 1] * 3600 < totalDuration) {
+    hourMarks.push(Math.ceil(totalHours));
+  }
+
+  const minuteMarks: number[] = [];
+  const minuteInterval = totalDuration <= 3600 ? 5 : totalDuration <= 7200 ? 15 : 30;
+  for (let m = 0; m <= totalDuration / 60; m += minuteInterval) {
+    const timeInSeconds = m * 60;
+    if (timeInSeconds <= totalDuration && timeInSeconds % 3600 !== 0) {
+      minuteMarks.push(timeInSeconds);
+    }
+  }
+
+  const currentLevel = beatToStageLevel(currentBeat);
+  const currentX = xScale(Math.min(elapsedTime, totalDuration));
+  const currentY = yScale(currentLevel);
+  const currentStageLevelName = getStageName(currentLevel);
+
+  const formatTime = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
-    if (hours > 0) {
-      return `${hours}h ${mins}m`;
-    }
+    if (hours > 0 && mins === 0) return `${hours}h`;
+    if (hours > 0) return `${hours}:${mins.toString().padStart(2, '0')}`;
     return `${mins}m`;
   };
 
@@ -99,90 +156,112 @@ export function SleepProgressChart({
           <div 
             className="w-3 h-3 rounded-full animate-pulse"
             style={{ 
-              backgroundColor: currentState === "Delta" ? "#8b5cf6" : 
-                               currentState === "Theta" ? "#3b82f6" : 
-                               currentState === "Alpha" ? "#22c55e" : "#fbbf24"
+              backgroundColor: currentLevel === 1 ? "#ef4444" : 
+                               currentLevel === 0 ? "#fbbf24" : 
+                               currentLevel === 4 ? "#8b5cf6" : "#3b82f6"
             }}
           />
-          <span className="font-medium text-white">{currentState}</span>
+          <span className="font-medium text-white">{currentStageLevelName}</span>
           <span className="text-muted-foreground">({currentBeat.toFixed(1)} Hz)</span>
         </div>
         <span className="text-muted-foreground">
-          {formatDuration(elapsedTime)} / {formatDuration(totalDuration)}
+          {formatTime(elapsedTime)} / {formatTime(totalDuration)}
         </span>
       </div>
 
-      <div className="relative bg-black/30 rounded-lg p-2 border border-white/10">
+      <div className="relative bg-black/30 rounded-lg p-3 border border-white/10">
         <svg 
           viewBox={`0 0 ${chartWidth} ${chartHeight}`} 
-          className="w-full h-32"
-          preserveAspectRatio="none"
+          className="w-full h-36"
+          preserveAspectRatio="xMidYMid meet"
           data-testid="sleep-progress-chart"
         >
-          {BRAINWAVE_ZONES.map((zone) => {
-            if (zone.max <= minBeat || zone.min >= maxBeat) return null;
-            const y1 = yScale(Math.min(zone.max, maxBeat));
-            const y2 = yScale(Math.max(zone.min, minBeat));
+          {SLEEP_STAGES.map((stage) => (
+            <line
+              key={stage.name}
+              x1={padding.left}
+              y1={yScale(stage.level)}
+              x2={padding.left + innerWidth}
+              y2={yScale(stage.level)}
+              stroke="rgba(255,255,255,0.15)"
+              strokeWidth="1"
+              strokeDasharray="4,4"
+            />
+          ))}
+
+          {SLEEP_STAGES.map((stage) => (
+            <text
+              key={stage.name}
+              x={padding.left - 8}
+              y={yScale(stage.level)}
+              textAnchor="end"
+              dominantBaseline="middle"
+              className="fill-muted-foreground"
+              style={{ fontSize: '11px', fontWeight: stage.name === "REM" ? 600 : 400 }}
+            >
+              {stage.name}
+            </text>
+          ))}
+
+          <line 
+            x1={padding.left} 
+            y1={padding.top + innerHeight + 5} 
+            x2={padding.left + innerWidth} 
+            y2={padding.top + innerHeight + 5}
+            stroke="rgba(255,255,255,0.3)"
+            strokeWidth="1"
+          />
+
+          {hourMarks.map((h) => {
+            const x = xScale(h * 3600);
             return (
-              <g key={zone.name}>
-                <rect
-                  x={padding.left}
-                  y={y1}
-                  width={innerWidth}
-                  height={y2 - y1}
-                  fill={zone.color}
+              <g key={`hour-${h}`}>
+                <line
+                  x1={x}
+                  y1={padding.top + innerHeight + 5}
+                  x2={x}
+                  y2={padding.top + innerHeight + 12}
+                  stroke="rgba(255,255,255,0.4)"
+                  strokeWidth="1"
                 />
                 <text
-                  x={padding.left - 2}
-                  y={(y1 + y2) / 2}
-                  textAnchor="end"
-                  dominantBaseline="middle"
+                  x={x}
+                  y={chartHeight - 5}
+                  textAnchor="middle"
                   className="fill-muted-foreground"
-                  style={{ fontSize: '3px' }}
+                  style={{ fontSize: '11px' }}
                 >
-                  {zone.name}
+                  {h}
                 </text>
               </g>
             );
           })}
 
-          <line 
-            x1={padding.left} 
-            y1={padding.top + innerHeight} 
-            x2={padding.left + innerWidth} 
-            y2={padding.top + innerHeight}
-            stroke="rgba(255,255,255,0.2)"
-            strokeWidth="0.3"
-          />
-          <line 
-            x1={padding.left} 
-            y1={padding.top} 
-            x2={padding.left} 
-            y2={padding.top + innerHeight}
-            stroke="rgba(255,255,255,0.2)"
-            strokeWidth="0.3"
-          />
-
-          <defs>
-            <linearGradient id="beatGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.6" />
-              <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.1" />
-            </linearGradient>
-          </defs>
+          {minuteMarks.map((seconds) => {
+            const x = xScale(seconds);
+            return (
+              <line
+                key={`min-${seconds}`}
+                x1={x}
+                y1={padding.top + innerHeight + 5}
+                x2={x}
+                y2={padding.top + innerHeight + 9}
+                stroke="rgba(255,255,255,0.2)"
+                strokeWidth="1"
+              />
+            );
+          })}
 
           <path
-            d={areaD}
-            fill="url(#beatGradient)"
-          />
-
-          <path
-            d={pathD}
+            d={buildStepPath()}
             fill="none"
-            stroke="hsl(var(--primary))"
-            strokeWidth="0.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+            stroke="rgba(255,255,255,0.9)"
+            strokeWidth="2"
+            strokeLinecap="square"
+            strokeLinejoin="miter"
           />
+
+          {buildREMSegments()}
 
           {elapsedTime > 0 && elapsedTime <= totalDuration && (
             <>
@@ -191,57 +270,44 @@ export function SleepProgressChart({
                 y1={padding.top}
                 x2={currentX}
                 y2={padding.top + innerHeight}
-                stroke="rgba(255,255,255,0.4)"
-                strokeWidth="0.3"
-                strokeDasharray="1,1"
+                stroke="hsl(var(--primary))"
+                strokeWidth="1.5"
+                strokeDasharray="4,3"
+                opacity="0.7"
               />
               <circle
                 cx={currentX}
                 cy={currentY}
-                r="2"
-                fill="white"
-                stroke="hsl(var(--primary))"
-                strokeWidth="0.8"
+                r="6"
+                fill="hsl(var(--primary))"
+                stroke="white"
+                strokeWidth="2"
                 data-testid="progress-dot"
               />
               <circle
                 cx={currentX}
                 cy={currentY}
-                r="3.5"
+                r="10"
                 fill="none"
                 stroke="hsl(var(--primary))"
-                strokeWidth="0.4"
-                opacity="0.5"
+                strokeWidth="1.5"
+                opacity="0.4"
                 className="animate-ping"
                 style={{ transformOrigin: `${currentX}px ${currentY}px` }}
               />
             </>
           )}
-
-          {[0, 0.25, 0.5, 0.75, 1].map((pct) => (
-            <text
-              key={pct}
-              x={xScale(totalDuration * pct)}
-              y={chartHeight - 2}
-              textAnchor="middle"
-              className="fill-muted-foreground"
-              style={{ fontSize: '3px' }}
-            >
-              {formatDuration(totalDuration * pct)}
-            </text>
-          ))}
         </svg>
 
-        <div className="flex justify-between mt-2 px-1">
-          {BRAINWAVE_ZONES.slice(0, 4).map((zone) => (
-            <div key={zone.name} className="flex items-center gap-1">
-              <div 
-                className="w-2 h-2 rounded-sm"
-                style={{ backgroundColor: zone.color.replace('0.3', '0.8') }}
-              />
-              <span className="text-[10px] text-muted-foreground">{zone.name}</span>
-            </div>
-          ))}
+        <div className="flex justify-center gap-6 mt-2">
+          <div className="flex items-center gap-1.5">
+            <div className="w-4 h-0.5 bg-white rounded" />
+            <span className="text-[10px] text-muted-foreground">Sleep Stages</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-4 h-0.5 bg-red-500 rounded" />
+            <span className="text-[10px] text-muted-foreground">REM</span>
+          </div>
         </div>
       </div>
 
