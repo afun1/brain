@@ -85,8 +85,10 @@ export default function ConsolePage() {
   const [includeWakeUp, setIncludeWakeUp] = useState(true);
   
   // Custom frequency slots for Full Night Rest (10 slots, localStorage persisted)
-  const DEFAULT_CUSTOM_FREQUENCIES = [174, 285, 396, 417, 432, 528, 639, 741, 852, 963];
+  const DEFAULT_CUSTOM_FREQUENCIES = [432, 432, 432, 432, 432, 432, 432, 432, 432, 432];
+  const DEFAULT_SLOT_DURATIONS = [10, 10, 10, 10, 10, 10, 10, 10, 10, 10]; // percentages
   const CUSTOM_FREQ_STORAGE_KEY = "binauralSleep_customFrequencies";
+  const CUSTOM_DURATION_STORAGE_KEY = "binauralSleep_slotDurations";
   
   const [customFrequencySlots, setCustomFrequencySlots] = useState<number[]>(() => {
     try {
@@ -101,10 +103,28 @@ export default function ConsolePage() {
     return DEFAULT_CUSTOM_FREQUENCIES;
   });
   
+  const [slotDurations, setSlotDurations] = useState<number[]>(() => {
+    try {
+      const stored = localStorage.getItem(CUSTOM_DURATION_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length === 10 && parsed.every(d => typeof d === 'number' && d >= 0)) {
+          return parsed;
+        }
+      }
+    } catch {}
+    return DEFAULT_SLOT_DURATIONS;
+  });
+  
   // Persist custom frequencies to localStorage
   useEffect(() => {
     localStorage.setItem(CUSTOM_FREQ_STORAGE_KEY, JSON.stringify(customFrequencySlots));
   }, [customFrequencySlots]);
+  
+  // Persist slot durations to localStorage
+  useEffect(() => {
+    localStorage.setItem(CUSTOM_DURATION_STORAGE_KEY, JSON.stringify(slotDurations));
+  }, [slotDurations]);
   
   const updateFrequencySlot = (index: number, value: number) => {
     const clamped = Math.max(60, Math.min(1000, value));
@@ -115,8 +135,33 @@ export default function ConsolePage() {
     });
   };
   
+  const updateSlotDuration = (index: number, value: number) => {
+    const clamped = Math.max(0, Math.min(100, value));
+    setSlotDurations(prev => {
+      const newDurations = [...prev];
+      newDurations[index] = clamped;
+      return newDurations;
+    });
+  };
+  
+  const normalizeDurations = () => {
+    const total = slotDurations.reduce((sum, d) => sum + d, 0);
+    if (total === 0) {
+      setSlotDurations([...DEFAULT_SLOT_DURATIONS]);
+      return;
+    }
+    // Normalize with exact 100% sum: round all but last, last gets remainder
+    const normalized = slotDurations.map(d => Math.floor((d / total) * 100));
+    const roundedSum = normalized.reduce((sum, d) => sum + d, 0);
+    normalized[9] = normalized[9] + (100 - roundedSum); // Adjust last slot to guarantee 100%
+    setSlotDurations(normalized);
+  };
+  
+  const totalDurationPercent = slotDurations.reduce((sum, d) => sum + d, 0);
+  
   const fillWithSolfeggio = () => {
-    setCustomFrequencySlots([...DEFAULT_CUSTOM_FREQUENCIES]);
+    setCustomFrequencySlots([174, 285, 396, 417, 432, 528, 639, 741, 852, 963]);
+    setSlotDurations([...DEFAULT_SLOT_DURATIONS]);
   };
   
   const selectedProgram = programs?.find(p => p.id === selectedProgramId);
@@ -165,23 +210,36 @@ export default function ConsolePage() {
   }, [includeWakeUp]);
   
   // Apply custom frequencies to Full Night Rest stages
-  // Frequencies are distributed evenly across the 8-hour program (10 slots = ~48 min each)
+  // Frequencies are distributed based on percentage durations per slot
   const applyCustomFrequencies = (stages: SleepStage[]): SleepStage[] => {
     if (!isFullNightRest || stages.length === 0) return stages;
     
-    // Calculate total duration
+    // Calculate total duration and normalize percentages
     const totalDuration = stages.reduce((sum, s) => sum + s.durationSeconds, 0);
-    const slotDuration = totalDuration / 10; // Each slot covers 1/10th of total duration
+    const totalPercent = slotDurations.reduce((sum, d) => sum + d, 0);
     
-    // Get frequency for a given time point
+    // Build cumulative time boundaries for each slot
+    const slotBoundaries: number[] = []; // End times for each slot
+    let cumulative = 0;
+    for (let i = 0; i < 10; i++) {
+      const slotPercent = totalPercent > 0 ? slotDurations[i] / totalPercent : 0.1;
+      cumulative += slotPercent * totalDuration;
+      slotBoundaries.push(cumulative);
+    }
+    
+    // Get frequency for a given time point based on cumulative boundaries
     const getCustomFreqAtTime = (seconds: number): number => {
-      const slotIndex = Math.min(9, Math.floor(seconds / slotDuration));
-      return customFrequencySlots[slotIndex];
+      for (let i = 0; i < 10; i++) {
+        if (seconds < slotBoundaries[i]) {
+          return customFrequencySlots[i];
+        }
+      }
+      return customFrequencySlots[9];
     };
     
     // Transform stages with custom frequencies
     let currentTime = 0;
-    return stages.map((stage, idx) => {
+    return stages.map((stage) => {
       const stageStart = currentTime;
       const stageEnd = currentTime + stage.durationSeconds;
       currentTime = stageEnd;
@@ -199,7 +257,7 @@ export default function ConsolePage() {
     const programStages = (selectedProgram?.stages as SleepStage[]) || [];
     const transformedStages = applyCustomFrequencies(programStages);
     return [...transformedStages, ...wakeUpStages];
-  }, [selectedProgram, wakeUpStages, customFrequencySlots, isFullNightRest]);
+  }, [selectedProgram, wakeUpStages, customFrequencySlots, slotDurations, isFullNightRest]);
   
   const programAudio = useAudioEngine(programStagesWithWakeUp);
   
@@ -1062,24 +1120,73 @@ export default function ConsolePage() {
                       <div>
                         <div className="text-sm font-medium text-white">Custom Frequencies</div>
                         <div className="text-[10px] text-muted-foreground">
-                          10 slots cycling through 8 hours (~48 min each)
+                          Set frequency and duration % for each slot
                         </div>
                       </div>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={fillWithSolfeggio}
-                        className="text-xs"
-                        data-testid="button-fill-solfeggio"
-                      >
-                        Fill Solfeggio
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        {totalDurationPercent !== 100 && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={normalizeDurations}
+                            className="text-xs"
+                            data-testid="button-normalize"
+                          >
+                            Normalize ({totalDurationPercent}%)
+                          </Button>
+                        )}
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={fillWithSolfeggio}
+                          className="text-xs"
+                          data-testid="button-fill-solfeggio"
+                        >
+                          Fill Solfeggio
+                        </Button>
+                      </div>
                     </div>
+                    
+                    {/* Time Coverage Meter */}
+                    <div className="mb-3" data-testid="time-coverage-meter">
+                      <div className="flex h-4 rounded-md overflow-hidden border border-white/20">
+                        {slotDurations.map((duration, idx) => {
+                          const percent = totalDurationPercent > 0 ? (duration / totalDurationPercent) * 100 : 10;
+                          const colors = [
+                            "bg-red-500", "bg-orange-500", "bg-amber-500", "bg-yellow-500", "bg-lime-500",
+                            "bg-green-500", "bg-emerald-500", "bg-cyan-500", "bg-blue-500", "bg-purple-500"
+                          ];
+                          return (
+                            <div
+                              key={idx}
+                              className={`${colors[idx]} transition-all duration-300 flex items-center justify-center`}
+                              style={{ width: `${percent}%` }}
+                              title={`Slot ${idx + 1}: ${customFrequencySlots[idx]} Hz - ${duration}%`}
+                              data-testid={`meter-segment-${idx}`}
+                            >
+                              {percent >= 8 && (
+                                <span className="text-[8px] text-white/80 font-medium">{idx + 1}</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="flex justify-between mt-1 text-[9px] text-muted-foreground">
+                        <span>0%</span>
+                        <span>Total: {totalDurationPercent}%</span>
+                        <span>100%</span>
+                      </div>
+                    </div>
+                    
                     <div className="grid grid-cols-5 gap-2">
                       {customFrequencySlots.map((freq, idx) => {
                         const solfeggio = SOLFEGGIO_PRESETS.find(s => s.freq === freq);
+                        const colors = [
+                          "border-red-500/50", "border-orange-500/50", "border-amber-500/50", "border-yellow-500/50", "border-lime-500/50",
+                          "border-green-500/50", "border-emerald-500/50", "border-cyan-500/50", "border-blue-500/50", "border-purple-500/50"
+                        ];
                         return (
-                          <div key={idx} className="flex flex-col items-center" data-testid={`slot-${idx}`}>
+                          <div key={idx} className={`flex flex-col items-center p-1.5 rounded-lg border ${colors[idx]} bg-white/5`} data-testid={`slot-${idx}`}>
                             <div className="text-[10px] text-muted-foreground mb-1">#{idx + 1}</div>
                             <input
                               type="number"
@@ -1087,12 +1194,24 @@ export default function ConsolePage() {
                               max={1000}
                               value={freq}
                               onChange={(e) => updateFrequencySlot(idx, parseInt(e.target.value) || 60)}
-                              className="w-full h-8 text-center text-xs bg-zinc-900 border border-white/20 rounded-md text-white focus:border-primary focus:outline-none"
+                              className="w-full py-1 text-center text-xs bg-zinc-900 border border-white/20 rounded text-white focus:border-primary focus:outline-none"
                               data-testid={`input-freq-${idx}`}
                             />
                             {solfeggio && (
-                              <div className="text-[9px] text-accent mt-0.5">{solfeggio.name}</div>
+                              <div className="text-[8px] text-accent mt-0.5 truncate w-full text-center">{solfeggio.name}</div>
                             )}
+                            <div className="flex items-center gap-0.5 mt-1">
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                value={slotDurations[idx]}
+                                onChange={(e) => updateSlotDuration(idx, parseInt(e.target.value) || 0)}
+                                className="w-10 py-0.5 text-center text-[10px] bg-zinc-800 border border-white/10 rounded text-white focus:border-primary focus:outline-none"
+                                data-testid={`input-duration-${idx}`}
+                              />
+                              <span className="text-[9px] text-muted-foreground">%</span>
+                            </div>
                           </div>
                         );
                       })}
