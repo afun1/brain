@@ -43,6 +43,9 @@ const SPEED_OPTIONS = [
   { value: 5, label: "5x" },
   { value: 7.5, label: "7.5x" },
   { value: 10, label: "10x" },
+  { value: 12, label: "12x" },
+  { value: 15, label: "15x" },
+  { value: 16, label: "16x (Max)" },
 ];
 
 export function TTSLearningPlayer() {
