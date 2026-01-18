@@ -1,15 +1,26 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 import { 
   Mic, Play, Pause, Square, Volume2, 
-  Upload, ChevronDown, ChevronUp, Loader2, BookOpen
+  Upload, ChevronDown, ChevronUp, Loader2, BookOpen, 
+  FileText, X, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+
+interface BookChunk {
+  index: number;
+  title: string;
+  text: string;
+  wordCount: number;
+  estimatedMinutes: number;
+}
 
 const VOICE_OPTIONS = [
   { value: "alloy", label: "Alloy", description: "Neutral" },
@@ -47,8 +58,16 @@ export function TTSLearningPlayer() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isAudioReady, setIsAudioReady] = useState(false);
+  
+  // Book mode state
+  const [bookMode, setBookMode] = useState(false);
+  const [bookName, setBookName] = useState<string | null>(null);
+  const [bookChunks, setBookChunks] = useState<BookChunk[]>([]);
+  const [selectedChunkIndex, setSelectedChunkIndex] = useState(0);
+  
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const bookFileInputRef = useRef<HTMLInputElement | null>(null);
   const { toast } = useToast();
 
   const splitTextIntoChunks = useCallback((inputText: string, maxLength: number = 3500): string[] => {
@@ -82,6 +101,101 @@ export function TTSLearningPlayer() {
       }
     };
   }, []);
+
+  // Split book into chunks by word count (default ~5000 words per chunk = ~33 min audio)
+  const splitBookIntoChunks = useCallback((bookText: string, wordsPerChunk: number = 5000): BookChunk[] => {
+    const words = bookText.trim().split(/\s+/);
+    const totalWords = words.length;
+    const numChunks = Math.ceil(totalWords / wordsPerChunk);
+    const chunks: BookChunk[] = [];
+
+    for (let i = 0; i < numChunks; i++) {
+      const startWord = i * wordsPerChunk;
+      const endWord = Math.min((i + 1) * wordsPerChunk, totalWords);
+      const chunkWords = words.slice(startWord, endWord);
+      const chunkText = chunkWords.join(" ");
+      const chunkWordCount = chunkWords.length;
+
+      chunks.push({
+        index: i,
+        title: `Part ${i + 1} of ${numChunks}`,
+        text: chunkText,
+        wordCount: chunkWordCount,
+        estimatedMinutes: Math.ceil(chunkWordCount / 150),
+      });
+    }
+
+    return chunks;
+  }, []);
+
+  const handleBookUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      const wordCount = content.trim().split(/\s+/).length;
+      
+      if (wordCount < 100) {
+        toast({ title: "File too short", description: "Please upload a file with at least 100 words", variant: "destructive" });
+        return;
+      }
+
+      const chunks = splitBookIntoChunks(content);
+      setBookName(file.name);
+      setBookChunks(chunks);
+      setSelectedChunkIndex(0);
+      setBookMode(true);
+      setText(chunks[0].text);
+      
+      // Clear any existing audio state from previous book
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+        setAudioUrl(null);
+      }
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setDuration(0);
+      setIsAudioReady(false);
+      
+      toast({ 
+        title: `Book loaded: ${file.name}`, 
+        description: `${wordCount.toLocaleString()} words split into ${chunks.length} parts`
+      });
+    };
+    reader.readAsText(file);
+    
+    // Reset input so same file can be re-selected
+    if (event.target) event.target.value = "";
+  }, [splitBookIntoChunks, toast, audioUrl]);
+
+  const handleSelectChunk = useCallback((index: number) => {
+    if (index >= 0 && index < bookChunks.length) {
+      setSelectedChunkIndex(index);
+      setText(bookChunks[index].text);
+      // Reset audio when switching chunks
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+        setAudioUrl(null);
+      }
+      setCurrentTime(0);
+      setDuration(0);
+      setIsPlaying(false);
+    }
+  }, [bookChunks, audioUrl]);
+
+  const handleClearBook = useCallback(() => {
+    setBookMode(false);
+    setBookName(null);
+    setBookChunks([]);
+    setSelectedChunkIndex(0);
+    setText("");
+    if (audioUrl) {
+      URL.revokeObjectURL(audioUrl);
+      setAudioUrl(null);
+    }
+  }, [audioUrl]);
 
   const handleConvert = useCallback(async () => {
     if (!text.trim()) {
@@ -271,29 +385,132 @@ export function TTSLearningPlayer() {
       
       <CollapsibleContent className="mt-3 space-y-3">
         <div className="glass-panel rounded-xl p-3 space-y-3">
+          {/* Header with mode toggle and upload */}
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[10px] text-muted-foreground">
-              Paste text from books or articles to convert to audio for accelerated learning
+            <p className="text-[10px] text-muted-foreground flex-1">
+              {bookMode 
+                ? "Upload a book and navigate through chapters" 
+                : "Paste text or upload a whole book for accelerated learning"}
             </p>
-            <label className="cursor-pointer">
-              <input 
-                type="file" 
-                accept=".txt,.md" 
-                className="hidden" 
-                onChange={handleFileUpload}
-                data-testid="input-file-upload"
-              />
-              <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
-                <span><Upload className="w-3 h-3" /></span>
-              </Button>
-            </label>
+            <div className="flex items-center gap-1">
+              {/* Paste/short text upload */}
+              {!bookMode && (
+                <label className="cursor-pointer">
+                  <input 
+                    type="file" 
+                    accept=".txt,.md" 
+                    className="hidden" 
+                    onChange={handleFileUpload}
+                    data-testid="input-file-upload"
+                  />
+                  <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
+                    <span><Upload className="w-3 h-3" /></span>
+                  </Button>
+                </label>
+              )}
+              {/* Book upload */}
+              <label className="cursor-pointer">
+                <input 
+                  ref={bookFileInputRef}
+                  type="file" 
+                  accept=".txt,.md" 
+                  className="hidden" 
+                  onChange={handleBookUpload}
+                  data-testid="input-book-upload"
+                />
+                <Button 
+                  variant={bookMode ? "secondary" : "ghost"} 
+                  size="sm" 
+                  className="h-7 text-[10px] gap-1" 
+                  asChild
+                >
+                  <span>
+                    <FileText className="w-3 h-3" />
+                    {bookMode ? "Change Book" : "Load Book"}
+                  </span>
+                </Button>
+              </label>
+            </div>
           </div>
 
+          {/* Book mode: Show book info and chapter navigation */}
+          {bookMode && bookChunks.length > 0 && (
+            <div className="space-y-2 p-2 rounded-lg bg-primary/5 border border-primary/20">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <BookOpen className="w-4 h-4 text-primary shrink-0" />
+                  <span className="text-xs font-medium truncate">{bookName}</span>
+                  <Badge variant="outline" className="text-[9px] shrink-0">
+                    {bookChunks.reduce((sum, c) => sum + c.wordCount, 0).toLocaleString()} words
+                  </Badge>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6 shrink-0" 
+                  onClick={handleClearBook}
+                  data-testid="button-clear-book"
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+              
+              {/* Chunk navigation */}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  disabled={selectedChunkIndex === 0}
+                  onClick={() => handleSelectChunk(selectedChunkIndex - 1)}
+                  data-testid="button-prev-chunk"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                
+                <Select 
+                  value={selectedChunkIndex.toString()} 
+                  onValueChange={(v) => handleSelectChunk(parseInt(v))}
+                >
+                  <SelectTrigger className="h-7 text-xs flex-1" data-testid="select-chunk">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <ScrollArea className="h-[200px]">
+                      {bookChunks.map((chunk) => (
+                        <SelectItem key={chunk.index} value={chunk.index.toString()}>
+                          {chunk.title} ({chunk.wordCount.toLocaleString()} words, ~{chunk.estimatedMinutes} min)
+                        </SelectItem>
+                      ))}
+                    </ScrollArea>
+                  </SelectContent>
+                </Select>
+                
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  disabled={selectedChunkIndex === bookChunks.length - 1}
+                  onClick={() => handleSelectChunk(selectedChunkIndex + 1)}
+                  data-testid="button-next-chunk"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+              
+              <p className="text-[10px] text-muted-foreground text-center">
+                Part {selectedChunkIndex + 1} of {bookChunks.length} • {bookChunks[selectedChunkIndex]?.wordCount.toLocaleString()} words • ~{bookChunks[selectedChunkIndex]?.estimatedMinutes} min audio
+              </p>
+            </div>
+          )}
+
+          {/* Text area - read-only in book mode, editable otherwise */}
           <Textarea
-            placeholder="Paste your text content here..."
+            placeholder={bookMode ? "Select a book chapter above..." : "Paste your text content here..."}
             value={text}
-            onChange={(e) => setText(e.target.value)}
-            className="min-h-[80px] text-xs resize-none bg-background/50"
+            onChange={(e) => !bookMode && setText(e.target.value)}
+            readOnly={bookMode}
+            className={`min-h-[80px] text-xs resize-none bg-background/50 ${bookMode ? "cursor-default" : ""}`}
             data-testid="textarea-tts-content"
           />
 
