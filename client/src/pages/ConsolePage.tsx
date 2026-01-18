@@ -10,8 +10,9 @@ import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Play, Pause, Volume2, Sliders, Headphones, 
-  ArrowLeftRight, Moon, Brain, Timer, Sun, Zap
+  ArrowLeftRight, Moon, Brain, Timer, Sun, Zap, HelpCircle
 } from "lucide-react";
+import { Link } from "wouter";
 import { AnimatePresence, motion } from "framer-motion";
 import type { SleepStage } from "@shared/schema";
 
@@ -349,9 +350,17 @@ export default function ConsolePage() {
     <div className="relative min-h-screen bg-background overflow-hidden flex flex-col">
       <WaveVisualizer isPlaying={isPlaying} beatFrequency={beatFreq} />
 
-      <header className="relative z-10 flex items-center justify-center gap-3 p-4 border-b border-white/10">
-        <Moon className="w-5 h-5 text-primary" />
-        <span className="text-sm tracking-widest uppercase font-semibold text-primary/80" data-testid="text-header-title">Binaural Sleep Console</span>
+      <header className="relative z-10 flex items-center justify-between p-4 border-b border-white/10">
+        <div className="w-10" />
+        <div className="flex items-center gap-3">
+          <Moon className="w-5 h-5 text-primary" />
+          <span className="text-sm tracking-widest uppercase font-semibold text-primary/80" data-testid="text-header-title">Binaural Sleep Console</span>
+        </div>
+        <Link href="/features">
+          <Button variant="ghost" size="icon" data-testid="button-features-help">
+            <HelpCircle className="w-5 h-5" />
+          </Button>
+        </Link>
       </header>
 
       <main className="flex-1 relative z-10 flex flex-col px-4 py-4 pb-48 overflow-y-auto">
