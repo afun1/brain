@@ -5,6 +5,7 @@ import { useAudioEngine } from "@/hooks/use-audio-engine";
 import { WaveVisualizer } from "@/components/WaveVisualizer";
 import { AudioFilePlayer } from "@/components/AudioFilePlayer";
 import { StereoConfusionPlayer } from "@/components/StereoConfusionPlayer";
+import { SleepProgressChart } from "@/components/SleepProgressChart";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -884,16 +885,12 @@ export default function ConsolePage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span data-testid="text-elapsed-time">{formatTime(programAudio.elapsedTime)}</span>
-                        <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden" data-testid="progress-bar">
-                          <div 
-                            className="h-full bg-primary transition-all"
-                            style={{ width: `${programAudio.totalDuration > 0 ? (programAudio.elapsedTime / programAudio.totalDuration) * 100 : 0}%` }}
-                          />
-                        </div>
-                        <span data-testid="text-total-time">{formatTime(programAudio.totalDuration)}</span>
-                      </div>
+                      <SleepProgressChart
+                        stages={selectedProgram.stages as any}
+                        elapsedTime={programAudio.elapsedTime}
+                        currentBeat={programAudio.currentBeat}
+                        currentStageName={getCurrentStageName()}
+                      />
 
                       <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground/60 font-mono">
                         <span data-testid="text-program-beat">{Math.round(programAudio.currentBeat * 10) / 10} Hz Beat</span>
