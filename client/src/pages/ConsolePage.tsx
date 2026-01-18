@@ -106,12 +106,13 @@ export default function ConsolePage() {
   
   // String state for frequency inputs to allow free typing
   const [frequencyInputs, setFrequencyInputs] = useState<string[]>(() => 
-    DEFAULT_CUSTOM_FREQUENCIES.map(f => f.toString())
+    DEFAULT_CUSTOM_FREQUENCIES.map(f => f === 0 ? '' : f.toString())
   );
   
   // Sync frequency inputs when customFrequencySlots changes (e.g., from localStorage on mount)
+  // Show blank for 0 values to make typing easier
   useEffect(() => {
-    setFrequencyInputs(customFrequencySlots.map(f => f.toString()));
+    setFrequencyInputs(customFrequencySlots.map(f => f === 0 ? '' : f.toString()));
   }, [customFrequencySlots]);
   
   const [slotDurations, setSlotDurations] = useState<number[]>(() => {
@@ -1246,10 +1247,9 @@ export default function ConsolePage() {
                             )}
                             <div className="flex items-center gap-0.5 mt-1">
                               <input
-                                type="number"
-                                min={0}
-                                max={480}
-                                value={slotDurations[idx]}
+                                type="text"
+                                inputMode="numeric"
+                                value={slotDurations[idx] === 0 ? '' : slotDurations[idx]}
                                 onChange={(e) => updateSlotDuration(idx, parseInt(e.target.value) || 0)}
                                 className="w-12 py-0.5 text-center text-[10px] bg-zinc-800 border border-white/10 rounded text-white focus:border-primary focus:outline-none"
                                 data-testid={`input-duration-${idx}`}
