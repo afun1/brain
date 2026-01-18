@@ -35,3 +35,5 @@ export type InsertProgram = z.infer<typeof insertProgramSchema>;
 export type InsertSleepStage = z.infer<typeof insertSleepStageSchema>;
 
 export type ProgramWithStages = Program & { stages: SleepStage[] };
+
+export * from "./models/chat";
