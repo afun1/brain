@@ -41,11 +41,10 @@ export function SleepProgressChart({
     let accumulatedTime = 0;
     
     stages.forEach((stage) => {
-      const startLevel = beatToStageLevel(stage.startBeatFreq);
       const endLevel = beatToStageLevel(stage.endBeatFreq);
-      const avgBeat = (stage.startBeatFreq + stage.endBeatFreq) / 2;
-      const level = beatToStageLevel(avgBeat);
-      const isREM = level === 1;
+      const isREM = stage.name.toLowerCase().includes('rem') || 
+                    (stage.endBeatFreq >= 8 && stage.endBeatFreq <= 10 && stage.startBeatFreq < 8);
+      const level = isREM ? 1 : endLevel;
       
       segments.push({
         startTime: accumulatedTime,
