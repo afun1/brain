@@ -2,8 +2,10 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Play, Pause, Square, Upload, BookOpen, Info, Eye } from "lucide-react";
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Play, Pause, Square, Upload, BookOpen, Info, Eye, Zap, BookText, FastForward } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import * as pdfjsLib from "pdfjs-dist";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
@@ -41,6 +43,20 @@ export function PDFReader() {
   const [currentWordIndex, setCurrentWordIndex] = useState(-1);
   const [readSpeed, setReadSpeed] = useState(1.0);
   const [isTTSLoading, setIsTTSLoading] = useState(false);
+  
+  const [readingMode, setReadingMode] = useState<"tts" | "rsvp" | "pageflash">("tts");
+  const [rsvpWPM, setRsvpWPM] = useState(300);
+  const [rsvpChunkSize, setRsvpChunkSize] = useState(1);
+  const [isRsvpRunning, setIsRsvpRunning] = useState(false);
+  const [rsvpCurrentWord, setRsvpCurrentWord] = useState("");
+  const [rsvpWordIndex, setRsvpWordIndex] = useState(0);
+  
+  const [pageFlashSpeed, setPageFlashSpeed] = useState(1.0);
+  const [isPageFlashing, setIsPageFlashing] = useState(false);
+  const [pageFlashIndex, setPageFlashIndex] = useState(0);
+  
+  const rsvpIntervalRef = useRef<number | null>(null);
+  const pageFlashIntervalRef = useRef<number | null>(null);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -354,6 +370,105 @@ export function PDFReader() {
     }
   }, [isReading, isPaused, pauseReading, resumeReading, startReading]);
 
+  const getAllWords = useCallback(() => {
+    return allPagesText.join(" ").split(/\s+/).filter(w => w.length > 0);
+  }, [allPagesText]);
+
+  const startRsvp = useCallback(() => {
+    const words = getAllWords();
+    if (words.length === 0) return;
+    
+    setIsRsvpRunning(true);
+    setRsvpWordIndex(0);
+    
+    const msPerWord = 60000 / rsvpWPM;
+    
+    let index = 0;
+    const showNextChunk = () => {
+      if (index >= words.length) {
+        setIsRsvpRunning(false);
+        setRsvpCurrentWord("");
+        if (rsvpIntervalRef.current) {
+          clearInterval(rsvpIntervalRef.current);
+          rsvpIntervalRef.current = null;
+        }
+        return;
+      }
+      
+      const chunk = words.slice(index, index + rsvpChunkSize).join(" ");
+      setRsvpCurrentWord(chunk);
+      setRsvpWordIndex(index);
+      
+      let wordsBefore = 0;
+      for (let p = 0; p < allPagesText.length; p++) {
+        const pageWords = allPagesText[p].split(/\s+/).filter(w => w.length > 0);
+        if (wordsBefore + pageWords.length > index) {
+          if (p + 1 !== currentPage) {
+            setCurrentPage(p + 1);
+          }
+          break;
+        }
+        wordsBefore += pageWords.length;
+      }
+      
+      index += rsvpChunkSize;
+    };
+    
+    showNextChunk();
+    rsvpIntervalRef.current = window.setInterval(showNextChunk, msPerWord * rsvpChunkSize);
+  }, [getAllWords, rsvpWPM, rsvpChunkSize, allPagesText, currentPage]);
+
+  const stopRsvp = useCallback(() => {
+    if (rsvpIntervalRef.current) {
+      clearInterval(rsvpIntervalRef.current);
+      rsvpIntervalRef.current = null;
+    }
+    setIsRsvpRunning(false);
+    setRsvpCurrentWord("");
+    setRsvpWordIndex(0);
+  }, []);
+
+  const startPageFlash = useCallback(() => {
+    if (!pdfDoc || totalPages === 0) return;
+    
+    setIsPageFlashing(true);
+    setPageFlashIndex(1);
+    setCurrentPage(1);
+    
+    const msPerPage = pageFlashSpeed * 1000;
+    let pageIdx = 1;
+    
+    const showNextPage = () => {
+      pageIdx++;
+      if (pageIdx > totalPages) {
+        setIsPageFlashing(false);
+        if (pageFlashIntervalRef.current) {
+          clearInterval(pageFlashIntervalRef.current);
+          pageFlashIntervalRef.current = null;
+        }
+        return;
+      }
+      setPageFlashIndex(pageIdx);
+      setCurrentPage(pageIdx);
+    };
+    
+    pageFlashIntervalRef.current = window.setInterval(showNextPage, msPerPage);
+  }, [pdfDoc, totalPages, pageFlashSpeed]);
+
+  const stopPageFlash = useCallback(() => {
+    if (pageFlashIntervalRef.current) {
+      clearInterval(pageFlashIntervalRef.current);
+      pageFlashIntervalRef.current = null;
+    }
+    setIsPageFlashing(false);
+  }, []);
+
+  const stopAllModes = useCallback(() => {
+    stopReading();
+    stopRsvp();
+    stopPageFlash();
+  }, [stopReading, stopRsvp, stopPageFlash]);
+
   useEffect(() => {
     return () => {
       if (audioRef.current) {
@@ -361,6 +476,8 @@ export function PDFReader() {
         URL.revokeObjectURL(audioRef.current.src);
       }
       cancelAnimationFrame(animationFrameRef.current);
+      if (rsvpIntervalRef.current) clearInterval(rsvpIntervalRef.current);
+      if (pageFlashIntervalRef.current) clearInterval(pageFlashIntervalRef.current);
     };
   }, []);
 
@@ -473,58 +590,240 @@ export function PDFReader() {
         </div>
         
         {pdfDoc && (
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-              <span className="text-xs text-muted-foreground whitespace-nowrap">Speed:</span>
-              <Slider
-                value={[readSpeed]}
-                onValueChange={([v]) => setReadSpeed(v)}
-                min={0.5}
-                max={2}
-                step={0.1}
-                className="flex-1"
-                disabled={isReading}
-                data-testid="slider-read-speed"
-              />
-              <span className="text-xs min-w-[35px]" data-testid="text-read-speed">
-                {readSpeed.toFixed(1)}x
-              </span>
-            </div>
+          <Tabs 
+            value={readingMode} 
+            onValueChange={(v) => { 
+              if (isTTSLoading) return;
+              stopAllModes(); 
+              setReadingMode(v as typeof readingMode); 
+            }} 
+            className="w-full"
+          >
+            <TabsList className="grid w-full grid-cols-3 mb-3">
+              <TabsTrigger value="tts" className="text-xs gap-1" data-testid="tab-tts">
+                <BookText className="w-3 h-3" />
+                TTS Read
+              </TabsTrigger>
+              <TabsTrigger value="rsvp" className="text-xs gap-1" data-testid="tab-rsvp">
+                <Zap className="w-3 h-3" />
+                RSVP
+              </TabsTrigger>
+              <TabsTrigger value="pageflash" className="text-xs gap-1" data-testid="tab-pageflash">
+                <FastForward className="w-3 h-3" />
+                Page Flash
+              </TabsTrigger>
+            </TabsList>
             
-            <div className="flex items-center gap-1">
-              <Button
-                size="sm"
-                variant={isReading && !isPaused ? "secondary" : "default"}
-                onClick={toggleReading}
-                disabled={isTTSLoading || !pageText}
-                data-testid="button-toggle-reading"
-              >
-                {isTTSLoading ? (
-                  "Loading..."
-                ) : isReading && !isPaused ? (
-                  <>
-                    <Pause className="w-4 h-4 mr-1" />
-                    Pause
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-4 h-4 mr-1" />
-                    {isPaused ? "Resume" : "Read Aloud"}
-                  </>
-                )}
-              </Button>
-              {isReading && (
+            <TabsContent value="tts" className="mt-0">
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">Speed:</span>
+                  <Slider
+                    value={[readSpeed]}
+                    onValueChange={([v]) => setReadSpeed(v)}
+                    min={0.5}
+                    max={5}
+                    step={0.1}
+                    className="flex-1"
+                    disabled={isReading}
+                    data-testid="slider-read-speed"
+                  />
+                  <span className="text-xs min-w-[35px]" data-testid="text-read-speed">
+                    {readSpeed.toFixed(1)}x
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-1">
+                  <Button
+                    size="sm"
+                    variant={isReading && !isPaused ? "secondary" : "default"}
+                    onClick={toggleReading}
+                    disabled={isTTSLoading || !pageText}
+                    data-testid="button-toggle-reading"
+                  >
+                    {isTTSLoading ? (
+                      "Loading..."
+                    ) : isReading && !isPaused ? (
+                      <>
+                        <Pause className="w-4 h-4 mr-1" />
+                        Pause
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-4 h-4 mr-1" />
+                        {isPaused ? "Resume" : "Read Aloud"}
+                      </>
+                    )}
+                  </Button>
+                  {isReading && (
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={stopReading}
+                      data-testid="button-stop-reading"
+                    >
+                      <Square className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Reads aloud with word highlighting. Great for dyslexia support at 1-5x speed.
+              </p>
+            </TabsContent>
+            
+            <TabsContent value="rsvp" className="mt-0 space-y-3">
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2 flex-1 min-w-[180px]">
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">WPM:</span>
+                  <Slider
+                    value={[rsvpWPM]}
+                    onValueChange={([v]) => setRsvpWPM(v)}
+                    min={100}
+                    max={3000}
+                    step={50}
+                    className="flex-1"
+                    disabled={isRsvpRunning}
+                    data-testid="slider-rsvp-wpm"
+                  />
+                  <span className="text-xs min-w-[50px]" data-testid="text-rsvp-wpm">
+                    {rsvpWPM}
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Chunk:</span>
+                  <Select
+                    value={String(rsvpChunkSize)}
+                    onValueChange={(v) => setRsvpChunkSize(parseInt(v))}
+                    disabled={isRsvpRunning}
+                  >
+                    <SelectTrigger className="w-[90px] h-8 text-xs" data-testid="select-rsvp-chunk">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1" data-testid="option-chunk-1">1 word</SelectItem>
+                      <SelectItem value="2" data-testid="option-chunk-2">2 words</SelectItem>
+                      <SelectItem value="3" data-testid="option-chunk-3">3 words</SelectItem>
+                      <SelectItem value="5" data-testid="option-chunk-5">5 words</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex gap-1">
+                  {[300, 500, 1000, 2000, 3000].map(wpm => (
+                    <Button
+                      key={wpm}
+                      size="sm"
+                      variant={rsvpWPM === wpm ? "default" : "outline"}
+                      onClick={() => setRsvpWPM(wpm)}
+                      disabled={isRsvpRunning}
+                      className="text-xs px-2"
+                      data-testid={`button-wpm-${wpm}`}
+                    >
+                      {wpm >= 1000 ? `${wpm/1000}k` : wpm}
+                    </Button>
+                  ))}
+                </div>
+                
+                <div className="flex items-center gap-1 ml-auto">
+                  <Button
+                    size="sm"
+                    variant={isRsvpRunning ? "secondary" : "default"}
+                    onClick={isRsvpRunning ? stopRsvp : startRsvp}
+                    disabled={!pageText}
+                    data-testid="button-toggle-rsvp"
+                  >
+                    {isRsvpRunning ? (
+                      <>
+                        <Square className="w-4 h-4 mr-1" />
+                        Stop
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-4 h-4 mr-1" />
+                        Start RSVP
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+              
+              <p className="text-xs text-muted-foreground">
+                Rapid Serial Visual Presentation. Words flash center-screen at high speeds (100-3000 WPM).
+              </p>
+            </TabsContent>
+            
+            <TabsContent value="pageflash" className="mt-0 space-y-3">
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">Sec/page:</span>
+                  <Slider
+                    value={[pageFlashSpeed]}
+                    onValueChange={([v]) => setPageFlashSpeed(v)}
+                    min={0.1}
+                    max={3}
+                    step={0.1}
+                    className="flex-1"
+                    disabled={isPageFlashing}
+                    data-testid="slider-page-flash"
+                  />
+                  <span className="text-xs min-w-[40px]" data-testid="text-page-flash-speed">
+                    {pageFlashSpeed.toFixed(1)}s
+                  </span>
+                </div>
+                
+                <div className="flex gap-1">
+                  {[0.5, 1, 1.5, 2].map(sec => (
+                    <Button
+                      key={sec}
+                      size="sm"
+                      variant={pageFlashSpeed === sec ? "default" : "outline"}
+                      onClick={() => setPageFlashSpeed(sec)}
+                      disabled={isPageFlashing}
+                      className="text-xs px-2"
+                      data-testid={`button-pageflash-${sec}`}
+                    >
+                      {sec}s
+                    </Button>
+                  ))}
+                </div>
+                
                 <Button
-                  size="icon"
-                  variant="outline"
-                  onClick={stopReading}
-                  data-testid="button-stop-reading"
+                  size="sm"
+                  variant={isPageFlashing ? "secondary" : "default"}
+                  onClick={isPageFlashing ? stopPageFlash : startPageFlash}
+                  data-testid="button-toggle-pageflash"
                 >
-                  <Square className="w-4 h-4" />
+                  {isPageFlashing ? (
+                    <>
+                      <Square className="w-4 h-4 mr-1" />
+                      Stop
+                    </>
+                  ) : (
+                    <>
+                      <FastForward className="w-4 h-4 mr-1" />
+                      Start Flash
+                    </>
+                  )}
                 </Button>
-              )}
-            </div>
-          </div>
+              </div>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <p className="text-xs text-purple-400 bg-purple-400/10 px-2 py-1 rounded inline-flex items-center gap-1 cursor-help">
+                    <Info className="w-3 h-3" />
+                    PhotoReading: Use soft eyes, relax into Alpha/Theta state
+                  </p>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>For PhotoReading/subliminal absorption: Relax your eyes (peripheral vision), set binaural beats to Alpha (10 Hz) or Theta (6 Hz), and let pages flash without conscious reading. Your subconscious absorbs the content.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TabsContent>
+          </Tabs>
         )}
         
         <div
@@ -556,9 +855,9 @@ export function PDFReader() {
                   height: canvasRef.current?.height || 0,
                 }}
               >
-                {highlightedWord && (
+                {highlightedWord && readingMode === "tts" && (
                   <div
-                    className="absolute bg-yellow-400/60 rounded-sm transition-all duration-75"
+                    className="absolute bg-yellow-400/60 rounded-sm"
                     style={{
                       left: highlightedWord.x,
                       top: highlightedWord.y,
@@ -569,6 +868,35 @@ export function PDFReader() {
                   />
                 )}
               </div>
+              
+              {isRsvpRunning && rsvpCurrentWord && (
+                <div
+                  className="absolute inset-0 flex items-center justify-center bg-black/80 pointer-events-none"
+                  data-testid="rsvp-overlay"
+                >
+                  <div className="text-center">
+                    <div
+                      className="text-white font-bold px-4"
+                      style={{ fontSize: `${Math.max(24, 60 - rsvpChunkSize * 8)}px` }}
+                      data-testid="rsvp-word"
+                    >
+                      {rsvpCurrentWord}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-2" data-testid="rsvp-progress">
+                      {rsvpWordIndex + 1} / {getAllWords().length} words • {rsvpWPM} WPM
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {isPageFlashing && (
+                <div
+                  className="absolute top-2 left-2 bg-purple-500/80 text-white text-xs px-2 py-1 rounded"
+                  data-testid="pageflash-indicator"
+                >
+                  Page {pageFlashIndex}/{totalPages} • {pageFlashSpeed}s/page
+                </div>
+              )}
             </div>
           )}
           
