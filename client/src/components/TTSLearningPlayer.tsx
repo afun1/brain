@@ -67,6 +67,7 @@ export function TTSLearningPlayer() {
   const [bookName, setBookName] = useState<string | null>(null);
   const [bookChunks, setBookChunks] = useState<BookChunk[]>([]);
   const [selectedChunkIndex, setSelectedChunkIndex] = useState(0);
+  const [isDragOver, setIsDragOver] = useState(false);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -130,6 +131,65 @@ export function TTSLearningPlayer() {
 
     return chunks;
   }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    
+    if (!file.name.endsWith('.txt') && !file.name.endsWith('.md')) {
+      toast({ title: "Invalid file type", description: "Please drop a .txt or .md file", variant: "destructive" });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const content = ev.target?.result as string;
+      const wc = content.trim().split(/\s+/).length;
+      
+      if (wc < 100) {
+        toast({ title: "File too short", description: "Please upload a file with at least 100 words", variant: "destructive" });
+        return;
+      }
+
+      const chunks = splitBookIntoChunks(content);
+      setBookName(file.name);
+      setBookChunks(chunks);
+      setSelectedChunkIndex(0);
+      setBookMode(true);
+      setText(chunks[0].text);
+      
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+        setAudioUrl(null);
+      }
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setDuration(0);
+      setIsAudioReady(false);
+      
+      toast({ 
+        title: `Book loaded: ${file.name}`, 
+        description: `${wc.toLocaleString()} words split into ${chunks.length} parts`
+      });
+    };
+    reader.readAsText(file);
+  }, [toast, audioUrl, splitBookIntoChunks]);
 
   const handleBookUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -387,13 +447,21 @@ export function TTSLearningPlayer() {
       </CollapsibleTrigger>
       
       <CollapsibleContent className="mt-3 space-y-3">
-        <div className="glass-panel rounded-xl p-3 space-y-3">
+        <div 
+          className={`glass-panel rounded-xl p-3 space-y-3 transition-colors ${isDragOver ? 'ring-2 ring-primary bg-primary/10' : ''}`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          data-testid="dropzone-tts-book"
+        >
           {/* Header with mode toggle and upload */}
           <div className="flex items-center justify-between gap-2">
             <p className="text-[10px] text-muted-foreground flex-1">
-              {bookMode 
-                ? "Upload a book and navigate through chapters" 
-                : "Paste text or upload a whole book for accelerated learning"}
+              {isDragOver 
+                ? "Drop your book file here..."
+                : bookMode 
+                  ? "Upload a book and navigate through chapters" 
+                  : "Paste text, drag & drop, or click to upload a book"}
             </p>
             <div className="flex items-center gap-1">
               {/* Paste/short text upload */}

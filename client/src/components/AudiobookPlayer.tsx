@@ -45,12 +45,56 @@ export function AudiobookPlayer() {
   const [volume, setVolume] = useState(80);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [isDragOver, setIsDragOver] = useState(false);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const tracksRef = useRef(tracks);
   const currentIndexRef = useRef(currentIndex);
   const { toast } = useToast();
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    
+    const files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+
+    const newTracks: AudioTrack[] = [];
+    
+    Array.from(files).forEach((file) => {
+      if (file.type.startsWith("audio/")) {
+        const url = URL.createObjectURL(file);
+        newTracks.push({
+          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          name: file.name.replace(/\.[^/.]+$/, ""),
+          file,
+          url,
+          duration: 0,
+        });
+      }
+    });
+
+    if (newTracks.length > 0) {
+      setTracks(prev => [...prev, ...newTracks]);
+      toast({ title: `Added ${newTracks.length} audiobook file(s)` });
+    } else {
+      toast({ title: "No audio files found", description: "Please drop audio files (MP3, M4A, etc.)", variant: "destructive" });
+    }
+  }, [toast]);
 
   // Keep refs in sync
   useEffect(() => {
@@ -249,10 +293,18 @@ export function AudiobookPlayer() {
       </CollapsibleTrigger>
       
       <CollapsibleContent className="mt-3 space-y-3">
-        <div className="glass-panel rounded-xl p-3 space-y-3">
+        <div 
+          className={`glass-panel rounded-xl p-3 space-y-3 transition-colors ${isDragOver ? 'ring-2 ring-primary bg-primary/10' : ''}`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          data-testid="dropzone-audiobook"
+        >
           <div className="flex items-center justify-between gap-2">
             <p className="text-[10px] text-muted-foreground">
-              Load audiobooks or language courses for high-speed subconscious learning
+              {isDragOver 
+                ? "Drop audio files here..."
+                : "Drag & drop or click to add audiobooks for high-speed learning"}
             </p>
             <label className="cursor-pointer">
               <input 
@@ -435,12 +487,12 @@ export function AudiobookPlayer() {
 
           {tracks.length === 0 && (
             <div 
-              className="border-2 border-dashed rounded-lg p-4 text-center text-xs text-muted-foreground cursor-pointer hover:border-primary/50 transition-colors"
+              className={`border-2 border-dashed rounded-lg p-4 text-center text-xs text-muted-foreground cursor-pointer transition-colors ${isDragOver ? 'border-primary bg-primary/10' : 'hover:border-primary/50'}`}
               onClick={() => fileInputRef.current?.click()}
-              data-testid="dropzone-audiobook"
+              data-testid="dropzone-audiobook-empty"
             >
               <Headphones className="w-6 h-6 mx-auto mb-2 opacity-50" />
-              <p>Click to add audiobooks or language courses</p>
+              <p>{isDragOver ? "Drop files here..." : "Drag & drop or click to add audiobooks"}</p>
               <p className="text-[10px] mt-1">MP3, M4A, WAV, etc.</p>
             </div>
           )}
