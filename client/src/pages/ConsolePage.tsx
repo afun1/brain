@@ -8,6 +8,7 @@ import { StereoConfusionPlayer } from "@/components/StereoConfusionPlayer";
 import { SleepProgressChart, MiniHypnogram } from "@/components/SleepProgressChart";
 import { TTSLearningPlayer } from "@/components/TTSLearningPlayer";
 import { AudiobookPlayer } from "@/components/AudiobookPlayer";
+import { PDFReader } from "@/components/PDFReader";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -1514,6 +1515,10 @@ export default function ConsolePage() {
                     </div>
                   </motion.div>
                 </AnimatePresence>
+
+                <div className="h-px bg-white/10" />
+
+                <PDFReader />
 
                 <div className="h-px bg-white/10" />
 

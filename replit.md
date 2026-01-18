@@ -59,6 +59,13 @@ The app uses a single-page console with five tabbed modes:
    - Duration options: 10, 15, 20, 30, 45, or 60 minutes
    - Dynamically generated stages based on settings
    - Progress tracking with current stage display
+   - **PDF Reader with Word Highlighting**: 
+     - Load PDF books/documents via drag-drop or file picker
+     - Page navigation and zoom controls
+     - TTS reads aloud with synchronized word highlighting
+     - Adjustable read speed (0.5x-2x) for reading along
+     - Alpha state (10 Hz) recommended for reading with eyes open (research-backed)
+     - Auto-advances pages as reading progresses
    - **Text-to-Speech Learning**: Paste text from books/articles, convert to audio via OpenAI TTS, play at accelerated speeds (0.5x-10x) for enhanced learning during alpha/theta states
 
 3. **Healing Mode** - Deep delta frequencies for cellular repair and recovery
