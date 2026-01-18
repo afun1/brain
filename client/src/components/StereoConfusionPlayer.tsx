@@ -1,11 +1,11 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useStereoPlaylistPlayer, StereoTrack } from "@/hooks/use-stereo-playlist-player";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Play, Pause, Volume2, Upload, X, Headphones,
-  SkipBack, SkipForward, Repeat, Repeat1, ChevronUp, ChevronDown, Trash2
+  SkipBack, SkipForward, Repeat, Repeat1, Trash2, Copy
 } from "lucide-react";
 
 function formatTime(seconds: number): string {
@@ -35,6 +35,7 @@ function ChannelPlaylist({
   volume, onVolumeChange, testIdPrefix, side
 }: ChannelPlaylistProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -42,6 +43,35 @@ function ChannelPlaylist({
       onAddFiles(files);
     }
     e.target.value = "";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const audioFiles = Array.from(files).filter(file => 
+        file.type.startsWith('audio/') || 
+        /\.(mp3|wav|ogg|m4a|flac|aac|wma)$/i.test(file.name)
+      );
+      if (audioFiles.length > 0) {
+        onAddFiles(audioFiles);
+      }
+    }
   };
 
   return (
@@ -68,16 +98,25 @@ function ChannelPlaylist({
         data-testid={`${testIdPrefix}-file-input`}
       />
 
-      <Button
-        variant="outline"
-        size="sm"
+      <div
+        className={`border-2 border-dashed rounded-md p-2 transition-colors cursor-pointer ${
+          isDragOver 
+            ? 'border-primary bg-primary/10' 
+            : 'border-white/20 hover:border-white/40'
+        }`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
-        className="w-full gap-2 text-xs"
-        data-testid={`${testIdPrefix}-upload-btn`}
+        data-testid={`${testIdPrefix}-drop-zone`}
       >
-        <Upload className="w-3 h-3" />
-        {tracks.length === 0 ? 'Add Files' : 'Add More'}
-      </Button>
+        <div className="flex flex-col items-center gap-1 py-1">
+          <Upload className={`w-4 h-4 ${isDragOver ? 'text-primary' : 'text-muted-foreground'}`} />
+          <span className={`text-xs ${isDragOver ? 'text-primary' : 'text-muted-foreground'}`}>
+            {tracks.length === 0 ? 'Drop or click' : 'Add more'}
+          </span>
+        </div>
+      </div>
 
       <ScrollArea className="h-24 rounded-md border border-white/10 bg-black/20">
         <div className="p-1.5 space-y-0.5">
@@ -144,6 +183,8 @@ function ChannelPlaylist({
 
 export function StereoConfusionPlayer() {
   const player = useStereoPlaylistPlayer();
+  const bothFileInputRef = useRef<HTMLInputElement>(null);
+  const [isBothDragOver, setIsBothDragOver] = useState(false);
 
   const loopIcon = player.loopMode === 'track' ? (
     <Repeat1 className="w-4 h-4" />
@@ -155,6 +196,43 @@ export function StereoConfusionPlayer() {
                     player.loopMode === 'playlist' ? 'Loop All' : 'Loop Track';
 
   const hasAnyTracks = player.leftTracks.length > 0 || player.rightTracks.length > 0;
+
+  const handleBothFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      player.addBothFiles(files);
+    }
+    e.target.value = "";
+  };
+
+  const handleBothDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsBothDragOver(true);
+  };
+
+  const handleBothDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsBothDragOver(false);
+  };
+
+  const handleBothDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsBothDragOver(false);
+    
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const audioFiles = Array.from(files).filter(file => 
+        file.type.startsWith('audio/') || 
+        /\.(mp3|wav|ogg|m4a|flac|aac|wma)$/i.test(file.name)
+      );
+      if (audioFiles.length > 0) {
+        player.addBothFiles(audioFiles);
+      }
+    }
+  };
 
   return (
     <div className="glass-panel rounded-xl p-4 space-y-3">
@@ -178,6 +256,36 @@ export function StereoConfusionPlayer() {
 
       <div className="text-xs text-muted-foreground text-center mb-2">
         Play different audio in each ear for subliminal confusion effect
+      </div>
+
+      <input
+        ref={bothFileInputRef}
+        type="file"
+        accept="audio/*"
+        multiple
+        onChange={handleBothFileSelect}
+        className="hidden"
+        data-testid="stereo-both-file-input"
+      />
+
+      <div
+        className={`border-2 border-dashed rounded-md p-3 transition-colors cursor-pointer ${
+          isBothDragOver 
+            ? 'border-green-500 bg-green-500/10' 
+            : 'border-green-500/30 hover:border-green-500/60'
+        }`}
+        onDragOver={handleBothDragOver}
+        onDragLeave={handleBothDragLeave}
+        onDrop={handleBothDrop}
+        onClick={() => bothFileInputRef.current?.click()}
+        data-testid="stereo-both-drop-zone"
+      >
+        <div className="flex items-center justify-center gap-2">
+          <Copy className={`w-4 h-4 ${isBothDragOver ? 'text-green-400' : 'text-green-500/70'}`} />
+          <span className={`text-xs ${isBothDragOver ? 'text-green-400' : 'text-green-500/70'}`}>
+            Drop files to add to BOTH ears
+          </span>
+        </div>
       </div>
 
       <div className="flex gap-3">

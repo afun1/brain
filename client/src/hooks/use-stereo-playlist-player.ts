@@ -268,6 +268,34 @@ export function useStereoPlaylistPlayer() {
     }
   }, [rightTracks.length]);
 
+  const addBothFiles = useCallback((files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    
+    const leftNewTracks: StereoTrack[] = fileArray.map(file => ({
+      id: generateId(),
+      name: file.name.replace(/\.[^/.]+$/, ""),
+      file,
+      objectUrl: URL.createObjectURL(file),
+    }));
+    
+    const rightNewTracks: StereoTrack[] = fileArray.map(file => ({
+      id: generateId(),
+      name: file.name.replace(/\.[^/.]+$/, ""),
+      file,
+      objectUrl: URL.createObjectURL(file),
+    }));
+    
+    setLeftTracks(prev => [...prev, ...leftNewTracks]);
+    setRightTracks(prev => [...prev, ...rightNewTracks]);
+    
+    if (leftTracks.length === 0 && leftNewTracks.length > 0) {
+      setLeftIndex(0);
+    }
+    if (rightTracks.length === 0 && rightNewTracks.length > 0) {
+      setRightIndex(0);
+    }
+  }, [leftTracks.length, rightTracks.length]);
+
   const removeLeftTrack = useCallback((id: string) => {
     setLeftTracks(prev => {
       const trackToRemove = prev.find(t => t.id === id);
@@ -481,6 +509,7 @@ export function useStereoPlaylistPlayer() {
     loopMode,
     addLeftFiles,
     addRightFiles,
+    addBothFiles,
     removeLeftTrack,
     removeRightTrack,
     selectLeftTrack,
