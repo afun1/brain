@@ -1197,10 +1197,10 @@ export default function ConsolePage() {
               <Moon className="w-5 h-5 text-primary cursor-help" />
             </TooltipTrigger>
             <TooltipContent>
-              <p>Binaural Sleep App</p>
+              <p>Binaural Tool App</p>
             </TooltipContent>
           </Tooltip>
-          <span className="text-sm tracking-widest uppercase font-semibold text-primary/80" data-testid="text-header-title">Binaural Sleep Console</span>
+          <span className="text-sm tracking-widest uppercase font-semibold text-primary/80" data-testid="text-header-title">Binaural Tool Console</span>
         </div>
         <Tooltip>
           <TooltipTrigger asChild>
