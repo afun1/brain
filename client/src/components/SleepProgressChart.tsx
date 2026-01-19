@@ -1,11 +1,13 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { SleepStage } from "@shared/schema";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface SleepProgressChartProps {
   stages: SleepStage[];
   elapsedTime: number;
   currentBeat: number;
   currentStageName: string;
+  onSeek?: (time: number) => void;
 }
 
 const SLEEP_STAGES = [
@@ -32,8 +34,13 @@ export function SleepProgressChart({
   stages, 
   elapsedTime, 
   currentBeat,
-  currentStageName 
+  currentStageName,
+  onSeek
 }: SleepProgressChartProps) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [hoverTime, setHoverTime] = useState<number | null>(null);
+  const [hoverX, setHoverX] = useState<number | null>(null);
+  
   const chartData = useMemo(() => {
     if (!stages || stages.length === 0) return { segments: [], totalDuration: 0 };
     
@@ -149,6 +156,65 @@ export function SleepProgressChart({
     return `${mins}m`;
   };
 
+  const formatTimeDetailed = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    if (hours > 0) return `${hours}h ${mins}m`;
+    return `${mins}m ${secs}s`;
+  };
+
+  const getTimeFromMouseEvent = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (!svgRef.current) return null;
+    const svg = svgRef.current;
+    const rect = svg.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const svgWidth = rect.width;
+    const relativeX = (x / svgWidth) * chartWidth;
+    
+    if (relativeX < padding.left || relativeX > chartWidth - padding.right) {
+      return null;
+    }
+    
+    const timeRatio = (relativeX - padding.left) / innerWidth;
+    const time = Math.max(0, Math.min(totalDuration, timeRatio * totalDuration));
+    return { time, svgX: relativeX };
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (!onSeek) return;
+    const result = getTimeFromMouseEvent(e);
+    if (result) {
+      setHoverTime(result.time);
+      setHoverX(result.svgX);
+    } else {
+      setHoverTime(null);
+      setHoverX(null);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setHoverTime(null);
+    setHoverX(null);
+  };
+
+  const handleClick = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (!onSeek) return;
+    const result = getTimeFromMouseEvent(e);
+    if (result) {
+      onSeek(result.time);
+    }
+  };
+
+  const getStageAtTime = (time: number): string => {
+    for (const seg of segments) {
+      if (time >= seg.startTime && time < seg.endTime) {
+        return seg.isREM ? "REM" : getStageName(seg.level);
+      }
+    }
+    return getStageName(segments[segments.length - 1]?.level || 0);
+  };
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-xs">
@@ -170,11 +236,20 @@ export function SleepProgressChart({
       </div>
 
       <div className="relative bg-black/30 rounded-lg p-3 border border-white/10">
+        {onSeek && (
+          <div className="absolute top-1 right-1 text-[10px] text-muted-foreground/60 pointer-events-none">
+            Click to seek
+          </div>
+        )}
         <svg 
+          ref={svgRef}
           viewBox={`0 0 ${chartWidth} ${chartHeight}`} 
-          className="w-full h-36"
+          className={`w-full h-36 ${onSeek ? 'cursor-pointer' : ''}`}
           preserveAspectRatio="xMidYMid meet"
           data-testid="sleep-progress-chart"
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+          onClick={handleClick}
         >
           {SLEEP_STAGES.map((stage) => (
             <line
@@ -262,6 +337,43 @@ export function SleepProgressChart({
           />
 
           {buildREMSegments()}
+
+          {/* Hover indicator */}
+          {onSeek && hoverX !== null && hoverTime !== null && (
+            <>
+              <line
+                x1={hoverX}
+                y1={padding.top}
+                x2={hoverX}
+                y2={padding.top + innerHeight}
+                stroke="rgba(255,255,255,0.5)"
+                strokeWidth="1"
+                strokeDasharray="2,2"
+                pointerEvents="none"
+              />
+              <rect
+                x={hoverX - 35}
+                y={padding.top - 12}
+                width={70}
+                height={16}
+                rx={4}
+                fill="rgba(0,0,0,0.8)"
+                stroke="rgba(255,255,255,0.3)"
+                strokeWidth="0.5"
+                pointerEvents="none"
+              />
+              <text
+                x={hoverX}
+                y={padding.top - 2}
+                textAnchor="middle"
+                fill="white"
+                style={{ fontSize: '9px', fontWeight: 500 }}
+                pointerEvents="none"
+              >
+                {formatTimeDetailed(hoverTime)} • {getStageAtTime(hoverTime)}
+              </text>
+            </>
+          )}
 
           {elapsedTime > 0 && elapsedTime <= totalDuration && (
             <>

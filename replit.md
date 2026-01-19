@@ -121,6 +121,7 @@ The app uses a single-page console with five tabbed modes:
    - Mode switching automatically stops other audio engines to prevent overlap
 
 5. **Sleep Programs** - Pre-built sleep journeys
+   - **Click-to-Seek Hypnogram** - Click anywhere on the sleep chart to jump to that point in the program
    - **Dynamic Sleep Duration** - 5h to 10h options based on circadian rhythm research
      - Each duration maps to optimal sleep cycles (3-6 cycles)
      - All durations end in true REM state (9 Hz) for refreshed wake-up from dreams

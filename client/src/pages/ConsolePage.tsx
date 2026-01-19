@@ -2350,6 +2350,7 @@ export default function ConsolePage() {
                         elapsedTime={programAudio.elapsedTime}
                         currentBeat={programAudio.currentBeat}
                         currentStageName={getCurrentStageName()}
+                        onSeek={(time) => programAudio.seekTo(time)}
                       />
 
                       <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground/60 font-mono">

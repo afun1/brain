@@ -38,6 +38,7 @@ export function useAudioEngine(stages: AudioStage[] = []) {
   const startTimeRef = useRef<number>(0);
   const pauseTimeRef = useRef<number>(0);
   const animationFrameRef = useRef<number>();
+  const seekOffsetRef = useRef<number>(0);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -62,10 +63,13 @@ export function useAudioEngine(stages: AudioStage[] = []) {
     }
   };
 
-  const play = useCallback(() => {
+  const play = useCallback((startOffset: number = 0) => {
     initAudio();
     const ctx = audioContextRef.current;
     if (!ctx) return;
+
+    // Store seek offset for time tracking
+    seekOffsetRef.current = startOffset;
 
     // Create nodes
     const leftOsc = ctx.createOscillator();
@@ -97,7 +101,18 @@ export function useAudioEngine(stages: AudioStage[] = []) {
     
     mergerRef.current = merger;
 
-    // Schedule frequencies based on stages
+    // Calculate starting stage based on startOffset
+    let skipTime = 0;
+    let startingStageIndex = 0;
+    for (let i = 0; i < stages.length; i++) {
+      if (startOffset < skipTime + stages[i].durationSeconds) {
+        startingStageIndex = i;
+        break;
+      }
+      skipTime += stages[i].durationSeconds;
+    }
+
+    // Schedule frequencies based on stages, starting from the offset position
     const now = ctx.currentTime;
     let accumulatedTime = now;
     
@@ -105,21 +120,44 @@ export function useAudioEngine(stages: AudioStage[] = []) {
     // 60 seconds provides smooth but noticeable transition (not jarring, not glacially slow)
     const TRANSITION_TIME = 60; // seconds
     
-    stages.forEach((stage) => {
+    // Track time through stages to handle offset correctly
+    let stageStartTime = 0;
+    
+    stages.forEach((stage, index) => {
       const duration = stage.durationSeconds;
+      
+      // Skip stages that are before the startOffset
+      if (stageStartTime + duration <= startOffset) {
+        stageStartTime += duration;
+        return;
+      }
+      
+      // Calculate how much of this stage to skip if we're starting mid-stage
+      const timeIntoStage = Math.max(0, startOffset - stageStartTime);
+      const remainingDuration = duration - timeIntoStage;
+      
+      if (remainingDuration <= 0) {
+        stageStartTime += duration;
+        return;
+      }
       
       // Use quick transition at start of stage, then hold steady
       // Transition time is capped to 1/3 of stage duration for short stages
-      const transitionDuration = Math.min(TRANSITION_TIME, duration / 3);
+      const transitionDuration = Math.min(TRANSITION_TIME, remainingDuration / 3);
+      
+      // Calculate interpolated starting frequencies if we're mid-stage
+      const stageProgress = timeIntoStage / duration;
+      const startCarrier = stage.startCarrierFreq + (stage.endCarrierFreq - stage.startCarrierFreq) * stageProgress;
+      const startBeat = stage.startBeatFreq + (stage.endBeatFreq - stage.startBeatFreq) * stageProgress;
       
       // Left Ear (Carrier)
-      leftOsc.frequency.setValueAtTime(stage.startCarrierFreq, accumulatedTime);
+      leftOsc.frequency.setValueAtTime(startCarrier, accumulatedTime);
       leftOsc.frequency.linearRampToValueAtTime(stage.endCarrierFreq, accumulatedTime + transitionDuration);
       // Hold at end frequency for remainder of stage
       leftOsc.frequency.setValueAtTime(stage.endCarrierFreq, accumulatedTime + transitionDuration);
       
       // Right Ear (Carrier + Beat)
-      const startRight = stage.startCarrierFreq + stage.startBeatFreq;
+      const startRight = startCarrier + startBeat;
       const endRight = stage.endCarrierFreq + stage.endBeatFreq;
       
       rightOsc.frequency.setValueAtTime(startRight, accumulatedTime);
@@ -127,7 +165,8 @@ export function useAudioEngine(stages: AudioStage[] = []) {
       // Hold at end frequency for remainder of stage
       rightOsc.frequency.setValueAtTime(endRight, accumulatedTime + transitionDuration);
       
-      accumulatedTime += duration;
+      accumulatedTime += remainingDuration;
+      stageStartTime += duration;
     });
 
     // Start oscillators
@@ -150,7 +189,8 @@ export function useAudioEngine(stages: AudioStage[] = []) {
     const updateLoop = () => {
       if (!ctx || !leftOsc || !rightOsc) return;
       
-      const secondsElapsed = (Date.now() - startTimeRef.current) / 1000;
+      // Account for seek offset in elapsed time
+      const secondsElapsed = seekOffsetRef.current + (Date.now() - startTimeRef.current) / 1000;
       setElapsedTime(secondsElapsed);
 
       // Find current stage to report correct frequencies
@@ -245,10 +285,22 @@ export function useAudioEngine(stages: AudioStage[] = []) {
 
   const reset = useCallback(() => {
     stopAudio();
+    seekOffsetRef.current = 0;
     setElapsedTime(0);
     setCurrentCarrier(0);
     setCurrentBeat(0);
   }, [stopAudio]);
+
+  const seekTo = useCallback((time: number) => {
+    const wasPlaying = isPlaying;
+    stopAudio();
+    seekOffsetRef.current = 0;
+    if (wasPlaying || time > 0) {
+      play(time);
+    } else {
+      setElapsedTime(time);
+    }
+  }, [isPlaying, play, stopAudio]);
 
   const setLeftEnabled = useCallback((enabled: boolean) => {
     setLeftEnabledState(enabled);
@@ -278,6 +330,7 @@ export function useAudioEngine(stages: AudioStage[] = []) {
     currentCarrier,
     currentBeat,
     reset,
+    seekTo,
     audioContext: audioContextRef.current,
     leftEnabled,
     setLeftEnabled,
