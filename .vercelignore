@@ -1,6 +1,5 @@
 .local
 node_modules
-.env
 .env.*
 !.env.example
 *.log
@@ -12,5 +11,3 @@ coverage
 .git
 attached_assets
 client/src
-server
-script
