@@ -117,16 +117,7 @@ function ChannelPlaylist({
     e.dataTransfer.setData('text/plain', index.toString());
   }, []);
 
-  const handleTrackDragOver = useCallback((e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (draggedIndex !== null && index !== draggedIndex) {
-      setDragOverIndex(index);
-    }
-  }, [draggedIndex]);
-
-  const handleScrollAreaDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
+  const checkAutoScroll = useCallback((e: React.DragEvent) => {
     const container = scrollContainerRef.current;
     if (!container || draggedIndex === null) return;
 
@@ -141,22 +132,40 @@ function ChannelPlaylist({
 
     if (distFromTop < edgeThreshold && container.scrollTop > 0) {
       const scroll = () => {
-        container.scrollTop -= scrollSpeed;
         if (container.scrollTop > 0) {
+          container.scrollTop -= scrollSpeed;
           autoScrollRef.current = requestAnimationFrame(scroll);
         }
       };
       autoScrollRef.current = requestAnimationFrame(scroll);
-    } else if (distFromBottom < edgeThreshold && container.scrollTop < container.scrollHeight - container.clientHeight) {
-      const scroll = () => {
-        container.scrollTop += scrollSpeed;
-        if (container.scrollTop < container.scrollHeight - container.clientHeight) {
-          autoScrollRef.current = requestAnimationFrame(scroll);
-        }
-      };
-      autoScrollRef.current = requestAnimationFrame(scroll);
+    } else if (distFromBottom < edgeThreshold) {
+      const maxScroll = container.scrollHeight - container.clientHeight;
+      if (container.scrollTop < maxScroll) {
+        const scroll = () => {
+          const currentMax = container.scrollHeight - container.clientHeight;
+          if (container.scrollTop < currentMax) {
+            container.scrollTop += scrollSpeed;
+            autoScrollRef.current = requestAnimationFrame(scroll);
+          }
+        };
+        autoScrollRef.current = requestAnimationFrame(scroll);
+      }
     }
   }, [draggedIndex, stopAutoScroll]);
+
+  const handleTrackDragOver = useCallback((e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (draggedIndex !== null && index !== draggedIndex) {
+      setDragOverIndex(index);
+    }
+    checkAutoScroll(e);
+  }, [draggedIndex, checkAutoScroll]);
+
+  const handleScrollAreaDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    checkAutoScroll(e);
+  }, [checkAutoScroll]);
 
   const handleTrackDragLeave = useCallback(() => {
     setDragOverIndex(null);
