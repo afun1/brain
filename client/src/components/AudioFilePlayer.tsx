@@ -1,12 +1,13 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { usePlaylistAudioPlayer, PlaylistTrack } from "@/hooks/use-playlist-audio-player";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Play, Pause, Volume2, Upload, X, Music, MessageCircle, 
   SkipBack, SkipForward, Repeat, Repeat1, ChevronUp, ChevronDown, Trash2,
-  Download, Shuffle
+  Download, Shuffle, GripHorizontal
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { AudioRecorder } from "./AudioRecorder";
@@ -103,6 +104,68 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const [isDragOver, setIsDragOver] = useState(false);
+  const [selectedTracks, setSelectedTracks] = useState<Set<string>>(new Set());
+  const [listHeight, setListHeight] = useState(128);
+  const resizeRef = useRef<{ startY: number; startHeight: number } | null>(null);
+
+  const toggleTrackSelection = useCallback((trackId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedTracks(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(trackId)) {
+        newSet.delete(trackId);
+      } else {
+        newSet.add(trackId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const selectAllTracks = useCallback(() => {
+    setSelectedTracks(new Set(player.tracks.map(t => t.id)));
+  }, [player.tracks]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedTracks(new Set());
+  }, []);
+
+  const deleteSelected = useCallback(() => {
+    selectedTracks.forEach(id => {
+      player.removeTrack(id);
+    });
+    setSelectedTracks(new Set());
+  }, [selectedTracks, player]);
+
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    resizeRef.current = { startY: e.clientY, startHeight: listHeight };
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      if (resizeRef.current) {
+        const delta = e.clientY - resizeRef.current.startY;
+        const newHeight = Math.max(80, Math.min(400, resizeRef.current.startHeight + delta));
+        setListHeight(newHeight);
+      }
+    };
+    
+    const handleMouseUp = () => {
+      resizeRef.current = null;
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [listHeight]);
+
+  useEffect(() => {
+    const trackIds = new Set(player.tracks.map(t => t.id));
+    setSelectedTracks(prev => {
+      const filtered = new Set(Array.from(prev).filter(id => trackIds.has(id)));
+      if (filtered.size !== prev.size) return filtered;
+      return prev;
+    });
+  }, [player.tracks]);
 
   const handleRecordingSave = (file: File, name: string) => {
     const dataTransfer = new DataTransfer();
@@ -213,15 +276,55 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
           )}
         </div>
         {player.tracks.length > 0 && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={player.clearPlaylist}
-            className="h-7 w-7 text-muted-foreground"
-            data-testid={`${testIdPrefix}-clear-all-btn`}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </Button>
+          <div className="flex items-center gap-1">
+            {selectedTracks.size > 0 ? (
+              <>
+                <span className="text-xs text-muted-foreground mr-1">
+                  {selectedTracks.size} selected
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearSelection}
+                  className="h-7 px-2 text-xs text-muted-foreground"
+                  data-testid={`${testIdPrefix}-clear-selection-btn`}
+                >
+                  Clear
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={deleteSelected}
+                  className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+                  data-testid={`${testIdPrefix}-delete-selected-btn`}
+                >
+                  <Trash2 className="w-3.5 h-3.5 mr-1" />
+                  Delete
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={selectAllTracks}
+                  className="h-7 px-2 text-xs text-muted-foreground"
+                  data-testid={`${testIdPrefix}-select-all-btn`}
+                >
+                  Select All
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={player.clearPlaylist}
+                  className="h-7 w-7 text-muted-foreground"
+                  data-testid={`${testIdPrefix}-clear-all-btn`}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </>
+            )}
+          </div>
         )}
       </div>
 
@@ -302,65 +405,76 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
 
       {player.tracks.length > 0 && (
         <>
-          <ScrollArea className="h-32 rounded-md border border-white/10 bg-black/20">
-            <div className="p-2 space-y-1">
-              {player.tracks.map((track, index) => (
-                <div
-                  key={track.id}
-                  className={`flex items-center gap-2 p-2 rounded-md cursor-pointer transition-colors ${
-                    index === player.currentIndex 
-                      ? 'bg-primary/20 border border-primary/30' 
-                      : 'hover:bg-white/5'
-                  }`}
-                  onClick={() => player.selectTrack(index)}
-                  data-testid={`${testIdPrefix}-track-${index}`}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className={`text-xs truncate ${index === player.currentIndex ? 'text-primary' : 'text-white'}`}>
-                      {track.name}
-                    </div>
-                    {track.duration && (
-                      <div className="text-xs text-muted-foreground">
-                        {formatTime(track.duration)}
+          <div className="relative">
+            <ScrollArea 
+              className="rounded-md border border-white/10 bg-black/20"
+              style={{ height: `${listHeight}px` }}
+            >
+              <div className="p-2 space-y-1">
+                {player.tracks.map((track, index) => (
+                  <div
+                    key={track.id}
+                    className={`flex items-center gap-2 p-2 rounded-md cursor-pointer transition-colors ${
+                      index === player.currentIndex 
+                        ? 'bg-primary/20 border border-primary/30' 
+                        : selectedTracks.has(track.id)
+                        ? 'bg-white/10 border border-white/20'
+                        : 'hover:bg-white/5'
+                    }`}
+                    onClick={() => player.selectTrack(index)}
+                    data-testid={`${testIdPrefix}-track-${index}`}
+                  >
+                    <Checkbox
+                      checked={selectedTracks.has(track.id)}
+                      onClick={(e) => toggleTrackSelection(track.id, e)}
+                      className="shrink-0"
+                      data-testid={`${testIdPrefix}-checkbox-${index}`}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className={`text-xs truncate ${index === player.currentIndex ? 'text-primary' : 'text-white'}`}>
+                        {track.name}
                       </div>
-                    )}
+                      {track.duration && (
+                        <div className="text-xs text-muted-foreground">
+                          {formatTime(track.duration)}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={(e) => { e.stopPropagation(); player.moveTrack(index, index - 1); }}
+                        disabled={index === 0}
+                        data-testid={`${testIdPrefix}-move-up-${index}`}
+                      >
+                        <ChevronUp className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={(e) => { e.stopPropagation(); player.moveTrack(index, index + 1); }}
+                        disabled={index === player.tracks.length - 1}
+                        data-testid={`${testIdPrefix}-move-down-${index}`}
+                      >
+                        <ChevronDown className="w-3 h-3" />
+                      </Button>
+                    </div>
                   </div>
-                  
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={(e) => { e.stopPropagation(); player.moveTrack(index, index - 1); }}
-                      disabled={index === 0}
-                      data-testid={`${testIdPrefix}-move-up-${index}`}
-                    >
-                      <ChevronUp className="w-3 h-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={(e) => { e.stopPropagation(); player.moveTrack(index, index + 1); }}
-                      disabled={index === player.tracks.length - 1}
-                      data-testid={`${testIdPrefix}-move-down-${index}`}
-                    >
-                      <ChevronDown className="w-3 h-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-muted-foreground"
-                      onClick={(e) => { e.stopPropagation(); player.removeTrack(track.id); }}
-                      data-testid={`${testIdPrefix}-remove-${index}`}
-                    >
-                      <X className="w-3 h-3" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
+            </ScrollArea>
+            <div
+              className="absolute bottom-0 left-0 right-0 h-3 flex items-center justify-center cursor-ns-resize hover:bg-white/10 rounded-b-md transition-colors"
+              onMouseDown={handleResizeStart}
+              data-testid={`${testIdPrefix}-resize-handle`}
+            >
+              <GripHorizontal className="w-4 h-4 text-muted-foreground" />
             </div>
-          </ScrollArea>
+          </div>
 
           <div className="space-y-2">
             {player.currentTrack && (

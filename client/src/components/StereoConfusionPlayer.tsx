@@ -1,11 +1,12 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { useStereoPlaylistPlayer, StereoTrack } from "@/hooks/use-stereo-playlist-player";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Play, Pause, Volume2, Upload, X, Headphones,
-  SkipBack, SkipForward, Repeat, Repeat1, Trash2, Copy, Shuffle
+  SkipBack, SkipForward, Repeat, Repeat1, Trash2, Copy, Shuffle, GripHorizontal
 } from "lucide-react";
 
 function formatTime(seconds: number): string {
@@ -22,6 +23,7 @@ interface ChannelPlaylistProps {
   currentIndex: number;
   onAddFiles: (files: FileList | File[]) => void;
   onRemoveTrack: (id: string) => void;
+  onRemoveMultiple: (ids: string[]) => void;
   onSelectTrack: (index: number) => void;
   volume: number;
   onVolumeChange: (val: number) => void;
@@ -31,11 +33,71 @@ interface ChannelPlaylistProps {
 
 function ChannelPlaylist({ 
   title, tracks, currentTrack, currentIndex, 
-  onAddFiles, onRemoveTrack, onSelectTrack,
+  onAddFiles, onRemoveTrack, onRemoveMultiple, onSelectTrack,
   volume, onVolumeChange, testIdPrefix, side
 }: ChannelPlaylistProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [selectedTracks, setSelectedTracks] = useState<Set<string>>(new Set());
+  const [listHeight, setListHeight] = useState(96);
+  const resizeRef = useRef<{ startY: number; startHeight: number } | null>(null);
+
+  const toggleTrackSelection = useCallback((trackId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedTracks(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(trackId)) {
+        newSet.delete(trackId);
+      } else {
+        newSet.add(trackId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const selectAllTracks = useCallback(() => {
+    setSelectedTracks(new Set(tracks.map(t => t.id)));
+  }, [tracks]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedTracks(new Set());
+  }, []);
+
+  const deleteSelected = useCallback(() => {
+    onRemoveMultiple(Array.from(selectedTracks));
+    setSelectedTracks(new Set());
+  }, [selectedTracks, onRemoveMultiple]);
+
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    resizeRef.current = { startY: e.clientY, startHeight: listHeight };
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      if (resizeRef.current) {
+        const delta = e.clientY - resizeRef.current.startY;
+        const newHeight = Math.max(60, Math.min(300, resizeRef.current.startHeight + delta));
+        setListHeight(newHeight);
+      }
+    };
+    
+    const handleMouseUp = () => {
+      resizeRef.current = null;
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [listHeight]);
+
+  useEffect(() => {
+    const trackIds = new Set(tracks.map(t => t.id));
+    setSelectedTracks(prev => {
+      const filtered = new Set(Array.from(prev).filter(id => trackIds.has(id)));
+      if (filtered.size !== prev.size) return filtered;
+      return prev;
+    });
+  }, [tracks]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -76,7 +138,7 @@ function ChannelPlaylist({
 
   return (
     <div className="flex-1 space-y-2">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-1">
         <div className="flex items-center gap-2">
           <div className={`w-2 h-2 rounded-full ${side === 'left' ? 'bg-blue-500' : 'bg-orange-500'}`} />
           <span className="text-xs font-medium text-white">{title}</span>
@@ -86,6 +148,42 @@ function ChannelPlaylist({
             </span>
           )}
         </div>
+        {tracks.length > 0 && (
+          <div className="flex items-center gap-0.5">
+            {selectedTracks.size > 0 ? (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearSelection}
+                  className="h-5 px-1 text-xs text-muted-foreground"
+                  data-testid={`${testIdPrefix}-clear-selection-btn`}
+                >
+                  Clear
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={deleteSelected}
+                  className="h-5 px-1 text-xs text-destructive hover:text-destructive"
+                  data-testid={`${testIdPrefix}-delete-selected-btn`}
+                >
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={selectAllTracks}
+                className="h-5 px-1 text-xs text-muted-foreground"
+                data-testid={`${testIdPrefix}-select-all-btn`}
+              >
+                All
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       <input
@@ -118,44 +216,54 @@ function ChannelPlaylist({
         </div>
       </div>
 
-      <ScrollArea className="h-24 rounded-md border border-white/10 bg-black/20">
-        <div className="p-1.5 space-y-0.5">
-          {tracks.length === 0 ? (
-            <div className="text-xs text-center text-muted-foreground py-4">
-              No tracks yet
-            </div>
-          ) : (
-            tracks.map((track, index) => (
-              <div
-                key={track.id}
-                className={`flex items-center gap-1.5 p-1.5 rounded cursor-pointer transition-colors ${
-                  index === currentIndex 
-                    ? 'bg-primary/20 border border-primary/30' 
-                    : 'hover:bg-white/5'
-                }`}
-                onClick={() => onSelectTrack(index)}
-                data-testid={`${testIdPrefix}-track-${index}`}
-              >
-                <div className="flex-1 min-w-0">
-                  <div className={`text-xs truncate ${index === currentIndex ? 'text-primary' : 'text-white'}`}>
-                    {track.name}
+      <div className="relative">
+        <ScrollArea 
+          className="rounded-md border border-white/10 bg-black/20"
+          style={{ height: `${listHeight}px` }}
+        >
+          <div className="p-1.5 space-y-0.5">
+            {tracks.length === 0 ? (
+              <div className="text-xs text-center text-muted-foreground py-4">
+                No tracks yet
+              </div>
+            ) : (
+              tracks.map((track, index) => (
+                <div
+                  key={track.id}
+                  className={`flex items-center gap-1.5 p-1.5 rounded cursor-pointer transition-colors ${
+                    index === currentIndex 
+                      ? 'bg-primary/20 border border-primary/30' 
+                      : selectedTracks.has(track.id)
+                      ? 'bg-white/10 border border-white/20'
+                      : 'hover:bg-white/5'
+                  }`}
+                  onClick={() => onSelectTrack(index)}
+                  data-testid={`${testIdPrefix}-track-${index}`}
+                >
+                  <Checkbox
+                    checked={selectedTracks.has(track.id)}
+                    onClick={(e) => toggleTrackSelection(track.id, e)}
+                    className="shrink-0 h-3.5 w-3.5"
+                    data-testid={`${testIdPrefix}-checkbox-${index}`}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className={`text-xs truncate ${index === currentIndex ? 'text-primary' : 'text-white'}`}>
+                      {track.name}
+                    </div>
                   </div>
                 </div>
-                
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-5 w-5 text-muted-foreground shrink-0"
-                  onClick={(e) => { e.stopPropagation(); onRemoveTrack(track.id); }}
-                  data-testid={`${testIdPrefix}-remove-${index}`}
-                >
-                  <X className="w-2.5 h-2.5" />
-                </Button>
-              </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
+        </ScrollArea>
+        <div
+          className="absolute bottom-0 left-0 right-0 h-2 flex items-center justify-center cursor-ns-resize hover:bg-white/10 rounded-b-md transition-colors"
+          onMouseDown={handleResizeStart}
+          data-testid={`${testIdPrefix}-resize-handle`}
+        >
+          <GripHorizontal className="w-3 h-3 text-muted-foreground" />
         </div>
-      </ScrollArea>
+      </div>
 
       <div className="flex items-center gap-2">
         <Volume2 className="w-3 h-3 text-muted-foreground shrink-0" />
@@ -296,6 +404,7 @@ export function StereoConfusionPlayer() {
           currentIndex={player.leftIndex}
           onAddFiles={player.addLeftFiles}
           onRemoveTrack={player.removeLeftTrack}
+          onRemoveMultiple={player.removeLeftMultiple}
           onSelectTrack={player.selectLeftTrack}
           volume={player.leftVolume}
           onVolumeChange={player.setLeftVolume}
@@ -312,6 +421,7 @@ export function StereoConfusionPlayer() {
           currentIndex={player.rightIndex}
           onAddFiles={player.addRightFiles}
           onRemoveTrack={player.removeRightTrack}
+          onRemoveMultiple={player.removeRightMultiple}
           onSelectTrack={player.selectRightTrack}
           volume={player.rightVolume}
           onVolumeChange={player.setRightVolume}

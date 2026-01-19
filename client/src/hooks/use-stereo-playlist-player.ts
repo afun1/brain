@@ -432,6 +432,74 @@ export function useStereoPlaylistPlayer() {
     });
   }, [rightIndex, isPlaying]);
 
+  const removeLeftMultiple = useCallback((ids: string[]) => {
+    if (ids.length === 0) return;
+    const idsSet = new Set(ids);
+    
+    setLeftTracks(prev => {
+      const currentTrackId = prev[leftIndex]?.id;
+      const isCurrentRemoved = currentTrackId && idsSet.has(currentTrackId);
+      
+      prev.filter(t => idsSet.has(t.id)).forEach(t => URL.revokeObjectURL(t.objectUrl));
+      const newTracks = prev.filter(t => !idsSet.has(t.id));
+      
+      if (newTracks.length === 0) {
+        if (leftAudioRef.current) {
+          leftAudioRef.current.pause();
+          leftAudioRef.current.src = "";
+        }
+        setLeftIndex(0);
+      } else if (isCurrentRemoved) {
+        if (leftAudioRef.current) {
+          leftAudioRef.current.pause();
+          leftAudioRef.current.src = "";
+        }
+        setLeftIndex(0);
+      } else {
+        const newIndex = newTracks.findIndex(t => t.id === currentTrackId);
+        if (newIndex !== leftIndex) {
+          setLeftIndex(Math.max(0, newIndex));
+        }
+      }
+      
+      return newTracks;
+    });
+  }, [leftIndex]);
+
+  const removeRightMultiple = useCallback((ids: string[]) => {
+    if (ids.length === 0) return;
+    const idsSet = new Set(ids);
+    
+    setRightTracks(prev => {
+      const currentTrackId = prev[rightIndex]?.id;
+      const isCurrentRemoved = currentTrackId && idsSet.has(currentTrackId);
+      
+      prev.filter(t => idsSet.has(t.id)).forEach(t => URL.revokeObjectURL(t.objectUrl));
+      const newTracks = prev.filter(t => !idsSet.has(t.id));
+      
+      if (newTracks.length === 0) {
+        if (rightAudioRef.current) {
+          rightAudioRef.current.pause();
+          rightAudioRef.current.src = "";
+        }
+        setRightIndex(0);
+      } else if (isCurrentRemoved) {
+        if (rightAudioRef.current) {
+          rightAudioRef.current.pause();
+          rightAudioRef.current.src = "";
+        }
+        setRightIndex(0);
+      } else {
+        const newIndex = newTracks.findIndex(t => t.id === currentTrackId);
+        if (newIndex !== rightIndex) {
+          setRightIndex(Math.max(0, newIndex));
+        }
+      }
+      
+      return newTracks;
+    });
+  }, [rightIndex]);
+
   const selectLeftTrack = useCallback((index: number) => {
     if (index >= 0 && index < leftTracks.length) {
       setLeftIndex(index);
@@ -649,6 +717,8 @@ export function useStereoPlaylistPlayer() {
     addBothFiles,
     removeLeftTrack,
     removeRightTrack,
+    removeLeftMultiple,
+    removeRightMultiple,
     selectLeftTrack,
     selectRightTrack,
     play,
