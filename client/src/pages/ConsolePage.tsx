@@ -1087,24 +1087,26 @@ export default function ConsolePage() {
   
   const healingAudio = useAudioEngine(healingStages);
 
-  // Stop all other audio engines when switching modes to prevent overlap
+  // Stop all other audio engines when switching modes to prevent overlap/bleed
   useEffect(() => {
+    // Stop all non-active engines that are currently playing
     if (mode !== "custom" && customAudio.isPlaying) {
-      customAudio.togglePlay();
+      customAudio.stop();
     }
     if (mode !== "program" && programAudio.isPlaying) {
-      programAudio.togglePlay();
+      programAudio.reset();
     }
     if (mode !== "learning" && learningAudio.isPlaying) {
-      learningAudio.togglePlay();
+      learningAudio.reset();
     }
     if (mode !== "daytime" && daytimeAudio.isPlaying) {
-      daytimeAudio.togglePlay();
+      daytimeAudio.reset();
     }
     if (mode !== "healing" && healingAudio.isPlaying) {
-      healingAudio.togglePlay();
+      healingAudio.reset();
     }
-  }, [mode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]); // Only trigger on mode change - methods are stable via useCallback
 
   const isPlaying = mode === "custom" 
     ? customAudio.isPlaying 
