@@ -13,6 +13,7 @@ import { LanguageLearner } from "@/components/LanguageLearner";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   Play, Pause, Volume2, Sliders, Headphones, 
   ArrowLeftRight, Moon, Brain, Timer, Sun, Zap, HelpCircle, Heart
@@ -1191,16 +1192,30 @@ export default function ConsolePage() {
       <header className="relative z-10 flex items-center justify-between p-4 border-b border-white/10">
         <div className="w-10" />
         <div className="flex items-center gap-3">
-          <Moon className="w-5 h-5 text-primary" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Moon className="w-5 h-5 text-primary cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Binaural Sleep App</p>
+            </TooltipContent>
+          </Tooltip>
           <span className="text-sm tracking-widest uppercase font-semibold text-primary/80" data-testid="text-header-title">Binaural Sleep Console</span>
         </div>
-        <Link href="/features">
-          <Button variant="outline" size="sm" className="gap-2" data-testid="button-features-help">
-            <HelpCircle className="w-4 h-4" />
-            <span className="hidden sm:inline">Features & Instructions</span>
-            <span className="sm:hidden">Help</span>
-          </Button>
-        </Link>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link href="/features">
+              <Button variant="outline" size="sm" className="gap-2" data-testid="button-features-help">
+                <HelpCircle className="w-4 h-4" />
+                <span className="hidden sm:inline">Features & Instructions</span>
+                <span className="sm:hidden">Help</span>
+              </Button>
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>View all features and instructions</p>
+          </TooltipContent>
+        </Tooltip>
       </header>
 
       <main className="flex-1 relative z-10 flex flex-col px-4 py-4 pb-48 overflow-y-auto">
@@ -1208,26 +1223,61 @@ export default function ConsolePage() {
           
           <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)} className="w-full">
             <TabsList className="grid w-full grid-cols-5 mb-4">
-              <TabsTrigger value="custom" className="gap-2" data-testid="tab-custom">
-                <Sliders className="w-4 h-4" />
-                <span className="hidden sm:inline">Custom</span>
-              </TabsTrigger>
-              <TabsTrigger value="learning" className="gap-2" data-testid="tab-learning">
-                <Brain className="w-4 h-4" />
-                <span className="hidden sm:inline">Learning</span>
-              </TabsTrigger>
-              <TabsTrigger value="healing" className="gap-2" data-testid="tab-healing">
-                <Heart className="w-4 h-4" />
-                <span className="hidden sm:inline">Healing</span>
-              </TabsTrigger>
-              <TabsTrigger value="daytime" className="gap-2" data-testid="tab-daytime">
-                <Sun className="w-4 h-4" />
-                <span className="hidden sm:inline">Daytime</span>
-              </TabsTrigger>
-              <TabsTrigger value="program" className="gap-2" data-testid="tab-program">
-                <Moon className="w-4 h-4" />
-                <span className="hidden sm:inline">Sleep</span>
-              </TabsTrigger>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="custom" className="gap-2" data-testid="tab-custom">
+                    <Sliders className="w-4 h-4" />
+                    <span className="hidden sm:inline">Custom</span>
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Custom Mode - Manual frequency control</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="learning" className="gap-2" data-testid="tab-learning">
+                    <Brain className="w-4 h-4" />
+                    <span className="hidden sm:inline">Learning</span>
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Learning Mode - Alpha/Theta for focus & memory</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="healing" className="gap-2" data-testid="tab-healing">
+                    <Heart className="w-4 h-4" />
+                    <span className="hidden sm:inline">Healing</span>
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Healing Mode - Delta frequencies for recovery</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="daytime" className="gap-2" data-testid="tab-daytime">
+                    <Sun className="w-4 h-4" />
+                    <span className="hidden sm:inline">Daytime</span>
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Daytime Mode - Beta/Gamma for focus & alertness</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="program" className="gap-2" data-testid="tab-program">
+                    <Moon className="w-4 h-4" />
+                    <span className="hidden sm:inline">Sleep</span>
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Sleep Programs - Full night sleep journeys</p>
+                </TooltipContent>
+              </Tooltip>
             </TabsList>
 
             <TabsContent value="custom" className="space-y-4 mt-0">
