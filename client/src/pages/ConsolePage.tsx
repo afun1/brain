@@ -1507,16 +1507,13 @@ export default function ConsolePage() {
                       <div className="text-xs text-muted-foreground" data-testid="label-learning-current-stage">Current Stage</div>
                     </div>
 
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span data-testid="text-learning-elapsed">{formatTime(learningAudio.elapsedTime)}</span>
-                      <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden" data-testid="progress-bar-learning">
-                        <div 
-                          className="h-full bg-primary transition-all"
-                          style={{ width: `${learningAudio.totalDuration > 0 ? (learningAudio.elapsedTime / learningAudio.totalDuration) * 100 : 0}%` }}
-                        />
-                      </div>
-                      <span data-testid="text-learning-total">{formatTime(learningAudio.totalDuration)}</span>
-                    </div>
+                    <SleepProgressChart
+                      stages={learningStages}
+                      elapsedTime={learningAudio.elapsedTime}
+                      currentBeat={learningAudio.currentBeat}
+                      currentStageName={getLearningCurrentStage()}
+                      onSeek={(time) => learningAudio.seekTo(time)}
+                    />
 
                     <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground/60 font-mono">
                       <span data-testid="text-learning-beat">{Math.round(learningAudio.currentBeat * 10) / 10} Hz Beat</span>
@@ -1689,16 +1686,13 @@ export default function ConsolePage() {
                       <div className="text-xs text-muted-foreground" data-testid="label-daytime-current-stage">Current Stage</div>
                     </div>
 
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span data-testid="text-daytime-elapsed">{formatTime(daytimeAudio.elapsedTime)}</span>
-                      <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden" data-testid="progress-bar-daytime">
-                        <div 
-                          className="h-full bg-primary transition-all"
-                          style={{ width: `${daytimeAudio.totalDuration > 0 ? (daytimeAudio.elapsedTime / daytimeAudio.totalDuration) * 100 : 0}%` }}
-                        />
-                      </div>
-                      <span data-testid="text-daytime-total">{formatTime(daytimeAudio.totalDuration)}</span>
-                    </div>
+                    <SleepProgressChart
+                      stages={daytimeStages}
+                      elapsedTime={daytimeAudio.elapsedTime}
+                      currentBeat={daytimeAudio.currentBeat}
+                      currentStageName={getDaytimeCurrentStage()}
+                      onSeek={(time) => daytimeAudio.seekTo(time)}
+                    />
 
                     <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground/60 font-mono">
                       <span data-testid="text-daytime-beat">{Math.round(daytimeAudio.currentBeat * 10) / 10} Hz Beat</span>
@@ -2078,16 +2072,13 @@ export default function ConsolePage() {
                       <div className="text-xs text-muted-foreground" data-testid="label-healing-current-stage">Current Stage</div>
                     </div>
 
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span data-testid="text-healing-elapsed">{formatTime(healingAudio.elapsedTime)}</span>
-                      <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden" data-testid="progress-bar-healing">
-                        <div 
-                          className="h-full bg-primary transition-all"
-                          style={{ width: `${healingAudio.totalDuration > 0 ? (healingAudio.elapsedTime / healingAudio.totalDuration) * 100 : 0}%` }}
-                        />
-                      </div>
-                      <span data-testid="text-healing-total">{formatTime(healingAudio.totalDuration)}</span>
-                    </div>
+                    <SleepProgressChart
+                      stages={healingStages}
+                      elapsedTime={healingAudio.elapsedTime}
+                      currentBeat={healingAudio.currentBeat}
+                      currentStageName={getHealingCurrentStage()}
+                      onSeek={(time) => healingAudio.seekTo(time)}
+                    />
 
                     <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground/60 font-mono">
                       <span data-testid="text-healing-beat">{Math.round(healingAudio.currentBeat * 10) / 10} Hz Beat</span>
