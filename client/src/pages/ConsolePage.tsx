@@ -1567,7 +1567,6 @@ export default function ConsolePage() {
                       elapsedTime={learningAudio.elapsedTime}
                       currentBeat={learningAudio.currentBeat}
                       currentStageName={getLearningCurrentStage()}
-                      onSeek={(time) => learningAudio.seekTo(time)}
                     />
 
                     <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground/60 font-mono">
@@ -1803,7 +1802,6 @@ export default function ConsolePage() {
                       elapsedTime={daytimeAudio.elapsedTime}
                       currentBeat={daytimeAudio.currentBeat}
                       currentStageName={getDaytimeCurrentStage()}
-                      onSeek={(time) => daytimeAudio.seekTo(time)}
                     />
 
                     <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground/60 font-mono">
@@ -2189,7 +2187,6 @@ export default function ConsolePage() {
                       elapsedTime={healingAudio.elapsedTime}
                       currentBeat={healingAudio.currentBeat}
                       currentStageName={getHealingCurrentStage()}
-                      onSeek={(time) => healingAudio.seekTo(time)}
                     />
 
                     <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground/60 font-mono">
@@ -2453,7 +2450,6 @@ export default function ConsolePage() {
                         elapsedTime={programAudio.elapsedTime}
                         currentBeat={programAudio.currentBeat}
                         currentStageName={getCurrentStageName()}
-                        onSeek={(time) => programAudio.seekTo(time)}
                       />
 
                       <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground/60 font-mono">
