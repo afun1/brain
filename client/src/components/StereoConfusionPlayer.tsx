@@ -38,6 +38,8 @@ function ChannelPlaylist({
   volume, onVolumeChange, testIdPrefix, side
 }: ChannelPlaylistProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const autoScrollRef = useRef<number | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [selectedTracks, setSelectedTracks] = useState<Set<string>>(new Set());
   const [listHeight, setListHeight] = useState(96);
@@ -102,6 +104,13 @@ function ChannelPlaylist({
     });
   }, [tracks]);
 
+  const stopAutoScroll = useCallback(() => {
+    if (autoScrollRef.current !== null) {
+      cancelAnimationFrame(autoScrollRef.current);
+      autoScrollRef.current = null;
+    }
+  }, []);
+
   const handleTrackDragStart = useCallback((e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
     e.dataTransfer.effectAllowed = 'move';
@@ -116,23 +125,62 @@ function ChannelPlaylist({
     }
   }, [draggedIndex]);
 
+  const handleScrollAreaDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const container = scrollContainerRef.current;
+    if (!container || draggedIndex === null) return;
+
+    const rect = container.getBoundingClientRect();
+    const edgeThreshold = 30;
+    const scrollSpeed = 5;
+
+    const distFromTop = e.clientY - rect.top;
+    const distFromBottom = rect.bottom - e.clientY;
+
+    stopAutoScroll();
+
+    if (distFromTop < edgeThreshold && container.scrollTop > 0) {
+      const scroll = () => {
+        container.scrollTop -= scrollSpeed;
+        if (container.scrollTop > 0) {
+          autoScrollRef.current = requestAnimationFrame(scroll);
+        }
+      };
+      autoScrollRef.current = requestAnimationFrame(scroll);
+    } else if (distFromBottom < edgeThreshold && container.scrollTop < container.scrollHeight - container.clientHeight) {
+      const scroll = () => {
+        container.scrollTop += scrollSpeed;
+        if (container.scrollTop < container.scrollHeight - container.clientHeight) {
+          autoScrollRef.current = requestAnimationFrame(scroll);
+        }
+      };
+      autoScrollRef.current = requestAnimationFrame(scroll);
+    }
+  }, [draggedIndex, stopAutoScroll]);
+
   const handleTrackDragLeave = useCallback(() => {
     setDragOverIndex(null);
   }, []);
 
+  const handleScrollAreaDragLeave = useCallback(() => {
+    stopAutoScroll();
+  }, [stopAutoScroll]);
+
   const handleTrackDrop = useCallback((e: React.DragEvent, toIndex: number) => {
     e.preventDefault();
+    stopAutoScroll();
     if (draggedIndex !== null && draggedIndex !== toIndex) {
       onMoveTrack(draggedIndex, toIndex);
     }
     setDraggedIndex(null);
     setDragOverIndex(null);
-  }, [draggedIndex, onMoveTrack]);
+  }, [draggedIndex, onMoveTrack, stopAutoScroll]);
 
   const handleTrackDragEnd = useCallback(() => {
+    stopAutoScroll();
     setDraggedIndex(null);
     setDragOverIndex(null);
-  }, []);
+  }, [stopAutoScroll]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -252,9 +300,12 @@ function ChannelPlaylist({
       </div>
 
       <div className="relative">
-        <ScrollArea 
-          className="rounded-md border border-white/10 bg-black/20"
+        <div
+          ref={scrollContainerRef}
+          className="rounded-md border border-white/10 bg-black/20 overflow-y-auto"
           style={{ height: `${listHeight}px` }}
+          onDragOver={handleScrollAreaDragOver}
+          onDragLeave={handleScrollAreaDragLeave}
         >
           <div className="p-1.5 space-y-0.5">
             {tracks.length === 0 ? (
@@ -307,7 +358,7 @@ function ChannelPlaylist({
               ))
             )}
           </div>
-        </ScrollArea>
+        </div>
         <div
           className="absolute bottom-0 left-0 right-0 h-2 flex items-center justify-center cursor-ns-resize hover:bg-white/10 rounded-b-md transition-colors"
           onMouseDown={handleResizeStart}
