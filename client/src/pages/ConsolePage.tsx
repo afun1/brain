@@ -108,6 +108,7 @@ export default function ConsolePage() {
   const [healingTarget, setHealingTarget] = useState<HealingTarget>("restoration");
   const [healingDuration, setHealingDuration] = useState(60); // minutes
   const [includeHealingWindDown, setIncludeHealingWindDown] = useState(true);
+  const [includeHealingWakeUp, setIncludeHealingWakeUp] = useState(true);
   
   // Healing Mode 10-slot carrier frequency system (like Sleep Mode)
   const HEALING_FREQ_STORAGE_KEY = "binauralSleep_healingFrequencies";
@@ -1082,8 +1083,61 @@ export default function ConsolePage() {
       stages[stages.length - 1].durationSeconds += (totalSeconds - totalStageDuration);
     }
     
+    // Add wake-up sequence if enabled (10 min total for naps)
+    // Gentle transition: Delta → Theta → Alpha → Beta
+    if (includeHealingWakeUp) {
+      const wakeUpBaseOrder = 8000;
+      const wakeUpStages: SleepStage[] = [
+        {
+          id: 8001,
+          programId: 0,
+          name: "Wake Up - Theta Rise",
+          startBeatFreq: stages.length > 0 ? stages[stages.length - 1].endBeatFreq : 2,
+          endBeatFreq: 6,
+          startCarrierFreq: 432,
+          endCarrierFreq: 432,
+          durationSeconds: 120, // 2 min - delta to theta
+          order: wakeUpBaseOrder,
+        },
+        {
+          id: 8002,
+          programId: 0,
+          name: "Wake Up - Alpha",
+          startBeatFreq: 6,
+          endBeatFreq: 10,
+          startCarrierFreq: 432,
+          endCarrierFreq: 432,
+          durationSeconds: 180, // 3 min - theta to alpha
+          order: wakeUpBaseOrder + 1,
+        },
+        {
+          id: 8003,
+          programId: 0,
+          name: "Wake Up - Light Beta",
+          startBeatFreq: 10,
+          endBeatFreq: 14,
+          startCarrierFreq: 432,
+          endCarrierFreq: 432,
+          durationSeconds: 180, // 3 min - alpha to light beta
+          order: wakeUpBaseOrder + 2,
+        },
+        {
+          id: 8004,
+          programId: 0,
+          name: "Wake Up - Alert",
+          startBeatFreq: 14,
+          endBeatFreq: 18,
+          startCarrierFreq: 432,
+          endCarrierFreq: 432,
+          durationSeconds: 120, // 2 min - to full alertness
+          order: wakeUpBaseOrder + 3,
+        },
+      ];
+      stages.push(...wakeUpStages);
+    }
+    
     return stages;
-  }, [healingTarget, healingDuration, includeHealingWindDown, healingFrequencySlots, healingSlotDurations, healingBeatSlots, healingBeatDurations]);
+  }, [healingTarget, healingDuration, includeHealingWindDown, includeHealingWakeUp, healingFrequencySlots, healingSlotDurations, healingBeatSlots, healingBeatDurations]);
   
   const healingAudio = useAudioEngine(healingStages);
 
@@ -1906,25 +1960,48 @@ export default function ConsolePage() {
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-white" data-testid="label-healing-winddown">Wind Down</label>
-                    <Button
-                      variant={includeHealingWindDown ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        healingAudio.reset();
-                        setIncludeHealingWindDown(!includeHealingWindDown);
-                      }}
-                      className="text-xs"
-                      data-testid="button-toggle-healing-winddown"
-                    >
-                      {includeHealingWindDown ? "On" : "Off"}
-                    </Button>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-medium text-white" data-testid="label-healing-winddown">Wind Down</label>
+                      <Button
+                        variant={includeHealingWindDown ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          healingAudio.reset();
+                          setIncludeHealingWindDown(!includeHealingWindDown);
+                        }}
+                        className="text-xs"
+                        data-testid="button-toggle-healing-winddown"
+                      >
+                        {includeHealingWindDown ? "On" : "Off"}
+                      </Button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground" data-testid="text-healing-winddown-description">
+                      Alpha → Theta → Delta
+                    </p>
                   </div>
-                  <p className="text-[10px] text-muted-foreground" data-testid="text-healing-winddown-description">
-                    Gradual transition from alpha through theta to deep delta
-                  </p>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-medium text-white" data-testid="label-healing-wakeup">Wake Up</label>
+                      <Button
+                        variant={includeHealingWakeUp ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          healingAudio.reset();
+                          setIncludeHealingWakeUp(!includeHealingWakeUp);
+                        }}
+                        className="text-xs"
+                        data-testid="button-toggle-healing-wakeup"
+                      >
+                        {includeHealingWakeUp ? "On" : "Off"}
+                      </Button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground" data-testid="text-healing-wakeup-description">
+                      +10 min gentle wake sequence
+                    </p>
+                  </div>
                 </div>
 
                 <div className="space-y-3">
@@ -2169,7 +2246,7 @@ export default function ConsolePage() {
 
                 <AnimatePresence mode="wait">
                   <motion.div
-                    key={`${healingTarget}-${healingDuration}-${includeHealingWindDown}`}
+                    key={`${healingTarget}-${healingDuration}-${includeHealingWindDown}-${includeHealingWakeUp}`}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
