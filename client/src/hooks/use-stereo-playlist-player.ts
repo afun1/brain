@@ -734,6 +734,48 @@ export function useStereoPlaylistPlayer() {
     setDuration(0);
   }, [leftTracks, rightTracks, cleanupAudioNodes]);
 
+  const moveLeftTrack = useCallback((fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return;
+    if (fromIndex < 0 || fromIndex >= leftTracks.length) return;
+    if (toIndex < 0 || toIndex >= leftTracks.length) return;
+    
+    setLeftTracks(prev => {
+      const newTracks = [...prev];
+      const [removed] = newTracks.splice(fromIndex, 1);
+      newTracks.splice(toIndex, 0, removed);
+      return newTracks;
+    });
+    
+    if (leftIndex === fromIndex) {
+      setLeftIndex(toIndex);
+    } else if (fromIndex < leftIndex && toIndex >= leftIndex) {
+      setLeftIndex(leftIndex - 1);
+    } else if (fromIndex > leftIndex && toIndex <= leftIndex) {
+      setLeftIndex(leftIndex + 1);
+    }
+  }, [leftTracks.length, leftIndex]);
+
+  const moveRightTrack = useCallback((fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return;
+    if (fromIndex < 0 || fromIndex >= rightTracks.length) return;
+    if (toIndex < 0 || toIndex >= rightTracks.length) return;
+    
+    setRightTracks(prev => {
+      const newTracks = [...prev];
+      const [removed] = newTracks.splice(fromIndex, 1);
+      newTracks.splice(toIndex, 0, removed);
+      return newTracks;
+    });
+    
+    if (rightIndex === fromIndex) {
+      setRightIndex(toIndex);
+    } else if (fromIndex < rightIndex && toIndex >= rightIndex) {
+      setRightIndex(rightIndex - 1);
+    } else if (fromIndex > rightIndex && toIndex <= rightIndex) {
+      setRightIndex(rightIndex + 1);
+    }
+  }, [rightTracks.length, rightIndex]);
+
   const toggleShuffle = useCallback(() => {
     setShuffle(prev => {
       if (prev) {
@@ -768,6 +810,8 @@ export function useStereoPlaylistPlayer() {
     removeRightTrack,
     removeLeftMultiple,
     removeRightMultiple,
+    moveLeftTrack,
+    moveRightTrack,
     selectLeftTrack,
     selectRightTrack,
     play,

@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Play, Pause, Volume2, Upload, X, Headphones,
-  SkipBack, SkipForward, Repeat, Repeat1, Trash2, Copy, Shuffle, GripHorizontal
+  SkipBack, SkipForward, Repeat, Repeat1, Trash2, Copy, Shuffle, GripHorizontal, GripVertical
 } from "lucide-react";
 
 function formatTime(seconds: number): string {
@@ -24,6 +24,7 @@ interface ChannelPlaylistProps {
   onAddFiles: (files: FileList | File[]) => void;
   onRemoveTrack: (id: string) => void;
   onRemoveMultiple: (ids: string[]) => void;
+  onMoveTrack: (fromIndex: number, toIndex: number) => void;
   onSelectTrack: (index: number) => void;
   volume: number;
   onVolumeChange: (val: number) => void;
@@ -33,7 +34,7 @@ interface ChannelPlaylistProps {
 
 function ChannelPlaylist({ 
   title, tracks, currentTrack, currentIndex, 
-  onAddFiles, onRemoveTrack, onRemoveMultiple, onSelectTrack,
+  onAddFiles, onRemoveTrack, onRemoveMultiple, onMoveTrack, onSelectTrack,
   volume, onVolumeChange, testIdPrefix, side
 }: ChannelPlaylistProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -41,6 +42,8 @@ function ChannelPlaylist({
   const [selectedTracks, setSelectedTracks] = useState<Set<string>>(new Set());
   const [listHeight, setListHeight] = useState(96);
   const resizeRef = useRef<{ startY: number; startHeight: number } | null>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const toggleTrackSelection = useCallback((trackId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -98,6 +101,38 @@ function ChannelPlaylist({
       return prev;
     });
   }, [tracks]);
+
+  const handleTrackDragStart = useCallback((e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+  }, []);
+
+  const handleTrackDragOver = useCallback((e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (draggedIndex !== null && index !== draggedIndex) {
+      setDragOverIndex(index);
+    }
+  }, [draggedIndex]);
+
+  const handleTrackDragLeave = useCallback(() => {
+    setDragOverIndex(null);
+  }, []);
+
+  const handleTrackDrop = useCallback((e: React.DragEvent, toIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex !== null && draggedIndex !== toIndex) {
+      onMoveTrack(draggedIndex, toIndex);
+    }
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  }, [draggedIndex, onMoveTrack]);
+
+  const handleTrackDragEnd = useCallback(() => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  }, []);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -230,8 +265,18 @@ function ChannelPlaylist({
               tracks.map((track, index) => (
                 <div
                   key={track.id}
-                  className={`flex items-center gap-1.5 p-1.5 rounded cursor-pointer transition-colors ${
-                    index === currentIndex 
+                  draggable
+                  onDragStart={(e) => handleTrackDragStart(e, index)}
+                  onDragOver={(e) => handleTrackDragOver(e, index)}
+                  onDragLeave={handleTrackDragLeave}
+                  onDrop={(e) => handleTrackDrop(e, index)}
+                  onDragEnd={handleTrackDragEnd}
+                  className={`flex items-center gap-1.5 p-1.5 rounded cursor-pointer transition-all ${
+                    draggedIndex === index
+                      ? 'opacity-50 bg-primary/10'
+                      : dragOverIndex === index
+                      ? 'bg-primary/30 border-2 border-dashed border-primary'
+                      : index === currentIndex 
                       ? 'bg-primary/20 border border-primary/30' 
                       : selectedTracks.has(track.id)
                       ? 'bg-white/10 border border-white/20'
@@ -240,6 +285,13 @@ function ChannelPlaylist({
                   onClick={() => onSelectTrack(index)}
                   data-testid={`${testIdPrefix}-track-${index}`}
                 >
+                  <div
+                    className="cursor-grab active:cursor-grabbing p-0.5 hover:bg-white/10 rounded"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    data-testid={`${testIdPrefix}-drag-handle-${index}`}
+                  >
+                    <GripVertical className="w-2.5 h-2.5 text-muted-foreground" />
+                  </div>
                   <Checkbox
                     checked={selectedTracks.has(track.id)}
                     onClick={(e) => toggleTrackSelection(track.id, e)}
@@ -405,6 +457,7 @@ export function StereoConfusionPlayer() {
           onAddFiles={player.addLeftFiles}
           onRemoveTrack={player.removeLeftTrack}
           onRemoveMultiple={player.removeLeftMultiple}
+          onMoveTrack={player.moveLeftTrack}
           onSelectTrack={player.selectLeftTrack}
           volume={player.leftVolume}
           onVolumeChange={player.setLeftVolume}
@@ -422,6 +475,7 @@ export function StereoConfusionPlayer() {
           onAddFiles={player.addRightFiles}
           onRemoveTrack={player.removeRightTrack}
           onRemoveMultiple={player.removeRightMultiple}
+          onMoveTrack={player.moveRightTrack}
           onSelectTrack={player.selectRightTrack}
           volume={player.rightVolume}
           onVolumeChange={player.setRightVolume}

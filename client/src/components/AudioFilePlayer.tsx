@@ -6,8 +6,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Play, Pause, Volume2, Upload, X, Music, MessageCircle, 
-  SkipBack, SkipForward, Repeat, Repeat1, ChevronUp, ChevronDown, Trash2,
-  Download, Shuffle, GripHorizontal
+  SkipBack, SkipForward, Repeat, Repeat1, Trash2,
+  Download, Shuffle, GripVertical, GripHorizontal
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { AudioRecorder } from "./AudioRecorder";
@@ -107,6 +107,8 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
   const [selectedTracks, setSelectedTracks] = useState<Set<string>>(new Set());
   const [listHeight, setListHeight] = useState(128);
   const resizeRef = useRef<{ startY: number; startHeight: number } | null>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const toggleTrackSelection = useCallback((trackId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -166,6 +168,38 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
       return prev;
     });
   }, [player.tracks]);
+
+  const handleTrackDragStart = useCallback((e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+  }, []);
+
+  const handleTrackDragOver = useCallback((e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (draggedIndex !== null && index !== draggedIndex) {
+      setDragOverIndex(index);
+    }
+  }, [draggedIndex]);
+
+  const handleTrackDragLeave = useCallback(() => {
+    setDragOverIndex(null);
+  }, []);
+
+  const handleTrackDrop = useCallback((e: React.DragEvent, toIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex !== null && draggedIndex !== toIndex) {
+      player.moveTrack(draggedIndex, toIndex);
+    }
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  }, [draggedIndex, player]);
+
+  const handleTrackDragEnd = useCallback(() => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  }, []);
 
   const handleRecordingSave = (file: File, name: string) => {
     const dataTransfer = new DataTransfer();
@@ -414,8 +448,18 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
                 {player.tracks.map((track, index) => (
                   <div
                     key={track.id}
-                    className={`flex items-center gap-2 p-2 rounded-md cursor-pointer transition-colors ${
-                      index === player.currentIndex 
+                    draggable
+                    onDragStart={(e) => handleTrackDragStart(e, index)}
+                    onDragOver={(e) => handleTrackDragOver(e, index)}
+                    onDragLeave={handleTrackDragLeave}
+                    onDrop={(e) => handleTrackDrop(e, index)}
+                    onDragEnd={handleTrackDragEnd}
+                    className={`flex items-center gap-2 p-2 rounded-md cursor-pointer transition-all ${
+                      draggedIndex === index
+                        ? 'opacity-50 bg-primary/10'
+                        : dragOverIndex === index
+                        ? 'bg-primary/30 border-2 border-dashed border-primary'
+                        : index === player.currentIndex 
                         ? 'bg-primary/20 border border-primary/30' 
                         : selectedTracks.has(track.id)
                         ? 'bg-white/10 border border-white/20'
@@ -424,6 +468,13 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
                     onClick={() => player.selectTrack(index)}
                     data-testid={`${testIdPrefix}-track-${index}`}
                   >
+                    <div
+                      className="cursor-grab active:cursor-grabbing p-1 hover:bg-white/10 rounded"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      data-testid={`${testIdPrefix}-drag-handle-${index}`}
+                    >
+                      <GripVertical className="w-3 h-3 text-muted-foreground" />
+                    </div>
                     <Checkbox
                       checked={selectedTracks.has(track.id)}
                       onClick={(e) => toggleTrackSelection(track.id, e)}
@@ -439,29 +490,6 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
                           {formatTime(track.duration)}
                         </div>
                       )}
-                    </div>
-                    
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={(e) => { e.stopPropagation(); player.moveTrack(index, index - 1); }}
-                        disabled={index === 0}
-                        data-testid={`${testIdPrefix}-move-up-${index}`}
-                      >
-                        <ChevronUp className="w-3 h-3" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={(e) => { e.stopPropagation(); player.moveTrack(index, index + 1); }}
-                        disabled={index === player.tracks.length - 1}
-                        data-testid={`${testIdPrefix}-move-down-${index}`}
-                      >
-                        <ChevronDown className="w-3 h-3" />
-                      </Button>
                     </div>
                   </div>
                 ))}
