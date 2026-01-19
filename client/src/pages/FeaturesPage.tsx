@@ -25,6 +25,9 @@ import {
   BookMarked,
   FileText,
   Clock,
+  Dumbbell,
+  Sparkles,
+  MousePointerClick,
 } from "lucide-react";
 
 export default function FeaturesPage() {
@@ -314,6 +317,19 @@ export default function FeaturesPage() {
                   </ul>
                 </div>
                 
+                <div className="mt-4 space-y-3 border-t pt-3">
+                  <h4 className="font-medium text-foreground flex items-center gap-2">
+                    <MousePointerClick className="h-4 w-4" />
+                    Interactive Hypnogram (All Modes)
+                  </h4>
+                  <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-2">
+                    <li><strong>Click-to-Seek:</strong> Click anywhere on the hypnogram chart to jump to that time position</li>
+                    <li><strong>Hover Preview:</strong> Hover over the chart to see time and stage at that position</li>
+                    <li><strong>Real-time Indicator:</strong> Vertical line shows current playback position</li>
+                    <li><strong>Available in All Modes:</strong> Learning, Daytime, Healing, and Sleep Programs all have interactive hypnograms</li>
+                  </ul>
+                </div>
+                
                 <p className="text-sm text-muted-foreground mt-4">Hypnogram chart displays current stage, progress, and remaining time with real-time indicator.</p>
               </CardContent>
             </Card>
@@ -456,6 +472,123 @@ export default function FeaturesPage() {
                 <p className="text-sm text-muted-foreground">
                   Once installed, the app works offline and launches like a native application.
                 </p>
+              </CardContent>
+            </Card>
+          </section>
+
+          <Separator />
+
+          <section className="space-y-4">
+            <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              <Dumbbell className="h-6 w-6 text-primary" />
+              Exercise & Workout Frequencies
+            </h2>
+            <Card>
+              <CardContent className="pt-6 space-y-4">
+                <p className="text-muted-foreground">
+                  Research-backed binaural beat frequencies for enhancing athletic performance:
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <div className="font-medium text-foreground">High-Intensity Training</div>
+                    <div className="text-sm text-primary font-semibold">15-30 Hz (Beta)</div>
+                    <div className="text-xs text-muted-foreground">Use 15-20 min before workout for energy and focus</div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <div className="font-medium text-foreground">Peak Focus & Flow</div>
+                    <div className="text-sm text-primary font-semibold">30-40 Hz (Low Gamma)</div>
+                    <div className="text-xs text-muted-foreground">Before agility drills, sprints, or skill work</div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <div className="font-medium text-foreground">Inter-Set Recovery</div>
+                    <div className="text-sm text-primary font-semibold">8-15 Hz (Alpha/Low Beta)</div>
+                    <div className="text-xs text-muted-foreground">During rest periods between sets</div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <div className="font-medium text-foreground">Pre-Competition Calm</div>
+                    <div className="text-sm text-primary font-semibold">6-10 Hz (Alpha/Low Theta)</div>
+                    <div className="text-xs text-muted-foreground">10-15 min before high-pressure events</div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <div className="font-medium text-foreground">Post-Workout Recovery</div>
+                    <div className="text-sm text-primary font-semibold">4-8 Hz (Theta)</div>
+                    <div className="text-xs text-muted-foreground">After training to reduce mental fatigue</div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <div className="font-medium text-foreground">Deep Sleep Recovery</div>
+                    <div className="text-sm text-primary font-semibold">2-4 Hz (Delta)</div>
+                    <div className="text-xs text-muted-foreground">Nighttime for muscle repair and growth</div>
+                  </div>
+                </div>
+                <div className="bg-muted/50 rounded-lg p-4 mt-2">
+                  <p className="text-sm text-foreground">
+                    <strong>Pro Tip:</strong> A 15-minute Beta (15-30 Hz) session before cardio has been shown to improve maximal aerobic performance. Use Daytime Mode for workout sessions.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+
+          <Separator />
+
+          <section className="space-y-4">
+            <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              <Sparkles className="h-6 w-6 text-primary" />
+              Optimal Affirmation & Subliminal Frequencies
+            </h2>
+            <Card>
+              <CardContent className="pt-6 space-y-4">
+                <p className="text-muted-foreground">
+                  Best frequencies for subconscious reprogramming with affirmations:
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="p-3 rounded-lg bg-muted/50 border-l-4 border-primary">
+                    <div className="font-medium text-foreground">Alpha-Theta Border (OPTIMAL)</div>
+                    <div className="text-sm text-primary font-semibold">7-8 Hz</div>
+                    <div className="text-xs text-muted-foreground">Best for visualization & mind programming while awake</div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50 border-l-4 border-primary">
+                    <div className="font-medium text-foreground">Theta (Deep Programming)</div>
+                    <div className="text-sm text-primary font-semibold">4-7 Hz</div>
+                    <div className="text-xs text-muted-foreground">Ideal for subconscious reprogramming & emotional healing</div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <div className="font-medium text-foreground">Alpha (Relaxed Learning)</div>
+                    <div className="text-sm text-primary font-semibold">8-14 Hz</div>
+                    <div className="text-xs text-muted-foreground">General affirmations, stress reduction, light meditation</div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <div className="font-medium text-foreground">Delta (Sleep Programming)</div>
+                    <div className="text-sm text-primary font-semibold">2-3 Hz</div>
+                    <div className="text-xs text-muted-foreground">Deep unconscious reprogramming during sleep</div>
+                  </div>
+                </div>
+                
+                <div className="mt-4 space-y-3 border-t pt-3">
+                  <h4 className="font-medium text-foreground">Recommended Carrier Frequencies for Affirmations</h4>
+                  <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-2">
+                    <li><strong>432 Hz:</strong> Universal harmony, relaxation (most popular for affirmations)</li>
+                    <li><strong>528 Hz:</strong> Transformation, DNA repair, increased energy</li>
+                    <li><strong>396 Hz:</strong> Release emotional blockages, guilt, and fear</li>
+                    <li><strong>417 Hz:</strong> Facilitate change, clear trauma</li>
+                  </ul>
+                </div>
+                
+                <div className="mt-4 space-y-3 border-t pt-3">
+                  <h4 className="font-medium text-foreground">Recommended Setups</h4>
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p><strong>Manifestation/Visualization:</strong> 7-8 Hz beat + 528 Hz carrier (use Learning Mode with Theta)</p>
+                    <p><strong>Sleep Programming:</strong> 2-3 Hz beat + 432 Hz carrier (use Healing Mode or Sleep Programs)</p>
+                    <p><strong>Confidence/Performance:</strong> 10-12 Hz beat + 528 Hz carrier (use Learning Mode with Alpha)</p>
+                    <p><strong>General Reprogramming:</strong> 6-7 Hz beat + 432 Hz carrier (use Healing Mode or Custom)</p>
+                  </div>
+                </div>
+                
+                <div className="bg-muted/50 rounded-lg p-4 mt-2">
+                  <p className="text-sm text-foreground">
+                    <strong>Best Practice:</strong> Listen for 90+ minutes daily for 30-90 days for lasting results. Use the Affirmations Player to record your own at 1-5% subliminal volume.
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </section>
