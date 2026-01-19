@@ -29,10 +29,14 @@ export function useStereoPlaylistPlayer() {
   const rightAudioRef = useRef<HTMLAudioElement | null>(null);
   const leftSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const rightSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
-  const leftPannerRef = useRef<StereoPannerNode | null>(null);
-  const rightPannerRef = useRef<StereoPannerNode | null>(null);
   const leftGainRef = useRef<GainNode | null>(null);
   const rightGainRef = useRef<GainNode | null>(null);
+  const leftMergerRef = useRef<ChannelMergerNode | null>(null);
+  const rightMergerRef = useRef<ChannelMergerNode | null>(null);
+  const leftSplitterRef = useRef<ChannelSplitterNode | null>(null);
+  const rightSplitterRef = useRef<ChannelSplitterNode | null>(null);
+  const leftMonoGainRef = useRef<GainNode | null>(null);
+  const rightMonoGainRef = useRef<GainNode | null>(null);
   const isInitializedRef = useRef(false);
 
   const [leftTracks, setLeftTracks] = useState<StereoTrack[]>([]);
@@ -68,40 +72,69 @@ export function useStereoPlaylistPlayer() {
     
     const ctx = audioContextRef.current;
     
+    // For true channel isolation, we need to:
+    // 1. Split stereo source into L/R channels
+    // 2. Sum them to mono with a gain node
+    // 3. Route mono signal to only one output channel via merger
+    
     if (!leftAudioRef.current) {
       leftAudioRef.current = new Audio();
       const source = ctx.createMediaElementSource(leftAudioRef.current);
-      const panner = ctx.createStereoPanner();
-      const gain = ctx.createGain();
       
-      panner.pan.value = -1;
-      gain.gain.value = leftVolume * volume;
+      // Split source into individual channels
+      const splitter = ctx.createChannelSplitter(2);
+      // Create mono sum gain node (mixes L+R to mono)
+      const monoGain = ctx.createGain();
+      monoGain.gain.value = 0.5; // Prevent clipping when summing
+      // Volume control
+      const volumeGain = ctx.createGain();
+      volumeGain.gain.value = leftVolume * volume;
+      // Merger to route mono to left channel only (input 0 = left output)
+      const merger = ctx.createChannelMerger(2);
       
-      source.connect(gain);
-      gain.connect(panner);
-      panner.connect(ctx.destination);
+      // Connect: source -> splitter -> both channels to monoGain -> volumeGain -> merger input 0 (left only)
+      source.connect(splitter);
+      splitter.connect(monoGain, 0); // Left channel of source
+      splitter.connect(monoGain, 1); // Right channel of source (summed to mono)
+      monoGain.connect(volumeGain);
+      volumeGain.connect(merger, 0, 0); // Route to left output channel only
+      merger.connect(ctx.destination);
       
       leftSourceRef.current = source;
-      leftPannerRef.current = panner;
-      leftGainRef.current = gain;
+      leftSplitterRef.current = splitter;
+      leftMonoGainRef.current = monoGain;
+      leftGainRef.current = volumeGain;
+      leftMergerRef.current = merger;
     }
     
     if (!rightAudioRef.current) {
       rightAudioRef.current = new Audio();
       const source = ctx.createMediaElementSource(rightAudioRef.current);
-      const panner = ctx.createStereoPanner();
-      const gain = ctx.createGain();
       
-      panner.pan.value = 1;
-      gain.gain.value = rightVolume * volume;
+      // Split source into individual channels
+      const splitter = ctx.createChannelSplitter(2);
+      // Create mono sum gain node
+      const monoGain = ctx.createGain();
+      monoGain.gain.value = 0.5;
+      // Volume control
+      const volumeGain = ctx.createGain();
+      volumeGain.gain.value = rightVolume * volume;
+      // Merger to route mono to right channel only (input 1 = right output)
+      const merger = ctx.createChannelMerger(2);
       
-      source.connect(gain);
-      gain.connect(panner);
-      panner.connect(ctx.destination);
+      // Connect: source -> splitter -> both channels to monoGain -> volumeGain -> merger input 1 (right only)
+      source.connect(splitter);
+      splitter.connect(monoGain, 0);
+      splitter.connect(monoGain, 1);
+      monoGain.connect(volumeGain);
+      volumeGain.connect(merger, 0, 1); // Route to right output channel only
+      merger.connect(ctx.destination);
       
       rightSourceRef.current = source;
-      rightPannerRef.current = panner;
-      rightGainRef.current = gain;
+      rightSplitterRef.current = splitter;
+      rightMonoGainRef.current = monoGain;
+      rightGainRef.current = volumeGain;
+      rightMergerRef.current = merger;
     }
     
     isInitializedRef.current = true;
@@ -116,13 +149,21 @@ export function useStereoPlaylistPlayer() {
       rightSourceRef.current.disconnect();
       rightSourceRef.current = null;
     }
-    if (leftPannerRef.current) {
-      leftPannerRef.current.disconnect();
-      leftPannerRef.current = null;
+    if (leftSplitterRef.current) {
+      leftSplitterRef.current.disconnect();
+      leftSplitterRef.current = null;
     }
-    if (rightPannerRef.current) {
-      rightPannerRef.current.disconnect();
-      rightPannerRef.current = null;
+    if (rightSplitterRef.current) {
+      rightSplitterRef.current.disconnect();
+      rightSplitterRef.current = null;
+    }
+    if (leftMonoGainRef.current) {
+      leftMonoGainRef.current.disconnect();
+      leftMonoGainRef.current = null;
+    }
+    if (rightMonoGainRef.current) {
+      rightMonoGainRef.current.disconnect();
+      rightMonoGainRef.current = null;
     }
     if (leftGainRef.current) {
       leftGainRef.current.disconnect();
@@ -131,6 +172,14 @@ export function useStereoPlaylistPlayer() {
     if (rightGainRef.current) {
       rightGainRef.current.disconnect();
       rightGainRef.current = null;
+    }
+    if (leftMergerRef.current) {
+      leftMergerRef.current.disconnect();
+      leftMergerRef.current = null;
+    }
+    if (rightMergerRef.current) {
+      rightMergerRef.current.disconnect();
+      rightMergerRef.current = null;
     }
     if (leftAudioRef.current) {
       leftAudioRef.current.pause();
