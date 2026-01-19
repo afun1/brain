@@ -257,13 +257,36 @@ export default function FeaturesPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <p className="text-muted-foreground">Boost focus and alertness during work:</p>
-                <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-2">
-                  <li><strong>Beta (20 Hz):</strong> Sustained concentration for focused work</li>
-                  <li><strong>Gamma (40-42 Hz):</strong> Peak flow state for demanding tasks</li>
-                  <li><strong>Ramp-Up Option:</strong> Gradually increases from low beta (12 Hz) to target</li>
-                  <li><strong>Duration Options:</strong> 15, 25, 45, 60, 90, or 120 minutes</li>
-                </ul>
+                <p className="text-muted-foreground">Boost focus and alertness during work or workouts:</p>
+                
+                <div className="space-y-3">
+                  <h4 className="font-medium text-foreground">Focus Modes</h4>
+                  <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-2">
+                    <li><strong>Beta (20 Hz):</strong> Sustained concentration for focused work</li>
+                    <li><strong>Gamma (40-42 Hz):</strong> Peak flow state for demanding tasks</li>
+                  </ul>
+                </div>
+                
+                <div className="mt-4 space-y-3 border-t pt-3">
+                  <h4 className="font-medium text-foreground flex items-center gap-2">
+                    <Dumbbell className="h-4 w-4" />
+                    Workout Modes
+                  </h4>
+                  <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-2">
+                    <li><strong>Pre-Workout (15-25 Hz):</strong> Progressive energy build-up before exercise</li>
+                    <li><strong>Cardio (22 Hz):</strong> Sustained beta for endurance activities</li>
+                    <li><strong>HIIT/Strength (38-40 Hz):</strong> Alternating high/low intensity intervals</li>
+                    <li><strong>Recovery (10 Hz):</strong> Alpha waves for between sets or cooldown</li>
+                  </ul>
+                </div>
+                
+                <div className="mt-4 space-y-3 border-t pt-3">
+                  <h4 className="font-medium text-foreground">Options</h4>
+                  <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-2">
+                    <li><strong>Ramp-Up Option:</strong> Gradually increases from low beta (12 Hz) to target</li>
+                    <li><strong>Duration Options:</strong> 15, 25, 45, 60, 90, or 120 minutes</li>
+                  </ul>
+                </div>
               </CardContent>
             </Card>
 

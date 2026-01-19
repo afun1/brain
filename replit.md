@@ -113,11 +113,16 @@ The app uses a single-page console with five tabbed modes:
    - Settings persisted to localStorage
 
 4. **Daytime Mode** - Focus/alertness enhancement for active use
-   - Target state selection: Beta (15-30 Hz) for focus or Gamma (30+ Hz) for peak flow
+   - **Focus Modes**:
+     - Beta (20 Hz) - Sustained concentration for focused work
+     - Gamma (40-42 Hz) - Peak flow state, alternating for engagement
+   - **Workout Modes** (research-backed):
+     - Pre-Workout (15-25 Hz) - Progressive energy build-up before exercise
+     - Cardio (22 Hz) - Sustained beta for endurance activities
+     - HIIT/Strength (38-40 Hz) - Alternating high/low intensity intervals
+     - Recovery (10 Hz) - Alpha waves for between sets or cooldown
    - Optional ramp-up phase: gradual transition from low beta (12 Hz) to target
-   - Duration options for work sessions: 15, 25, 45, 60, 90, or 120 minutes
-   - Beta mode: steady 20 Hz for sustained concentration
-   - Gamma mode: alternating 40-42 Hz across stages for engagement
+   - Duration options for work/workout sessions: 15, 25, 45, 60, 90, or 120 minutes
    - Mode switching automatically stops other audio engines to prevent overlap
 
 5. **Sleep Programs** - Pre-built sleep journeys

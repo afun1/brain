@@ -48,7 +48,7 @@ const BEAT_PRESETS = [
 
 type Mode = "custom" | "program" | "learning" | "daytime" | "healing";
 type LearningTarget = "alpha" | "theta";
-type DaytimeTarget = "beta" | "gamma";
+type DaytimeTarget = "beta" | "gamma" | "preWorkout" | "cardio" | "hiit" | "recovery";
 type HealingTarget = "restoration" | "deepHealing" | "painRelief";
 
 const DURATION_OPTIONS = [
@@ -780,8 +780,21 @@ export default function ConsolePage() {
     const rampUpSeconds = includeRampUp ? Math.min(300, totalSeconds * 0.15) : 0; // 5 min or 15% max
     const mainSeconds = totalSeconds - rampUpSeconds;
     
-    // Target frequencies: Beta = 20Hz, Gamma = 40Hz
-    const targetFreq = daytimeTarget === "beta" ? 20 : 40;
+    // Target frequencies based on mode
+    const getTargetConfig = () => {
+      switch (daytimeTarget) {
+        case "beta": return { freq: 20, name: "Beta Focus", carrier: 432 };
+        case "gamma": return { freq: 40, name: "High Gamma", carrier: 432 };
+        case "preWorkout": return { freq: 18, name: "Pre-Workout Energy", carrier: 528 };
+        case "cardio": return { freq: 22, name: "Cardio Endurance", carrier: 432 };
+        case "hiit": return { freq: 38, name: "HIIT Intensity", carrier: 528 };
+        case "recovery": return { freq: 10, name: "Recovery", carrier: 396 };
+        default: return { freq: 20, name: "Beta Focus", carrier: 432 };
+      }
+    };
+    
+    const config = getTargetConfig();
+    const targetFreq = config.freq;
     const startFreq = includeRampUp ? 12 : targetFreq; // Start from low beta if ramping up
     
     // Ramp-up phase: gradual increase to target frequency
@@ -792,28 +805,15 @@ export default function ConsolePage() {
         name: "Ramp Up",
         startBeatFreq: startFreq,
         endBeatFreq: targetFreq,
-        startCarrierFreq: 432,
-        endCarrierFreq: 432,
+        startCarrierFreq: config.carrier,
+        endCarrierFreq: config.carrier,
         durationSeconds: Math.round(rampUpSeconds),
         order: 1,
       });
     }
     
-    if (daytimeTarget === "beta") {
-      // Sustained beta state (15-30Hz, targeting 20Hz)
-      stages.push({
-        id: 2,
-        programId: 0,
-        name: "Beta Focus",
-        startBeatFreq: targetFreq,
-        endBeatFreq: targetFreq,
-        startCarrierFreq: 432,
-        endCarrierFreq: 432,
-        durationSeconds: Math.round(mainSeconds),
-        order: 2,
-      });
-    } else {
-      // Gamma: might want slight variation for engagement
+    if (daytimeTarget === "gamma") {
+      // Gamma: slight variation for engagement
       const halfMain = mainSeconds / 2;
       
       stages.push({
@@ -838,6 +838,59 @@ export default function ConsolePage() {
         endCarrierFreq: 432,
         durationSeconds: Math.round(halfMain),
         order: 3,
+      });
+    } else if (daytimeTarget === "hiit") {
+      // HIIT: alternating intensity peaks
+      const intervalCount = 4;
+      const intervalSeconds = mainSeconds / intervalCount;
+      
+      for (let i = 0; i < intervalCount; i++) {
+        const isHigh = i % 2 === 0;
+        stages.push({
+          id: stages.length + 1,
+          programId: 0,
+          name: isHigh ? "High Intensity" : "Active Recovery",
+          startBeatFreq: isHigh ? 38 : 15,
+          endBeatFreq: isHigh ? 40 : 18,
+          startCarrierFreq: isHigh ? 528 : 432,
+          endCarrierFreq: isHigh ? 528 : 432,
+          durationSeconds: Math.round(intervalSeconds),
+          order: stages.length + 1,
+        });
+      }
+    } else if (daytimeTarget === "preWorkout") {
+      // Pre-workout: build energy progressively
+      const phases = [
+        { name: "Warm-Up Energy", startFreq: 15, endFreq: 18, portion: 0.4 },
+        { name: "Peak Activation", startFreq: 18, endFreq: 25, portion: 0.4 },
+        { name: "Ready State", startFreq: 25, endFreq: 22, portion: 0.2 },
+      ];
+      
+      phases.forEach((phase, i) => {
+        stages.push({
+          id: stages.length + 1,
+          programId: 0,
+          name: phase.name,
+          startBeatFreq: phase.startFreq,
+          endBeatFreq: phase.endFreq,
+          startCarrierFreq: 528,
+          endCarrierFreq: 528,
+          durationSeconds: Math.round(mainSeconds * phase.portion),
+          order: stages.length + 1,
+        });
+      });
+    } else {
+      // Sustained state for beta, cardio, recovery
+      stages.push({
+        id: stages.length + 1,
+        programId: 0,
+        name: config.name,
+        startBeatFreq: targetFreq,
+        endBeatFreq: targetFreq,
+        startCarrierFreq: config.carrier,
+        endCarrierFreq: config.carrier,
+        durationSeconds: Math.round(mainSeconds),
+        order: stages.length + 1,
       });
     }
     
@@ -1592,7 +1645,7 @@ export default function ConsolePage() {
                 </div>
 
                 <div className="space-y-3">
-                  <label className="text-xs font-medium text-white" data-testid="label-daytime-target">Target State</label>
+                  <label className="text-xs font-medium text-white" data-testid="label-daytime-target">Focus Modes</label>
                   <div className="grid grid-cols-2 gap-2">
                     <Button
                       variant={daytimeTarget === "beta" ? "default" : "outline"}
@@ -1603,7 +1656,7 @@ export default function ConsolePage() {
                       className="flex flex-col items-center gap-1 whitespace-normal"
                       data-testid="button-target-beta"
                     >
-                      <span className="font-semibold">Beta (15-30 Hz)</span>
+                      <span className="font-semibold">Beta (20 Hz)</span>
                       <span className="text-[10px] opacity-70">Focus, concentration</span>
                     </Button>
                     <Button
@@ -1617,9 +1670,66 @@ export default function ConsolePage() {
                     >
                       <div className="flex items-center gap-1">
                         <Zap className="w-3 h-3" />
-                        <span className="font-semibold">Gamma (30+ Hz)</span>
+                        <span className="font-semibold">Gamma (40 Hz)</span>
                       </div>
                       <span className="text-[10px] opacity-70">Peak flow, insight</span>
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-xs font-medium text-white" data-testid="label-workout-target">Workout Modes</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant={daytimeTarget === "preWorkout" ? "default" : "outline"}
+                      onClick={() => {
+                        daytimeAudio.reset();
+                        setDaytimeTarget("preWorkout");
+                      }}
+                      className="flex flex-col items-center gap-1 whitespace-normal"
+                      data-testid="button-target-preworkout"
+                    >
+                      <span className="font-semibold">Pre-Workout</span>
+                      <span className="text-[10px] opacity-70">15-25 Hz energy build</span>
+                    </Button>
+                    <Button
+                      variant={daytimeTarget === "cardio" ? "default" : "outline"}
+                      onClick={() => {
+                        daytimeAudio.reset();
+                        setDaytimeTarget("cardio");
+                      }}
+                      className="flex flex-col items-center gap-1 whitespace-normal"
+                      data-testid="button-target-cardio"
+                    >
+                      <span className="font-semibold">Cardio (22 Hz)</span>
+                      <span className="text-[10px] opacity-70">Sustained endurance</span>
+                    </Button>
+                    <Button
+                      variant={daytimeTarget === "hiit" ? "default" : "outline"}
+                      onClick={() => {
+                        daytimeAudio.reset();
+                        setDaytimeTarget("hiit");
+                      }}
+                      className="flex flex-col items-center gap-1 whitespace-normal"
+                      data-testid="button-target-hiit"
+                    >
+                      <div className="flex items-center gap-1">
+                        <Zap className="w-3 h-3" />
+                        <span className="font-semibold">HIIT/Strength</span>
+                      </div>
+                      <span className="text-[10px] opacity-70">38-40 Hz intervals</span>
+                    </Button>
+                    <Button
+                      variant={daytimeTarget === "recovery" ? "default" : "outline"}
+                      onClick={() => {
+                        daytimeAudio.reset();
+                        setDaytimeTarget("recovery");
+                      }}
+                      className="flex flex-col items-center gap-1 whitespace-normal"
+                      data-testid="button-target-recovery"
+                    >
+                      <span className="font-semibold">Recovery (10 Hz)</span>
+                      <span className="text-[10px] opacity-70">Between sets, cooldown</span>
                     </Button>
                   </div>
                 </div>
@@ -2470,7 +2580,7 @@ export default function ConsolePage() {
                   : mode === "learning" 
                     ? `Learning: ${learningTarget === "alpha" ? "Alpha" : "Theta"}`
                     : mode === "daytime"
-                      ? `Daytime: ${daytimeTarget === "beta" ? "Beta" : "Gamma"}`
+                      ? `Daytime: ${daytimeTarget === "beta" ? "Beta" : daytimeTarget === "gamma" ? "Gamma" : daytimeTarget === "preWorkout" ? "Pre-Workout" : daytimeTarget === "cardio" ? "Cardio" : daytimeTarget === "hiit" ? "HIIT" : "Recovery"}`
                       : mode === "healing"
                         ? `Healing: ${healingTarget === "restoration" ? "Restoration" : healingTarget === "deepHealing" ? "Deep" : "Pain Relief"}`
                         : selectedProgram?.name || "Program"}
