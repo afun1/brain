@@ -117,38 +117,78 @@ function ChannelPlaylist({
     e.dataTransfer.setData('text/plain', index.toString());
   }, []);
 
+  const handleTrackDrag = useCallback((e: React.DragEvent) => {
+    if (e.clientY === 0 && e.clientX === 0) return;
+    
+    const container = scrollContainerRef.current;
+    if (!container || draggedIndex === null) return;
+
+    const rect = container.getBoundingClientRect();
+    const edgeThreshold = 50;
+    const scrollSpeed = 4;
+
+    const distFromTop = e.clientY - rect.top;
+    const distFromBottom = rect.bottom - e.clientY;
+
+    const maxScroll = container.scrollHeight - container.clientHeight;
+    
+    if (distFromTop >= 0 && distFromTop < edgeThreshold && container.scrollTop > 0) {
+      container.scrollTop = Math.max(0, container.scrollTop - scrollSpeed);
+    } else if (distFromBottom >= 0 && distFromBottom < edgeThreshold && container.scrollTop < maxScroll) {
+      container.scrollTop = Math.min(maxScroll, container.scrollTop + scrollSpeed);
+    }
+  }, [draggedIndex]);
+
+  const scrollDirectionRef = useRef<'up' | 'down' | null>(null);
+
   const checkAutoScroll = useCallback((e: React.DragEvent) => {
     const container = scrollContainerRef.current;
     if (!container || draggedIndex === null) return;
 
     const rect = container.getBoundingClientRect();
-    const edgeThreshold = 30;
-    const scrollSpeed = 5;
+    const edgeThreshold = 40;
+    const scrollSpeed = 3;
 
     const distFromTop = e.clientY - rect.top;
     const distFromBottom = rect.bottom - e.clientY;
 
-    stopAutoScroll();
+    const maxScroll = container.scrollHeight - container.clientHeight;
+    const canScrollUp = container.scrollTop > 0;
+    const canScrollDown = container.scrollTop < maxScroll;
 
-    if (distFromTop < edgeThreshold && container.scrollTop > 0) {
-      const scroll = () => {
-        if (container.scrollTop > 0) {
-          container.scrollTop -= scrollSpeed;
-          autoScrollRef.current = requestAnimationFrame(scroll);
-        }
-      };
-      autoScrollRef.current = requestAnimationFrame(scroll);
-    } else if (distFromBottom < edgeThreshold) {
-      const maxScroll = container.scrollHeight - container.clientHeight;
-      if (container.scrollTop < maxScroll) {
+    if (distFromTop < edgeThreshold && canScrollUp) {
+      if (scrollDirectionRef.current !== 'up') {
+        stopAutoScroll();
+        scrollDirectionRef.current = 'up';
+        const scroll = () => {
+          if (container.scrollTop > 0) {
+            container.scrollTop -= scrollSpeed;
+            autoScrollRef.current = requestAnimationFrame(scroll);
+          } else {
+            scrollDirectionRef.current = null;
+          }
+        };
+        autoScrollRef.current = requestAnimationFrame(scroll);
+      }
+    } else if (distFromBottom < edgeThreshold && canScrollDown) {
+      if (scrollDirectionRef.current !== 'down') {
+        stopAutoScroll();
+        scrollDirectionRef.current = 'down';
         const scroll = () => {
           const currentMax = container.scrollHeight - container.clientHeight;
           if (container.scrollTop < currentMax) {
             container.scrollTop += scrollSpeed;
             autoScrollRef.current = requestAnimationFrame(scroll);
+          } else {
+            scrollDirectionRef.current = null;
           }
         };
         autoScrollRef.current = requestAnimationFrame(scroll);
+      }
+    } else {
+      if (scrollDirectionRef.current !== null) {
+        stopAutoScroll();
+        scrollDirectionRef.current = null;
       }
     }
   }, [draggedIndex, stopAutoScroll]);
@@ -173,11 +213,13 @@ function ChannelPlaylist({
 
   const handleScrollAreaDragLeave = useCallback(() => {
     stopAutoScroll();
+    scrollDirectionRef.current = null;
   }, [stopAutoScroll]);
 
   const handleTrackDrop = useCallback((e: React.DragEvent, toIndex: number) => {
     e.preventDefault();
     stopAutoScroll();
+    scrollDirectionRef.current = null;
     if (draggedIndex !== null && draggedIndex !== toIndex) {
       onMoveTrack(draggedIndex, toIndex);
     }
@@ -187,6 +229,7 @@ function ChannelPlaylist({
 
   const handleTrackDragEnd = useCallback(() => {
     stopAutoScroll();
+    scrollDirectionRef.current = null;
     setDraggedIndex(null);
     setDragOverIndex(null);
   }, [stopAutoScroll]);
@@ -327,6 +370,7 @@ function ChannelPlaylist({
                   key={track.id}
                   draggable
                   onDragStart={(e) => handleTrackDragStart(e, index)}
+                  onDrag={handleTrackDrag}
                   onDragOver={(e) => handleTrackDragOver(e, index)}
                   onDragLeave={handleTrackDragLeave}
                   onDrop={(e) => handleTrackDrop(e, index)}
