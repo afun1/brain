@@ -1,0 +1,16 @@
+.local
+node_modules
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+.vscode
+.idea
+coverage
+.nyc_output
+.git
+attached_assets
+client/src
+server
+script
