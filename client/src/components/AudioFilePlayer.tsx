@@ -102,6 +102,7 @@ async function savePlaylistFile(content: string, defaultName: string, extension:
 export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRecorder = false }: AudioFilePlayerProps) {
   const player = usePlaylistAudioPlayer(storageKey);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const [isDragOver, setIsDragOver] = useState(false);
   const [selectedTracks, setSelectedTracks] = useState<Set<string>>(new Set());
@@ -174,6 +175,28 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', index.toString());
   }, []);
+
+  const handleTrackDrag = useCallback((e: React.DragEvent) => {
+    if (e.clientY === 0 && e.clientX === 0) return;
+    
+    const container = scrollContainerRef.current;
+    if (!container || draggedIndex === null) return;
+
+    const rect = container.getBoundingClientRect();
+    const edgeThreshold = 50;
+    const scrollSpeed = 4;
+
+    const distFromTop = e.clientY - rect.top;
+    const distFromBottom = rect.bottom - e.clientY;
+
+    const maxScroll = container.scrollHeight - container.clientHeight;
+    
+    if (distFromTop >= 0 && distFromTop < edgeThreshold && container.scrollTop > 0) {
+      container.scrollTop = Math.max(0, container.scrollTop - scrollSpeed);
+    } else if (distFromBottom >= 0 && distFromBottom < edgeThreshold && container.scrollTop < maxScroll) {
+      container.scrollTop = Math.min(maxScroll, container.scrollTop + scrollSpeed);
+    }
+  }, [draggedIndex]);
 
   const handleTrackDragOver = useCallback((e: React.DragEvent, index: number) => {
     e.preventDefault();
@@ -440,8 +463,9 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
       {player.tracks.length > 0 && (
         <>
           <div className="relative">
-            <ScrollArea 
-              className="rounded-md border border-white/10 bg-black/20"
+            <div
+              ref={scrollContainerRef}
+              className="rounded-md border border-white/10 bg-black/20 overflow-y-auto"
               style={{ height: `${listHeight}px` }}
             >
               <div className="p-2 space-y-1">
@@ -450,6 +474,7 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
                     key={track.id}
                     draggable
                     onDragStart={(e) => handleTrackDragStart(e, index)}
+                    onDrag={handleTrackDrag}
                     onDragOver={(e) => handleTrackDragOver(e, index)}
                     onDragLeave={handleTrackDragLeave}
                     onDrop={(e) => handleTrackDrop(e, index)}
@@ -494,7 +519,7 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
                   </div>
                 ))}
               </div>
-            </ScrollArea>
+            </div>
             <div
               className="absolute bottom-0 left-0 right-0 h-3 flex items-center justify-center cursor-ns-resize hover:bg-white/10 rounded-b-md transition-colors"
               onMouseDown={handleResizeStart}
