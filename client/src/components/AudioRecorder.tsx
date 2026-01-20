@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Mic, Square, Play, Pause, Save, Wand2, Volume2 } from "lucide-react";
@@ -118,15 +118,35 @@ export function AudioRecorder({ onSaveRecording, onSaveSubliminal, testIdPrefix 
     }
   };
 
+  const downloadFile = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const handleSaveRecording = () => {
     if (!recordedBlob || !recordingName.trim()) return;
     
-    const file = new File([recordedBlob], `${recordingName}.webm`, { type: 'audio/webm' });
+    const filename = `${recordingName}.webm`;
+    const file = new File([recordedBlob], filename, { type: 'audio/webm' });
+    
+    // Download the file for user to keep
+    downloadFile(recordedBlob, filename);
+    
+    // Add to playlist
     onSaveRecording(file, recordingName);
-    toast({ title: "Recording saved", description: `"${recordingName}" added to playlist` });
+    toast({ title: "Recording saved & downloaded", description: `"${recordingName}" saved to your device and added to playlist` });
+    
+    // Reset to show record button again
+    discardRecording();
   };
 
-  const handleCreateSubliminal = useCallback(async () => {
+  const handleCreateSubliminal = async () => {
     if (!recordedBlob || !recordingName.trim()) return;
     
     try {
@@ -156,13 +176,20 @@ export function AudioRecorder({ onSaveRecording, onSaveSubliminal, testIdPrefix 
       const subliminalName = `${recordingName} (Subliminal)`;
       const file = new File([wavBlob], `${subliminalName}.wav`, { type: 'audio/wav' });
       
+      // Download the file for user to keep
+      downloadFile(wavBlob, `${subliminalName}.wav`);
+      
+      // Add to playlist
       onSaveSubliminal(file, subliminalName);
       toast({ 
-        title: "Subliminal created", 
-        description: `"${subliminalName}" added at ${Math.round(subliminalVolume * 100)}% volume` 
+        title: "Subliminal created & downloaded", 
+        description: `"${subliminalName}" saved to your device at ${Math.round(subliminalVolume * 100)}% volume` 
       });
       
       audioContext.close();
+      
+      // Reset to show record button again
+      discardRecording();
     } catch (err) {
       toast({
         title: "Conversion failed",
@@ -170,7 +197,7 @@ export function AudioRecorder({ onSaveRecording, onSaveSubliminal, testIdPrefix 
         variant: "destructive"
       });
     }
-  }, [recordedBlob, recordingName, subliminalVolume, onSaveSubliminal, toast]);
+  };
 
   const discardRecording = () => {
     if (audioRef.current) {
