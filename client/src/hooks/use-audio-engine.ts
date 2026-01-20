@@ -53,6 +53,14 @@ export function useAudioEngine(stages: AudioStage[] = []) {
 
   // Calculate total duration
   const totalDuration = stages.reduce((acc, stage) => acc + stage.durationSeconds, 0);
+  
+  // Initialize carrier/beat from first stage when stages change and not playing
+  useEffect(() => {
+    if (!isPlaying && stages.length > 0) {
+      setCurrentCarrier(stages[0].startCarrierFreq);
+      setCurrentBeat(stages[0].startBeatFreq);
+    }
+  }, [stages, isPlaying]);
 
   const initAudio = () => {
     if (!audioContextRef.current) {

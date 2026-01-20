@@ -874,10 +874,8 @@ export default function ConsolePage() {
   const daytimeStages = useMemo((): SleepStage[] => {
     const stages: SleepStage[] = [];
     const totalSeconds = daytimeDuration * 60;
-    const rampUpSeconds = includeRampUp ? Math.min(300, totalSeconds * 0.15) : 0; // 5 min or 15% max
-    const mainSeconds = totalSeconds - rampUpSeconds;
     
-    // Target frequencies based on mode
+    // Target frequencies based on mode (used for beat frequency)
     const getTargetConfig = () => {
       switch (daytimeTarget) {
         case "beta": return { freq: 20, name: "Beta Focus", carrier: 432 };
@@ -891,8 +889,61 @@ export default function ConsolePage() {
     };
     
     const config = getTargetConfig();
-    const targetFreq = config.freq;
-    const startFreq = includeRampUp ? 12 : targetFreq; // Start from low beta if ramping up
+    const targetBeat = config.freq;
+    
+    // Check if custom tone slots are configured with durations
+    const validToneSlots = daytimeToneSlots.map((f, i) => ({ freq: f, duration: daytimeToneDurations[i], idx: i }))
+      .filter(s => s.freq > 0 && s.duration > 0);
+    const hasCustomTones = validToneSlots.length > 0;
+    
+    // If custom tones are configured, use them for carrier frequencies
+    if (hasCustomTones) {
+      const totalCustomMinutes = validToneSlots.reduce((sum, s) => sum + s.duration, 0);
+      let stageOrder = 1;
+      
+      // Optional ramp-up before custom tones
+      if (includeRampUp && totalCustomMinutes > 0) {
+        const rampUpSeconds = Math.min(120, totalCustomMinutes * 60 * 0.1); // 10% or 2 min max
+        if (rampUpSeconds >= 30) {
+          stages.push({
+            id: stageOrder,
+            programId: 0,
+            name: "Ramp Up",
+            startBeatFreq: 12,
+            endBeatFreq: targetBeat,
+            startCarrierFreq: validToneSlots[0].freq,
+            endCarrierFreq: validToneSlots[0].freq,
+            durationSeconds: Math.round(rampUpSeconds),
+            order: stageOrder,
+          });
+          stageOrder++;
+        }
+      }
+      
+      // Build stages from custom tone slots
+      validToneSlots.forEach((slot, i) => {
+        const nextSlot = validToneSlots[i + 1];
+        stages.push({
+          id: stageOrder,
+          programId: 0,
+          name: `Tone ${slot.idx + 1} (${slot.freq} Hz)`,
+          startBeatFreq: targetBeat,
+          endBeatFreq: targetBeat,
+          startCarrierFreq: slot.freq,
+          endCarrierFreq: nextSlot ? nextSlot.freq : slot.freq,
+          durationSeconds: slot.duration * 60,
+          order: stageOrder,
+        });
+        stageOrder++;
+      });
+      
+      return stages;
+    }
+    
+    // Default preset-based stages (no custom tones configured)
+    const rampUpSeconds = includeRampUp ? Math.min(300, totalSeconds * 0.15) : 0; // 5 min or 15% max
+    const mainSeconds = totalSeconds - rampUpSeconds;
+    const startFreq = includeRampUp ? 12 : targetBeat;
     
     // Ramp-up phase: gradual increase to target frequency
     if (includeRampUp && rampUpSeconds > 0) {
@@ -901,7 +952,7 @@ export default function ConsolePage() {
         programId: 0,
         name: "Ramp Up",
         startBeatFreq: startFreq,
-        endBeatFreq: targetFreq,
+        endBeatFreq: targetBeat,
         startCarrierFreq: config.carrier,
         endCarrierFreq: config.carrier,
         durationSeconds: Math.round(rampUpSeconds),
@@ -982,8 +1033,8 @@ export default function ConsolePage() {
         id: stages.length + 1,
         programId: 0,
         name: config.name,
-        startBeatFreq: targetFreq,
-        endBeatFreq: targetFreq,
+        startBeatFreq: targetBeat,
+        endBeatFreq: targetBeat,
         startCarrierFreq: config.carrier,
         endCarrierFreq: config.carrier,
         durationSeconds: Math.round(mainSeconds),
@@ -992,7 +1043,7 @@ export default function ConsolePage() {
     }
     
     return stages;
-  }, [daytimeTarget, daytimeDuration, includeRampUp]);
+  }, [daytimeTarget, daytimeDuration, includeRampUp, daytimeToneSlots, daytimeToneDurations]);
   
   const daytimeAudio = useAudioEngine(daytimeStages);
   
