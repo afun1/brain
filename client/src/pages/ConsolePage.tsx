@@ -104,6 +104,102 @@ export default function ConsolePage() {
   const [daytimeDuration, setDaytimeDuration] = useState(25); // minutes
   const [includeRampUp, setIncludeRampUp] = useState(true);
   
+  // Daytime Mode 10-slot tone frequency system
+  const DAYTIME_TONE_STORAGE_KEY = "binauralSleep_daytimeTones";
+  const DAYTIME_TONE_DURATION_STORAGE_KEY = "binauralSleep_daytimeToneDurations";
+  const DEFAULT_DAYTIME_TONES = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  const DEFAULT_DAYTIME_TONE_DURATIONS = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  
+  const [daytimeToneSlots, setDaytimeToneSlots] = useState<number[]>(() => {
+    try {
+      const stored = localStorage.getItem(DAYTIME_TONE_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length === 10) return parsed;
+      }
+    } catch {}
+    return DEFAULT_DAYTIME_TONES;
+  });
+  
+  const [daytimeToneInputs, setDaytimeToneInputs] = useState<string[]>(() => 
+    DEFAULT_DAYTIME_TONES.map(f => f === 0 ? '' : f.toString())
+  );
+  
+  const [daytimeToneDurations, setDaytimeToneDurations] = useState<number[]>(() => {
+    try {
+      const stored = localStorage.getItem(DAYTIME_TONE_DURATION_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length === 10) return parsed;
+      }
+    } catch {}
+    return DEFAULT_DAYTIME_TONE_DURATIONS;
+  });
+  
+  // Sync daytime tone inputs on mount
+  useEffect(() => {
+    setDaytimeToneInputs(daytimeToneSlots.map(f => f === 0 ? '' : f.toString()));
+  }, [daytimeToneSlots]);
+  
+  // Persist daytime tone settings
+  useEffect(() => {
+    localStorage.setItem(DAYTIME_TONE_STORAGE_KEY, JSON.stringify(daytimeToneSlots));
+  }, [daytimeToneSlots]);
+  
+  useEffect(() => {
+    localStorage.setItem(DAYTIME_TONE_DURATION_STORAGE_KEY, JSON.stringify(daytimeToneDurations));
+  }, [daytimeToneDurations]);
+  
+  // Daytime tone input handlers
+  const handleDaytimeToneChange = (index: number, value: string) => {
+    setDaytimeToneInputs(prev => {
+      const newInputs = [...prev];
+      newInputs[index] = value;
+      return newInputs;
+    });
+  };
+  
+  const handleDaytimeToneBlur = (index: number) => {
+    const value = parseInt(daytimeToneInputs[index]) || 0;
+    // Allow 0 (empty) or valid range 20-2000 Hz for daytime tones
+    const clamped = value === 0 ? 0 : Math.max(20, Math.min(2000, value));
+    setDaytimeToneSlots(prev => {
+      const newSlots = [...prev];
+      newSlots[index] = clamped;
+      return newSlots;
+    });
+    // Update input to reflect clamped value
+    if (value !== 0 && clamped !== value) {
+      setDaytimeToneInputs(prev => {
+        const newInputs = [...prev];
+        newInputs[index] = clamped.toString();
+        return newInputs;
+      });
+    }
+  };
+  
+  const updateDaytimeToneDuration = (index: number, value: number) => {
+    setDaytimeToneDurations(prev => {
+      const newDurations = [...prev];
+      newDurations[index] = Math.max(0, Math.min(600, value));
+      return newDurations;
+    });
+  };
+  
+  const clearDaytimeTones = () => {
+    setDaytimeToneSlots([...DEFAULT_DAYTIME_TONES]);
+    setDaytimeToneInputs(DEFAULT_DAYTIME_TONES.map(() => ''));
+    setDaytimeToneDurations([...DEFAULT_DAYTIME_TONE_DURATIONS]);
+  };
+  
+  const fillDaytimeFocus = () => {
+    // Beta and gamma frequencies for focus/productivity
+    setDaytimeToneSlots([200, 250, 300, 350, 400, 432, 480, 528, 600, 700]);
+    setDaytimeToneInputs(["200", "250", "300", "350", "400", "432", "480", "528", "600", "700"]);
+  };
+  
+  const daytimeTotalToneMinutes = daytimeToneDurations.reduce((sum, d) => sum + d, 0);
+  
   // Healing Mode state
   const [healingTarget, setHealingTarget] = useState<HealingTarget>("restoration");
   const [healingDuration, setHealingDuration] = useState(60); // minutes
@@ -1831,6 +1927,99 @@ export default function ConsolePage() {
                         {opt.label}
                       </Button>
                     ))}
+                  </div>
+                </div>
+
+                <div className="h-px bg-white/10" />
+
+                <div className="p-3 rounded-xl bg-white/5 border border-white/10" data-testid="section-daytime-tones">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <div className="text-sm font-medium text-white">Tone Frequencies</div>
+                      <div className="text-[10px] text-muted-foreground">
+                        Set Hz and duration (min) for each slot
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={clearDaytimeTones}
+                        className="text-xs"
+                        data-testid="button-clear-daytime-tones"
+                      >
+                        Clear All
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={fillDaytimeFocus}
+                        className="text-xs"
+                        data-testid="button-fill-daytime-focus"
+                      >
+                        Fill Focus
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="mb-3" data-testid="daytime-tone-meter">
+                    <div className="flex h-3 rounded-md overflow-hidden border border-white/20">
+                      {daytimeToneDurations.map((duration, idx) => {
+                        const totalMins = daytimeTotalToneMinutes || daytimeDuration;
+                        const percent = totalMins > 0 ? (duration / totalMins) * 100 : 10;
+                        const colors = [
+                          "bg-amber-500", "bg-yellow-500", "bg-lime-500", "bg-green-500", "bg-emerald-500",
+                          "bg-teal-500", "bg-cyan-500", "bg-sky-500", "bg-blue-500", "bg-indigo-500"
+                        ];
+                        return (
+                          <div
+                            key={idx}
+                            className={`${colors[idx]} transition-all duration-300`}
+                            style={{ width: `${percent}%` }}
+                            title={`Slot ${idx + 1}: ${daytimeToneSlots[idx]} Hz - ${duration} min`}
+                            data-testid={`daytime-tone-segment-${idx}`}
+                          />
+                        );
+                      })}
+                    </div>
+                    <div className="flex justify-between mt-1 text-[9px] text-muted-foreground">
+                      <span>Total: {daytimeTotalToneMinutes} min</span>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-5 gap-2">
+                    {daytimeToneSlots.map((freq, idx) => {
+                      const colors = [
+                        "border-amber-500/50", "border-yellow-500/50", "border-lime-500/50", "border-green-500/50", "border-emerald-500/50",
+                        "border-teal-500/50", "border-cyan-500/50", "border-sky-500/50", "border-blue-500/50", "border-indigo-500/50"
+                      ];
+                      return (
+                        <div key={idx} className={`flex flex-col items-center p-1.5 rounded-lg border ${colors[idx]} bg-white/5`} data-testid={`daytime-tone-slot-${idx}`}>
+                          <div className="text-[10px] text-muted-foreground mb-1">#{idx + 1}</div>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={daytimeToneInputs[idx]}
+                            onChange={(e) => handleDaytimeToneChange(idx, e.target.value)}
+                            onBlur={() => handleDaytimeToneBlur(idx)}
+                            className="w-full py-1 text-center text-xs bg-zinc-900 border border-white/20 rounded text-white focus:border-primary focus:outline-none"
+                            placeholder="Hz"
+                            data-testid={`daytime-tone-input-${idx}`}
+                          />
+                          <div className="flex items-center gap-0.5 mt-1">
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={daytimeToneDurations[idx] === 0 ? '' : daytimeToneDurations[idx]}
+                              onChange={(e) => updateDaytimeToneDuration(idx, parseInt(e.target.value) || 0)}
+                              className="w-10 py-0.5 text-center text-[10px] bg-zinc-800 border border-white/10 rounded text-white focus:border-primary focus:outline-none"
+                              placeholder="min"
+                              data-testid={`daytime-tone-duration-${idx}`}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
