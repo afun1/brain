@@ -118,32 +118,53 @@ export function AudioRecorder({ onSaveRecording, onSaveSubliminal, testIdPrefix 
     }
   };
 
-  const downloadFile = (blob: Blob, filename: string) => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const saveFileWithPicker = async (blob: Blob, suggestedName: string, extension: string, mimeType: string): Promise<string | null> => {
+    try {
+      if ('showSaveFilePicker' in window) {
+        const handle = await (window as any).showSaveFilePicker({
+          suggestedName: `${suggestedName}.${extension}`,
+          types: [{
+            description: `${extension.toUpperCase()} Audio File`,
+            accept: { [mimeType]: [`.${extension}`] }
+          }]
+        });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        return handle.name;
+      } else {
+        // Fallback for browsers without File System Access API
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${suggestedName}.${extension}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        return `${suggestedName}.${extension}`;
+      }
+    } catch (err) {
+      // User cancelled the save dialog
+      return null;
+    }
   };
 
-  const handleSaveRecording = () => {
+  const handleSaveRecording = async () => {
     if (!recordedBlob || !recordingName.trim()) return;
     
-    const filename = `${recordingName}.webm`;
-    const file = new File([recordedBlob], filename, { type: 'audio/webm' });
+    // Let user choose where to save the file
+    const savedName = await saveFileWithPicker(recordedBlob, recordingName, 'webm', 'audio/webm');
     
-    // Download the file for user to keep
-    downloadFile(recordedBlob, filename);
-    
-    // Add to playlist
-    onSaveRecording(file, recordingName);
-    toast({ title: "Recording saved & downloaded", description: `"${recordingName}" saved to your device and added to playlist` });
-    
-    // Reset to show record button again
-    discardRecording();
+    if (savedName) {
+      // Add to playlist
+      const file = new File([recordedBlob], savedName, { type: 'audio/webm' });
+      onSaveRecording(file, recordingName);
+      toast({ title: "Recording saved", description: `"${savedName}" saved to your device and added to playlist` });
+      
+      // Reset to show record button again
+      discardRecording();
+    }
   };
 
   const handleCreateSubliminal = async () => {
@@ -174,22 +195,24 @@ export function AudioRecorder({ onSaveRecording, onSaveSubliminal, testIdPrefix 
       
       const wavBlob = audioBufferToWav(renderedBuffer);
       const subliminalName = `${recordingName} (Subliminal)`;
-      const file = new File([wavBlob], `${subliminalName}.wav`, { type: 'audio/wav' });
       
-      // Download the file for user to keep
-      downloadFile(wavBlob, `${subliminalName}.wav`);
-      
-      // Add to playlist
-      onSaveSubliminal(file, subliminalName);
-      toast({ 
-        title: "Subliminal created & downloaded", 
-        description: `"${subliminalName}" saved to your device at ${Math.round(subliminalVolume * 100)}% volume` 
-      });
+      // Let user choose where to save the file
+      const savedName = await saveFileWithPicker(wavBlob, subliminalName, 'wav', 'audio/wav');
       
       audioContext.close();
       
-      // Reset to show record button again
-      discardRecording();
+      if (savedName) {
+        // Add to playlist
+        const file = new File([wavBlob], savedName, { type: 'audio/wav' });
+        onSaveSubliminal(file, subliminalName);
+        toast({ 
+          title: "Subliminal created", 
+          description: `"${savedName}" saved at ${Math.round(subliminalVolume * 100)}% volume` 
+        });
+        
+        // Reset to show record button again
+        discardRecording();
+      }
     } catch (err) {
       toast({
         title: "Conversion failed",
