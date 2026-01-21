@@ -199,6 +199,11 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
   }, [draggedIndex]);
 
   const handleTrackDragOver = useCallback((e: React.DragEvent, index: number) => {
+    // Check if this is an external file drop (not internal reorder)
+    if (e.dataTransfer.types.includes('Files')) {
+      // Let it bubble up to the parent drop zone
+      return;
+    }
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     if (draggedIndex !== null && index !== draggedIndex) {
@@ -211,6 +216,11 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
   }, []);
 
   const handleTrackDrop = useCallback((e: React.DragEvent, toIndex: number) => {
+    // Check if this is an external file drop (not internal reorder)
+    if (e.dataTransfer.types.includes('Files')) {
+      // Let it bubble up to the parent drop zone
+      return;
+    }
     e.preventDefault();
     if (draggedIndex !== null && draggedIndex !== toIndex) {
       player.moveTrack(draggedIndex, toIndex);

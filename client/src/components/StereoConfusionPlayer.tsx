@@ -194,6 +194,11 @@ function ChannelPlaylist({
   }, [draggedIndex, stopAutoScroll]);
 
   const handleTrackDragOver = useCallback((e: React.DragEvent, index: number) => {
+    // Check if this is an external file drop (not internal reorder)
+    if (e.dataTransfer.types.includes('Files')) {
+      // Let it bubble up to the parent drop zone
+      return;
+    }
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     if (draggedIndex !== null && index !== draggedIndex) {
@@ -203,6 +208,10 @@ function ChannelPlaylist({
   }, [draggedIndex, checkAutoScroll]);
 
   const handleScrollAreaDragOver = useCallback((e: React.DragEvent) => {
+    // Allow file drops to bubble up to parent drop zone
+    if (e.dataTransfer.types.includes('Files')) {
+      return;
+    }
     e.preventDefault();
     checkAutoScroll(e);
   }, [checkAutoScroll]);
@@ -217,6 +226,11 @@ function ChannelPlaylist({
   }, [stopAutoScroll]);
 
   const handleTrackDrop = useCallback((e: React.DragEvent, toIndex: number) => {
+    // Check if this is an external file drop (not internal reorder)
+    if (e.dataTransfer.types.includes('Files')) {
+      // Let it bubble up to the parent drop zone
+      return;
+    }
     e.preventDefault();
     stopAutoScroll();
     scrollDirectionRef.current = null;
