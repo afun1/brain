@@ -276,14 +276,22 @@ export function ProgressionBuilder({
 
   const exportToFile = () => {
     const activeSlots = slots.filter(s => s.leftHz > 0 || s.rightHz > 0 || s.durationMinutes > 0);
-    const data = JSON.stringify({ slots: activeSlots, carrierChannel, variance, globalBeat }, null, 2);
+    if (activeSlots.length === 0) {
+      toast({ title: "Nothing to export", description: "Add some slots first.", variant: "destructive" });
+      return;
+    }
+    const data = JSON.stringify({ slots: activeSlots, carrierChannel, variance }, null, 2);
     const blob = new Blob([data], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = "progression.json";
+    a.style.display = "none";
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    toast({ title: "Exported!", description: "Progression saved to progression.json" });
   };
 
   const importFromFile = (e: React.ChangeEvent<HTMLInputElement>) => {
