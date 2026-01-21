@@ -2813,22 +2813,111 @@ export default function ConsolePage() {
                   ))}
                 </div>
 
-                <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10 mb-4">
-                  <div className="flex-1">
-                    <div className="text-sm font-medium text-white">Wake-Up Sequence</div>
-                    <div className="text-[10px] text-muted-foreground">
-                      Gentle REM→Beta transition (+17 min after {sleepDurationHours}h sleep)
+                {/* Sleep Journey Phases */}
+                <div className="space-y-3 mb-4">
+                  {/* Pre-Sleep Wind-Down */}
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/10" data-testid="section-pre-sleep">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-white flex items-center gap-2">
+                          <Moon className="w-4 h-4 text-indigo-400" />
+                          Pre-Sleep Wind-Down
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">
+                          Beta→Theta transition before sleep begins
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIncludePreSleep(!includePreSleep)}
+                        className={`text-xs ${includePreSleep ? 'bg-indigo-500 hover:bg-indigo-600 text-white border-indigo-500' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border-zinc-700'}`}
+                        data-testid="button-toggle-presleep"
+                      >
+                        {includePreSleep ? "On" : "Off"}
+                      </Button>
+                    </div>
+                    {includePreSleep && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {PRE_SLEEP_DURATION_OPTIONS.map((option) => (
+                          <Button
+                            key={option.minutes}
+                            variant={preSleepDuration === option.minutes ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setPreSleepDuration(option.minutes)}
+                            className="text-[10px] px-2"
+                            data-testid={`button-presleep-${option.minutes}`}
+                          >
+                            {option.label}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Pre-Wake Delta Boost */}
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/10" data-testid="section-pre-wake">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-white flex items-center gap-2">
+                          <Zap className="w-4 h-4 text-green-400" />
+                          Pre-Wake Delta Boost
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">
+                          Deep delta for regeneration before waking (HGH release, metabolism)
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIncludePreWakeDelta(!includePreWakeDelta)}
+                        className={`text-xs ${includePreWakeDelta ? 'bg-green-500 hover:bg-green-600 text-white border-green-500' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border-zinc-700'}`}
+                        data-testid="button-toggle-prewake"
+                      >
+                        {includePreWakeDelta ? "On" : "Off"}
+                      </Button>
+                    </div>
+                    {includePreWakeDelta && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {PRE_WAKE_DURATION_OPTIONS.map((option) => (
+                          <Button
+                            key={option.minutes}
+                            variant={preWakeDeltaDuration === option.minutes ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setPreWakeDeltaDuration(option.minutes)}
+                            className="text-[10px] px-2"
+                            data-testid={`button-prewake-${option.minutes}`}
+                          >
+                            {option.label}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Wake-Up Sequence */}
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-white flex items-center gap-2">
+                          <Sun className="w-4 h-4 text-yellow-400" />
+                          Beta Wake-Up Sequence
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">
+                          Gentle REM→Beta transition (+17 min)
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIncludeWakeUp(!includeWakeUp)}
+                        className={`text-xs ${includeWakeUp ? 'bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border-zinc-700'}`}
+                        data-testid="button-toggle-wakeup"
+                      >
+                        {includeWakeUp ? "On" : "Off"}
+                      </Button>
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIncludeWakeUp(!includeWakeUp)}
-                    className={`text-xs ${includeWakeUp ? 'bg-green-500 hover:bg-green-600 text-white border-green-500' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border-zinc-700'}`}
-                    data-testid="button-toggle-wakeup"
-                  >
-                    {includeWakeUp ? "Yes" : "No"}
-                  </Button>
                 </div>
 
                 {isFullNightRest && (
