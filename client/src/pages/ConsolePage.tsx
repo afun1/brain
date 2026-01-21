@@ -18,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   Play, Pause, Volume2, Sliders, Headphones, 
-  ArrowLeftRight, Moon, Brain, Timer, Sun, Zap, HelpCircle, Heart, ListOrdered
+  ArrowLeftRight, Moon, Brain, Timer, Sun, Zap, HelpCircle, Heart, ListOrdered, MessageSquare
 } from "lucide-react";
 import { Link } from "wouter";
 import { AnimatePresence, motion } from "framer-motion";
@@ -1462,20 +1462,36 @@ export default function ConsolePage() {
           </Tooltip>
           <span className="text-sm tracking-widest uppercase font-semibold text-primary/80" data-testid="text-header-title">Binaural Tool Console</span>
         </div>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Link href="/features">
-              <Button variant="outline" size="sm" className="gap-2" data-testid="button-features-help">
-                <HelpCircle className="w-4 h-4" />
-                <span className="hidden sm:inline">Features & Instructions</span>
-                <span className="sm:hidden">Help</span>
-              </Button>
-            </Link>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>View all features and instructions</p>
-          </TooltipContent>
-        </Tooltip>
+        <div className="flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link href="/beta-report">
+                <Button variant="outline" size="sm" className="gap-2" data-testid="button-beta-report">
+                  <MessageSquare className="w-4 h-4" />
+                  <span className="hidden sm:inline">Beta Feedback</span>
+                  <span className="sm:hidden">Feedback</span>
+                </Button>
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Submit feedback to help improve the app</p>
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link href="/features">
+                <Button variant="outline" size="sm" className="gap-2" data-testid="button-features-help">
+                  <HelpCircle className="w-4 h-4" />
+                  <span className="hidden sm:inline">Features & Instructions</span>
+                  <span className="sm:hidden">Help</span>
+                </Button>
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>View all features and instructions</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
       </header>
 
       <main className="flex-1 relative z-10 flex flex-col px-4 py-4 pb-48 overflow-y-auto">
