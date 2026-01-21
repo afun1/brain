@@ -153,8 +153,8 @@ export function ProgressionBuilder({
     }
   };
 
-  const updateSlotFromInputs = (index: number, carrier: number, duration: number) => {
-    const { leftHz, rightHz } = calculateFrequencies(carrier, globalBeat);
+  const updateSlotFromInputs = (index: number, carrier: number, beat: number, duration: number) => {
+    const { leftHz, rightHz } = calculateFrequencies(carrier, beat);
     setSlots(slots.map((s, i) => i === index ? { ...s, leftHz, rightHz, durationMinutes: duration } : s));
   };
 
@@ -166,8 +166,22 @@ export function ProgressionBuilder({
 
   const handleCarrierBlur = (index: number) => {
     const carrier = parseFloat(carrierInputs[index]) || 0;
+    const beat = parseFloat(beatInputs[index]) || 0;
     const duration = parseInt(durationInputs[index]) || 0;
-    updateSlotFromInputs(index, carrier, duration);
+    updateSlotFromInputs(index, carrier, beat, duration);
+  };
+
+  const handleBeatChange = (index: number, value: string) => {
+    const newInputs = [...beatInputs];
+    newInputs[index] = value;
+    setBeatInputs(newInputs);
+  };
+
+  const handleBeatBlur = (index: number) => {
+    const carrier = parseFloat(carrierInputs[index]) || 0;
+    const beat = parseFloat(beatInputs[index]) || 0;
+    const duration = parseInt(durationInputs[index]) || 0;
+    updateSlotFromInputs(index, carrier, beat, duration);
   };
 
   const handleDurationChange = (index: number, value: string) => {
@@ -178,25 +192,21 @@ export function ProgressionBuilder({
 
   const handleDurationBlur = (index: number) => {
     const carrier = parseFloat(carrierInputs[index]) || 0;
+    const beat = parseFloat(beatInputs[index]) || 0;
     const duration = parseInt(durationInputs[index]) || 0;
-    updateSlotFromInputs(index, carrier, duration);
+    updateSlotFromInputs(index, carrier, beat, duration);
   };
 
-  // Handle global beat change
-  const handleGlobalBeatBlur = () => {
-    const beat = parseFloat(globalBeatInput) || 0;
-    setGlobalBeat(beat);
-  };
-
-  // Recalculate all slots when carrier channel, variance, or global beat changes
+  // Recalculate all slots when carrier channel or variance changes
   useEffect(() => {
     const newSlots = slots.map((slot, idx) => {
       const carrier = parseFloat(carrierInputs[idx]) || 0;
-      const { leftHz, rightHz } = calculateFrequencies(carrier, globalBeat);
+      const beat = parseFloat(beatInputs[idx]) || 0;
+      const { leftHz, rightHz } = calculateFrequencies(carrier, beat);
       return { ...slot, leftHz, rightHz };
     });
     setSlots(newSlots);
-  }, [carrierChannel, variance, globalBeat]);
+  }, [carrierChannel, variance]);
 
   const handleSave = () => {
     if (!saveName.trim()) {
@@ -209,7 +219,6 @@ export function ProgressionBuilder({
       createdAt: new Date().toISOString(),
       carrierChannel,
       variance,
-      globalBeat,
     };
     const existing = savedProgressions.filter(p => p.name !== newProgression.name);
     saveToStorage([...existing, newProgression]);
@@ -221,30 +230,32 @@ export function ProgressionBuilder({
   const loadProgression = (prog: SavedProgression) => {
     const newSlots = createInitialSlots();
     const newCarrierInputs = Array(MAX_SLOTS).fill('');
+    const newBeatInputs = Array(MAX_SLOTS).fill('');
     const newDurationInputs = Array(MAX_SLOTS).fill('');
     
-    // Set carrier channel, variance, and global beat from saved progression
+    // Set carrier channel and variance from saved progression
     if (prog.carrierChannel) setCarrierChannel(prog.carrierChannel);
     if (prog.variance) setVariance(prog.variance);
-    if (prog.globalBeat) {
-      setGlobalBeat(prog.globalBeat);
-      setGlobalBeatInput(prog.globalBeat.toString());
-    }
     
     prog.slots.forEach((slot, idx) => {
       if (idx < MAX_SLOTS) {
         newSlots[idx] = { ...slot, id: generateId() };
-        // Calculate carrier from leftHz/rightHz based on saved settings
+        // Calculate carrier and beat from leftHz/rightHz based on saved settings
         const savedCarrierChannel = prog.carrierChannel || 'L';
+        const savedVariance = prog.variance || 'higher';
         const carrier = savedCarrierChannel === 'L' ? slot.leftHz : slot.rightHz;
+        const variable = savedCarrierChannel === 'L' ? slot.rightHz : slot.leftHz;
+        const beat = savedVariance === 'higher' ? variable - carrier : carrier - variable;
         
         newCarrierInputs[idx] = carrier > 0 ? carrier.toString() : '';
+        newBeatInputs[idx] = beat > 0 ? beat.toString() : '';
         newDurationInputs[idx] = slot.durationMinutes > 0 ? slot.durationMinutes.toString() : '';
       }
     });
     
     setSlots(newSlots);
     setCarrierInputs(newCarrierInputs);
+    setBeatInputs(newBeatInputs);
     setDurationInputs(newDurationInputs);
     toast({ title: "Loaded!", description: `"${prog.name}" loaded.` });
   };
@@ -281,7 +292,6 @@ export function ProgressionBuilder({
             createdAt: new Date().toISOString(),
             carrierChannel: data.carrierChannel || 'L',
             variance: data.variance || 'higher',
-            globalBeat: data.globalBeat || 0,
           };
           loadProgression(prog);
           toast({ title: "Imported!", description: "Progression loaded from file." });
@@ -297,9 +307,8 @@ export function ProgressionBuilder({
   const resetToDefault = () => {
     setSlots(createInitialSlots());
     setCarrierInputs(Array(MAX_SLOTS).fill(''));
+    setBeatInputs(Array(MAX_SLOTS).fill(''));
     setDurationInputs(Array(MAX_SLOTS).fill(''));
-    setGlobalBeat(0);
-    setGlobalBeatInput('');
     toast({ title: "Reset", description: "All slots cleared." });
   };
 
@@ -466,21 +475,6 @@ export function ProgressionBuilder({
             </div>
             
             <div className="flex items-center gap-2">
-              <span className="text-[10px] text-muted-foreground">Beats:</span>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={globalBeatInput}
-                onChange={(e) => setGlobalBeatInput(e.target.value)}
-                onBlur={handleGlobalBeatBlur}
-                placeholder="Hz"
-                className="w-16 py-1 px-2 text-center text-xs bg-zinc-900 border border-accent/50 rounded text-white focus:border-primary focus:outline-none"
-                data-testid="input-global-beat"
-              />
-              <span className="text-[10px] text-muted-foreground">Hz</span>
-            </div>
-            
-            <div className="flex items-center gap-2">
               <span className="text-[10px] text-muted-foreground">Variance:</span>
               <div className="flex">
                 <Button
@@ -505,7 +499,7 @@ export function ProgressionBuilder({
             </div>
             
             <div className="text-[9px] text-muted-foreground ml-auto">
-              {carrierChannel === 'L' ? 'L' : 'R'}={globalBeat > 0 ? 'carrier' : '?'}, {carrierChannel === 'L' ? 'R' : 'L'}={globalBeat > 0 ? `carrier ${variance === 'higher' ? '+' : '-'} ${globalBeat}` : '?'}
+              {carrierChannel === 'L' ? 'L' : 'R'}=carrier, {carrierChannel === 'L' ? 'R' : 'L'}=carrier {variance === 'higher' ? '+' : '-'} beat
             </div>
           </div>
 
@@ -543,14 +537,15 @@ export function ProgressionBuilder({
             </div>
           </div>
 
-          {/* Slot Grid - Horizontal layout with Carrier and Duration */}
+          {/* Slot Grid - Horizontal layout with Carrier, Beat, Variance, Duration */}
           <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5" data-testid="slots-grid">
             {slots.map((slot, idx) => {
               const carrier = parseFloat(carrierInputs[idx]) || 0;
-              const variableHz = globalBeat > 0 && carrier > 0 
-                ? (variance === 'higher' ? carrier + globalBeat : carrier - globalBeat) 
+              const beat = parseFloat(beatInputs[idx]) || 0;
+              const variableHz = beat > 0 && carrier > 0 
+                ? (variance === 'higher' ? carrier + beat : carrier - beat) 
                 : 0;
-              const { type, color } = getBrainWaveType(globalBeat);
+              const { type, color } = getBrainWaveType(beat);
               const isActive = slot.leftHz > 0 && slot.rightHz > 0 && slot.durationMinutes > 0;
               const isCurrentSlot = isPlaying && enabledSlots[currentSlotIndex]?.id === slot.id;
               
@@ -564,7 +559,7 @@ export function ProgressionBuilder({
                 >
                   <div className="text-[9px] text-muted-foreground mb-0.5">#{idx + 1}</div>
                   
-                  {/* Carrier Hz (top) */}
+                  {/* Carrier Hz */}
                   <div className="w-full mb-0.5">
                     <div className="text-[7px] text-center text-accent/70 mb-0.5">{carrierChannel} Hz</div>
                     <input
@@ -579,8 +574,23 @@ export function ProgressionBuilder({
                     />
                   </div>
                   
+                  {/* Beat Hz (editable per slot) */}
+                  <div className="w-full mb-0.5">
+                    <div className="text-[7px] text-center text-purple-400/70 mb-0.5">Beat</div>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={beatInputs[idx]}
+                      onChange={(e) => handleBeatChange(idx, e.target.value)}
+                      onBlur={() => handleBeatBlur(idx)}
+                      placeholder=""
+                      className="w-full py-0.5 text-center text-[10px] bg-zinc-900 border border-purple-400/30 rounded text-white focus:border-primary focus:outline-none"
+                      data-testid={`input-beat-${idx}`}
+                    />
+                  </div>
+                  
                   {/* Variable Hz (calculated, read-only display) */}
-                  {carrier > 0 && globalBeat > 0 && (
+                  {carrier > 0 && beat > 0 && (
                     <div className="w-full mb-0.5">
                       <div className="text-[7px] text-center text-muted-foreground/70 mb-0.5">{carrierChannel === 'L' ? 'R' : 'L'} Hz</div>
                       <div className={`w-full py-0.5 text-center text-[10px] bg-zinc-800/50 border border-white/10 rounded ${color}`}>
@@ -607,7 +617,7 @@ export function ProgressionBuilder({
                   {/* Brain wave type indicator */}
                   {isActive && (
                     <div className={`mt-1 text-[8px] font-medium ${color}`}>
-                      {globalBeat} {type}
+                      {beat} {type}
                     </div>
                   )}
                 </div>
