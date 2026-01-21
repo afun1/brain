@@ -394,7 +394,31 @@ export default function ConsolePage() {
   const healingTotalBeatMinutes = healingBeatDurations.reduce((sum, d) => sum + d, 0);
   
   // Sleep Program wake-up sequence toggle
-  const [includeWakeUp, setIncludeWakeUp] = useState(true);
+  const WAKEUP_STORAGE_KEY = "binauralSleep_wakeUpSettings";
+  const [includeWakeUp, setIncludeWakeUp] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem(WAKEUP_STORAGE_KEY);
+      if (stored) return JSON.parse(stored).enabled ?? true;
+    } catch {}
+    return true;
+  });
+  
+  // 0 = "Continue" (keep previous tone), any other value = specific frequency
+  const [wakeUpFrequency, setWakeUpFrequency] = useState<number>(() => {
+    try {
+      const stored = localStorage.getItem(WAKEUP_STORAGE_KEY);
+      if (stored) return JSON.parse(stored).frequency ?? 0;
+    } catch {}
+    return 0; // Default to "Continue" - no tone change
+  });
+  
+  // Persist wake-up settings
+  useEffect(() => {
+    localStorage.setItem(WAKEUP_STORAGE_KEY, JSON.stringify({ 
+      enabled: includeWakeUp, 
+      frequency: wakeUpFrequency 
+    }));
+  }, [includeWakeUp, wakeUpFrequency]);
   
   // Pre-Sleep Wind-Down Phase
   const PRE_SLEEP_STORAGE_KEY = "binauralSleep_preSleepSettings";
@@ -697,10 +721,14 @@ export default function ConsolePage() {
   
   // Generate wake-up stages (17 min total: 2 min REM→Alpha transition + 15 min beta awakening)
   // Starts from REM (9 Hz) to ensure smooth transition from dream state
+  // wakeUpFrequency: 0 = "Continue" (use -1 as marker, will be replaced with previous stage's freq)
   const wakeUpStages = useMemo((): SleepStage[] => {
     if (!includeWakeUp) return [];
     
     const baseOrder = 100; // Start after all program stages
+    // Use -1 as marker for "continue from previous" - will be resolved in programStagesWithWakeUp
+    const freq = wakeUpFrequency === 0 ? -1 : wakeUpFrequency;
+    
     return [
       {
         id: 9000,
@@ -708,8 +736,8 @@ export default function ConsolePage() {
         name: "Dream Fade (REM→Alpha)",
         startBeatFreq: 9,  // Start from REM (dream state)
         endBeatFreq: 10,   // Gentle transition to Alpha
-        startCarrierFreq: 432,
-        endCarrierFreq: 432,
+        startCarrierFreq: freq,
+        endCarrierFreq: freq,
         durationSeconds: 120, // 2 min gentle transition
         order: baseOrder,
       },
@@ -719,8 +747,8 @@ export default function ConsolePage() {
         name: "Wake Up - Low Beta",
         startBeatFreq: 10,
         endBeatFreq: 14,
-        startCarrierFreq: 432,
-        endCarrierFreq: 432,
+        startCarrierFreq: freq,
+        endCarrierFreq: freq,
         durationSeconds: 300, // 5 min
         order: baseOrder + 1,
       },
@@ -730,8 +758,8 @@ export default function ConsolePage() {
         name: "Wake Up - Mid Beta",
         startBeatFreq: 14,
         endBeatFreq: 18,
-        startCarrierFreq: 432,
-        endCarrierFreq: 432,
+        startCarrierFreq: freq,
+        endCarrierFreq: freq,
         durationSeconds: 300, // 5 min
         order: baseOrder + 2,
       },
@@ -741,13 +769,13 @@ export default function ConsolePage() {
         name: "Wake Up - Alert",
         startBeatFreq: 18,
         endBeatFreq: 20,
-        startCarrierFreq: 432,
-        endCarrierFreq: 432,
+        startCarrierFreq: freq,
+        endCarrierFreq: freq,
         durationSeconds: 300, // 5 min
         order: baseOrder + 3,
       },
     ];
-  }, [includeWakeUp]);
+  }, [includeWakeUp, wakeUpFrequency]);
   
   // Generate Pre-Sleep Wind-Down stages (Beta → Theta → ready for sleep)
   const preSleepStages = useMemo((): SleepStage[] => {
@@ -949,16 +977,37 @@ export default function ConsolePage() {
     const programStages = (selectedProgram?.stages as SleepStage[]) || [];
     const transformedStages = transformFullNightRestStages(programStages);
     
-    // Chain all phases in order:
-    // 1. Pre-Sleep Wind-Down (optional)
-    // 2. Main Sleep Program
-    // 3. Pre-Wake Delta Boost (optional, replaces or precedes beta wake-up)
-    // 4. Beta Wake-Up (optional, if not using delta boost or both enabled)
-    return [
+    // Build the base stages (everything before wake-up)
+    const baseStages = [
       ...preSleepStages,
       ...transformedStages,
       ...preWakeDeltaStages,
-      ...wakeUpStages,
+    ];
+    
+    // Resolve "Continue" mode (-1) for wake-up stages
+    // Use the last frequency from the preceding stages
+    let resolvedWakeUpStages = wakeUpStages;
+    if (wakeUpStages.length > 0 && wakeUpStages[0].startCarrierFreq === -1) {
+      // Find the last stage's ending frequency
+      const lastStage = baseStages[baseStages.length - 1];
+      const continueFreq = lastStage ? lastStage.endCarrierFreq : 432;
+      
+      // Replace -1 with the actual frequency
+      resolvedWakeUpStages = wakeUpStages.map(stage => ({
+        ...stage,
+        startCarrierFreq: continueFreq,
+        endCarrierFreq: continueFreq,
+      }));
+    }
+    
+    // Chain all phases in order:
+    // 1. Pre-Sleep Wind-Down (optional)
+    // 2. Main Sleep Program
+    // 3. Pre-Wake Delta Boost (optional)
+    // 4. Beta Wake-Up (optional, with "Continue" support)
+    return [
+      ...baseStages,
+      ...resolvedWakeUpStages,
     ];
   }, [selectedProgram, wakeUpStages, preSleepStages, preWakeDeltaStages, customFrequencySlots, slotDurations, isFullNightRest, totalProgramMinutes]);
   
@@ -2951,7 +3000,7 @@ export default function ConsolePage() {
 
                   {/* Wake-Up Sequence */}
                   <div className="p-3 rounded-xl bg-white/5 border border-white/10">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-2">
                       <div className="flex-1">
                         <div className="text-sm font-medium text-white flex items-center gap-2">
                           <Sun className="w-4 h-4 text-yellow-400" />
@@ -2971,6 +3020,31 @@ export default function ConsolePage() {
                         {includeWakeUp ? "On" : "Off"}
                       </Button>
                     </div>
+                    {includeWakeUp && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="text-[10px] text-muted-foreground">Tone:</span>
+                        <Button
+                          variant={wakeUpFrequency === 0 ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setWakeUpFrequency(0)}
+                          className="text-[10px] px-2"
+                          data-testid="button-wakeup-continue"
+                        >
+                          Continue
+                        </Button>
+                        <input
+                          type="number"
+                          value={wakeUpFrequency === 0 ? "" : wakeUpFrequency}
+                          onChange={(e) => setWakeUpFrequency(Math.max(60, Math.min(1000, Number(e.target.value) || 0)))}
+                          placeholder="Custom"
+                          className="w-16 px-2 py-1 text-[10px] bg-zinc-800 border border-zinc-700 rounded text-white"
+                          min={60}
+                          max={1000}
+                          data-testid="input-wakeup-frequency"
+                        />
+                        <span className="text-[10px] text-muted-foreground">Hz</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
