@@ -227,8 +227,23 @@ function ChannelPlaylist({
 
   const handleTrackDrop = useCallback((e: React.DragEvent, toIndex: number) => {
     // Check if this is an external file drop (not internal reorder)
-    if (e.dataTransfer.types.includes('Files')) {
-      // Let it bubble up to the parent drop zone
+    if (e.dataTransfer.types.includes('Files') && e.dataTransfer.files.length > 0) {
+      // Handle external file drop directly
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(false);
+      stopAutoScroll();
+      scrollDirectionRef.current = null;
+      const files = e.dataTransfer.files;
+      const audioFiles = Array.from(files).filter(file => 
+        file.type.startsWith('audio/') || 
+        /\.(mp3|wav|ogg|m4a|flac|aac|wma|m3u|m3u8|pls)$/i.test(file.name)
+      );
+      if (audioFiles.length > 0) {
+        onAddFiles(audioFiles);
+      }
+      setDraggedIndex(null);
+      setDragOverIndex(null);
       return;
     }
     e.preventDefault();
@@ -239,7 +254,7 @@ function ChannelPlaylist({
     }
     setDraggedIndex(null);
     setDragOverIndex(null);
-  }, [draggedIndex, onMoveTrack, stopAutoScroll]);
+  }, [draggedIndex, onMoveTrack, stopAutoScroll, onAddFiles]);
 
   const handleTrackDragEnd = useCallback(() => {
     stopAutoScroll();
