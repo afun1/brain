@@ -396,6 +396,66 @@ export default function ConsolePage() {
   // Sleep Program wake-up sequence toggle
   const [includeWakeUp, setIncludeWakeUp] = useState(true);
   
+  // Pre-Sleep Wind-Down Phase
+  const PRE_SLEEP_STORAGE_KEY = "binauralSleep_preSleepSettings";
+  const PRE_SLEEP_DURATION_OPTIONS = [
+    { minutes: 15, label: "15 min" },
+    { minutes: 30, label: "30 min" },
+    { minutes: 45, label: "45 min" },
+    { minutes: 60, label: "1 hour" },
+  ];
+  
+  const [includePreSleep, setIncludePreSleep] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem(PRE_SLEEP_STORAGE_KEY);
+      if (stored) return JSON.parse(stored).enabled ?? false;
+    } catch {}
+    return false;
+  });
+  
+  const [preSleepDuration, setPreSleepDuration] = useState<number>(() => {
+    try {
+      const stored = localStorage.getItem(PRE_SLEEP_STORAGE_KEY);
+      if (stored) return JSON.parse(stored).duration ?? 30;
+    } catch {}
+    return 30;
+  });
+  
+  // Pre-Wake Delta Boost Phase (replaces beta wake-up for regeneration benefits)
+  const PRE_WAKE_STORAGE_KEY = "binauralSleep_preWakeSettings";
+  const PRE_WAKE_DURATION_OPTIONS = [
+    { minutes: 15, label: "15 min" },
+    { minutes: 20, label: "20 min" },
+    { minutes: 30, label: "30 min" },
+    { minutes: 45, label: "45 min" },
+  ];
+  
+  const [includePreWakeDelta, setIncludePreWakeDelta] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem(PRE_WAKE_STORAGE_KEY);
+      if (stored) return JSON.parse(stored).enabled ?? false;
+    } catch {}
+    return false;
+  });
+  
+  const [preWakeDeltaDuration, setPreWakeDeltaDuration] = useState<number>(() => {
+    try {
+      const stored = localStorage.getItem(PRE_WAKE_STORAGE_KEY);
+      if (stored) return JSON.parse(stored).duration ?? 20;
+    } catch {}
+    return 20;
+  });
+  
+  // Persist pre-sleep settings
+  useEffect(() => {
+    localStorage.setItem(PRE_SLEEP_STORAGE_KEY, JSON.stringify({ enabled: includePreSleep, duration: preSleepDuration }));
+  }, [includePreSleep, preSleepDuration]);
+  
+  // Persist pre-wake settings
+  useEffect(() => {
+    localStorage.setItem(PRE_WAKE_STORAGE_KEY, JSON.stringify({ enabled: includePreWakeDelta, duration: preWakeDeltaDuration }));
+  }, [includePreWakeDelta, preWakeDeltaDuration]);
+  
   // Sleep duration options (in hours) - each ends in REM state for natural wake-up
   const SLEEP_DURATION_OPTIONS = [
     { hours: 5, cycles: 3, label: "5h (3 cycles)" },
@@ -665,6 +725,110 @@ export default function ConsolePage() {
     ];
   }, [includeWakeUp]);
   
+  // Generate Pre-Sleep Wind-Down stages (Beta → Theta → ready for sleep)
+  const preSleepStages = useMemo((): SleepStage[] => {
+    if (!includePreSleep) return [];
+    
+    const totalSeconds = preSleepDuration * 60;
+    const stages: SleepStage[] = [];
+    
+    // Phase 1: Beta to Alpha (40% of time) - Active relaxation
+    const phase1Duration = Math.round(totalSeconds * 0.4);
+    stages.push({
+      id: -100,
+      programId: 0,
+      name: "Wind Down - Beta to Alpha",
+      startBeatFreq: 15,  // Start at relaxed beta
+      endBeatFreq: 10,    // Transition to alpha
+      startCarrierFreq: 432,
+      endCarrierFreq: 432,
+      durationSeconds: phase1Duration,
+      order: -3,
+    });
+    
+    // Phase 2: Alpha to Theta (30% of time) - Deep relaxation
+    const phase2Duration = Math.round(totalSeconds * 0.3);
+    stages.push({
+      id: -101,
+      programId: 0,
+      name: "Wind Down - Alpha to Theta",
+      startBeatFreq: 10,
+      endBeatFreq: 6,     // Deep theta
+      startCarrierFreq: 432,
+      endCarrierFreq: 432,
+      durationSeconds: phase2Duration,
+      order: -2,
+    });
+    
+    // Phase 3: Theta hold (30% of time) - Drowsy, ready for sleep
+    const phase3Duration = totalSeconds - phase1Duration - phase2Duration;
+    stages.push({
+      id: -102,
+      programId: 0,
+      name: "Wind Down - Drifting Off",
+      startBeatFreq: 6,
+      endBeatFreq: 5,     // Light theta, ready to transition to delta
+      startCarrierFreq: 432,
+      endCarrierFreq: 432,
+      durationSeconds: phase3Duration,
+      order: -1,
+    });
+    
+    return stages;
+  }, [includePreSleep, preSleepDuration]);
+  
+  // Generate Pre-Wake Delta Boost stages (deep delta for regeneration before waking)
+  const preWakeDeltaStages = useMemo((): SleepStage[] => {
+    if (!includePreWakeDelta) return [];
+    
+    const totalSeconds = preWakeDeltaDuration * 60;
+    const stages: SleepStage[] = [];
+    
+    // Phase 1: Transition from REM to Deep Delta (20% of time)
+    const phase1Duration = Math.round(totalSeconds * 0.2);
+    stages.push({
+      id: 8500,
+      programId: 0,
+      name: "Delta Boost - Descent",
+      startBeatFreq: 9,   // From REM
+      endBeatFreq: 2,     // Down to deep delta
+      startCarrierFreq: 528, // Love frequency for healing
+      endCarrierFreq: 528,
+      durationSeconds: phase1Duration,
+      order: 85,
+    });
+    
+    // Phase 2: Deep Delta Hold (60% of time) - Maximum regeneration
+    const phase2Duration = Math.round(totalSeconds * 0.6);
+    stages.push({
+      id: 8501,
+      programId: 0,
+      name: "Delta Boost - Deep Regeneration",
+      startBeatFreq: 2,
+      endBeatFreq: 1.5,   // Ultra-deep delta for HGH release
+      startCarrierFreq: 528,
+      endCarrierFreq: 285, // Healing frequency
+      durationSeconds: phase2Duration,
+      order: 86,
+    });
+    
+    // Phase 3: Gentle Rise (20% of time) - Back to REM for refreshed wake
+    const phase3Duration = totalSeconds - phase1Duration - phase2Duration;
+    stages.push({
+      id: 8502,
+      programId: 0,
+      name: "Delta Boost - Gentle Rise",
+      startBeatFreq: 1.5,
+      endBeatFreq: 9,     // Back to REM for refreshed wake
+      startCarrierFreq: 285,
+      endCarrierFreq: 432,
+      durationSeconds: phase3Duration,
+      order: 87,
+    });
+    
+    return stages;
+  }, [includePreWakeDelta, preWakeDeltaDuration]);
+  
   // Scale and transform Full Night Rest stages based on selected duration
   // Also applies custom frequencies and ensures ending in REM state
   const transformFullNightRestStages = (stages: SleepStage[]): SleepStage[] => {
@@ -756,12 +920,23 @@ export default function ConsolePage() {
     });
   };
   
-  // Combine program stages with wake-up stages and apply transformations
+  // Combine all phases: Pre-Sleep → Program → Pre-Wake Delta → Wake-Up
   const programStagesWithWakeUp = useMemo(() => {
     const programStages = (selectedProgram?.stages as SleepStage[]) || [];
     const transformedStages = transformFullNightRestStages(programStages);
-    return [...transformedStages, ...wakeUpStages];
-  }, [selectedProgram, wakeUpStages, customFrequencySlots, slotDurations, isFullNightRest, totalProgramMinutes]);
+    
+    // Chain all phases in order:
+    // 1. Pre-Sleep Wind-Down (optional)
+    // 2. Main Sleep Program
+    // 3. Pre-Wake Delta Boost (optional, replaces or precedes beta wake-up)
+    // 4. Beta Wake-Up (optional, if not using delta boost or both enabled)
+    return [
+      ...preSleepStages,
+      ...transformedStages,
+      ...preWakeDeltaStages,
+      ...wakeUpStages,
+    ];
+  }, [selectedProgram, wakeUpStages, preSleepStages, preWakeDeltaStages, customFrequencySlots, slotDurations, isFullNightRest, totalProgramMinutes]);
   
   const programAudio = useAudioEngine(programStagesWithWakeUp);
   
