@@ -236,7 +236,7 @@ function ChannelPlaylist({
       const files = e.dataTransfer.files;
       const audioFiles = Array.from(files).filter(file => 
         file.type.startsWith('audio/') || 
-        /\.(mp3|wav|ogg|m4a|flac|aac|wma|m3u|m3u8|pls)$/i.test(file.name)
+        /\.(mp3|wav|ogg|m4a|flac|aac|wma|webm|m3u|m3u8|pls)$/i.test(file.name)
       );
       if (audioFiles.length > 0) {
         onAddFiles(audioFiles);
@@ -256,7 +256,7 @@ function ChannelPlaylist({
       const files = e.dataTransfer.files;
       const audioFiles = Array.from(files).filter(file => 
         file.type.startsWith('audio/') || 
-        /\.(mp3|wav|ogg|m4a|flac|aac|wma|m3u|m3u8|pls)$/i.test(file.name)
+        /\.(mp3|wav|ogg|m4a|flac|aac|wma|webm|m3u|m3u8|pls)$/i.test(file.name)
       );
       if (audioFiles.length > 0) {
         onAddFiles(audioFiles);
@@ -308,14 +308,11 @@ function ChannelPlaylist({
     e.stopPropagation();
     setIsDragOver(false);
     
-    console.log('StereoConfusion Drop event triggered', e.dataTransfer.files.length, 'files');
-    
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
-      console.log('StereoConfusion Files found:', Array.from(files).map(f => f.name));
       const audioFiles = Array.from(files).filter(file => 
         file.type.startsWith('audio/') || 
-        /\.(mp3|wav|ogg|m4a|flac|aac|wma|m3u|m3u8|pls)$/i.test(file.name)
+        /\.(mp3|wav|ogg|m4a|flac|aac|wma|webm|m3u|m3u8|pls)$/i.test(file.name)
       );
       if (audioFiles.length > 0) {
         onAddFiles(audioFiles);
@@ -543,7 +540,7 @@ export function StereoConfusionPlayer() {
     if (files && files.length > 0) {
       const audioFiles = Array.from(files).filter(file => 
         file.type.startsWith('audio/') || 
-        /\.(mp3|wav|ogg|m4a|flac|aac|wma|m3u|m3u8|pls)$/i.test(file.name)
+        /\.(mp3|wav|ogg|m4a|flac|aac|wma|webm|m3u|m3u8|pls)$/i.test(file.name)
       );
       if (audioFiles.length > 0) {
         player.addBothFiles(audioFiles);
