@@ -28,8 +28,21 @@ Preferred communication style: Simple, everyday language.
 
 ### Data Storage
 - **Database**: PostgreSQL with Drizzle ORM
-- **Schema**: Two main tables - `programs` (sleep programs) and `sleep_stages` (frequency stages within programs)
+- **Schema**: Three tables:
+  - `programs` (sleep programs)
+  - `sleep_stages` (frequency stages within programs)
+  - `beta_feedback` (user feedback reports for improving the app)
 - **Migrations**: Drizzle Kit for schema management (`npm run db:push`)
+
+### Beta Feedback System
+- **Purpose**: Collect user feedback during beta testing for AI agent analysis
+- **Database Table**: `beta_feedback` with fields: id, feature, issue_type, description, created_at
+- **Issue Types**: bug, suggestion, confusion, praise
+- **Feature Categories**: Audio Engines, Custom Mode, Sleep Mode, Learning Mode, Healing Mode, Daytime Mode, Audio Players
+- **API Endpoints**:
+  - POST /api/feedback - Submit new feedback
+  - GET /api/feedback - Retrieve all feedback (newest first)
+- **AI Agent Workflow**: Query database with SQL tool to analyze patterns and suggest priorities
 
 ### Key Data Model
 Sleep programs contain multiple stages, each defining:
