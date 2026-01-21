@@ -43,20 +43,25 @@ export interface SavedProgression {
 }
 
 const STORAGE_KEY = "binaural-progressions";
-const MAX_SLOTS = 20;
+const MAX_SLOTS = 30;
+const DEFAULT_VISIBLE_SLOTS = 20;
 
 const SLOT_COLORS = [
   "border-red-500/50", "border-orange-500/50", "border-amber-500/50", "border-yellow-500/50", "border-lime-500/50",
   "border-green-500/50", "border-emerald-500/50", "border-cyan-500/50", "border-blue-500/50", "border-purple-500/50",
   "border-pink-500/50", "border-rose-500/50", "border-indigo-500/50", "border-violet-500/50", "border-fuchsia-500/50",
-  "border-teal-500/50", "border-sky-500/50", "border-blue-400/50", "border-green-400/50", "border-amber-400/50"
+  "border-teal-500/50", "border-sky-500/50", "border-blue-400/50", "border-green-400/50", "border-amber-400/50",
+  "border-red-400/50", "border-orange-400/50", "border-amber-400/50", "border-yellow-400/50", "border-lime-400/50",
+  "border-green-400/50", "border-emerald-400/50", "border-cyan-400/50", "border-blue-300/50", "border-purple-400/50"
 ];
 
 const METER_COLORS = [
   "bg-red-500", "bg-orange-500", "bg-amber-500", "bg-yellow-500", "bg-lime-500",
   "bg-green-500", "bg-emerald-500", "bg-cyan-500", "bg-blue-500", "bg-purple-500",
   "bg-pink-500", "bg-rose-500", "bg-indigo-500", "bg-violet-500", "bg-fuchsia-500",
-  "bg-teal-500", "bg-sky-500", "bg-blue-400", "bg-green-400", "bg-amber-400"
+  "bg-teal-500", "bg-sky-500", "bg-blue-400", "bg-green-400", "bg-amber-400",
+  "bg-red-400", "bg-orange-400", "bg-amber-400", "bg-yellow-400", "bg-lime-400",
+  "bg-green-400", "bg-emerald-400", "bg-cyan-400", "bg-blue-300", "bg-purple-400"
 ];
 
 function getBrainWaveType(beatHz: number): { type: string; color: string } {
@@ -116,6 +121,9 @@ export function ProgressionBuilder({
   // Carrier channel and variance settings
   const [carrierChannel, setCarrierChannel] = useState<'L' | 'R'>('L');
   const [variance, setVariance] = useState<'higher' | 'lower'>('higher');
+  
+  // Show extended slots (21-30)
+  const [showExtendedSlots, setShowExtendedSlots] = useState(false);
   
   // Input state for controlled inputs (carrier, beat, duration per slot)
   const [carrierInputs, setCarrierInputs] = useState<string[]>(Array(MAX_SLOTS).fill(''));
@@ -539,7 +547,7 @@ export function ProgressionBuilder({
 
           {/* Slot Grid - Horizontal layout with Carrier, Beat, Variance, Duration */}
           <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5" data-testid="slots-grid">
-            {slots.map((slot, idx) => {
+            {slots.slice(0, showExtendedSlots ? MAX_SLOTS : DEFAULT_VISIBLE_SLOTS).map((slot, idx) => {
               const carrier = parseFloat(carrierInputs[idx]) || 0;
               const beat = parseFloat(beatInputs[idx]) || 0;
               const variableHz = beat > 0 && carrier > 0 
@@ -552,7 +560,7 @@ export function ProgressionBuilder({
               return (
                 <div
                   key={slot.id}
-                  className={`flex flex-col items-center p-1.5 rounded-lg border ${SLOT_COLORS[idx]} bg-white/5 transition-all ${
+                  className={`flex flex-col items-center p-1.5 rounded-lg border ${SLOT_COLORS[idx % SLOT_COLORS.length]} bg-white/5 transition-all ${
                     isCurrentSlot ? 'ring-2 ring-primary bg-primary/20' : ''
                   } ${!isActive ? 'opacity-50' : ''}`}
                   data-testid={`slot-${idx}`}
@@ -623,6 +631,29 @@ export function ProgressionBuilder({
                 </div>
               );
             })}
+          </div>
+
+          {/* Toggle Extended Slots */}
+          <div className="flex justify-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowExtendedSlots(!showExtendedSlots)}
+              className="text-xs text-muted-foreground gap-1"
+              data-testid="button-toggle-extended-slots"
+            >
+              {showExtendedSlots ? (
+                <>
+                  <ChevronUp className="w-3 h-3" />
+                  Hide slots 21-30
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-3 h-3" />
+                  Show 10 more slots
+                </>
+              )}
+            </Button>
           </div>
 
           {/* Playback controls */}
