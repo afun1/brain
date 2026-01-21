@@ -265,6 +265,9 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = 'copy';
+    if (!isDragOver) {
+      console.log('Drag over detected on', title);
+    }
     setIsDragOver(true);
   };
 
@@ -291,6 +294,16 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
       console.log('Audio files after filter:', audioFiles.length);
       if (audioFiles.length > 0) {
         player.addFiles(audioFiles);
+        toast({ 
+          title: `Added ${audioFiles.length} file${audioFiles.length > 1 ? 's' : ''}`,
+          description: audioFiles.map(f => f.name).join(', ').substring(0, 100)
+        });
+      } else if (files.length > 0) {
+        toast({ 
+          title: "No audio files found",
+          description: "Please drop audio files (mp3, wav, ogg, etc.)",
+          variant: "destructive"
+        });
       }
     }
   };
