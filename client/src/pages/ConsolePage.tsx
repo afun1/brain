@@ -421,6 +421,14 @@ export default function ConsolePage() {
     return 30;
   });
   
+  const [preSleepFrequency, setPreSleepFrequency] = useState<number>(() => {
+    try {
+      const stored = localStorage.getItem(PRE_SLEEP_STORAGE_KEY);
+      if (stored) return JSON.parse(stored).frequency ?? 432;
+    } catch {}
+    return 432;
+  });
+  
   // Pre-Wake Delta Boost Phase (replaces beta wake-up for regeneration benefits)
   const PRE_WAKE_STORAGE_KEY = "binauralSleep_preWakeSettings";
   const PRE_WAKE_DURATION_OPTIONS = [
@@ -446,15 +454,31 @@ export default function ConsolePage() {
     return 20;
   });
   
+  const [preWakeFrequency, setPreWakeFrequency] = useState<number>(() => {
+    try {
+      const stored = localStorage.getItem(PRE_WAKE_STORAGE_KEY);
+      if (stored) return JSON.parse(stored).frequency ?? 110;
+    } catch {}
+    return 110; // Default to 110 Hz based on user's positive experience
+  });
+  
   // Persist pre-sleep settings
   useEffect(() => {
-    localStorage.setItem(PRE_SLEEP_STORAGE_KEY, JSON.stringify({ enabled: includePreSleep, duration: preSleepDuration }));
-  }, [includePreSleep, preSleepDuration]);
+    localStorage.setItem(PRE_SLEEP_STORAGE_KEY, JSON.stringify({ 
+      enabled: includePreSleep, 
+      duration: preSleepDuration,
+      frequency: preSleepFrequency 
+    }));
+  }, [includePreSleep, preSleepDuration, preSleepFrequency]);
   
   // Persist pre-wake settings
   useEffect(() => {
-    localStorage.setItem(PRE_WAKE_STORAGE_KEY, JSON.stringify({ enabled: includePreWakeDelta, duration: preWakeDeltaDuration }));
-  }, [includePreWakeDelta, preWakeDeltaDuration]);
+    localStorage.setItem(PRE_WAKE_STORAGE_KEY, JSON.stringify({ 
+      enabled: includePreWakeDelta, 
+      duration: preWakeDeltaDuration,
+      frequency: preWakeFrequency 
+    }));
+  }, [includePreWakeDelta, preWakeDeltaDuration, preWakeFrequency]);
   
   // Sleep duration options (in hours) - each ends in REM state for natural wake-up
   const SLEEP_DURATION_OPTIONS = [
@@ -740,8 +764,8 @@ export default function ConsolePage() {
       name: "Wind Down - Beta to Alpha",
       startBeatFreq: 15,  // Start at relaxed beta
       endBeatFreq: 10,    // Transition to alpha
-      startCarrierFreq: 432,
-      endCarrierFreq: 432,
+      startCarrierFreq: preSleepFrequency,
+      endCarrierFreq: preSleepFrequency,
       durationSeconds: phase1Duration,
       order: -3,
     });
@@ -754,8 +778,8 @@ export default function ConsolePage() {
       name: "Wind Down - Alpha to Theta",
       startBeatFreq: 10,
       endBeatFreq: 6,     // Deep theta
-      startCarrierFreq: 432,
-      endCarrierFreq: 432,
+      startCarrierFreq: preSleepFrequency,
+      endCarrierFreq: preSleepFrequency,
       durationSeconds: phase2Duration,
       order: -2,
     });
@@ -768,14 +792,14 @@ export default function ConsolePage() {
       name: "Wind Down - Drifting Off",
       startBeatFreq: 6,
       endBeatFreq: 5,     // Light theta, ready to transition to delta
-      startCarrierFreq: 432,
-      endCarrierFreq: 432,
+      startCarrierFreq: preSleepFrequency,
+      endCarrierFreq: preSleepFrequency,
       durationSeconds: phase3Duration,
       order: -1,
     });
     
     return stages;
-  }, [includePreSleep, preSleepDuration]);
+  }, [includePreSleep, preSleepDuration, preSleepFrequency]);
   
   // Generate Pre-Wake Delta Boost stages (deep delta for regeneration before waking)
   const preWakeDeltaStages = useMemo((): SleepStage[] => {
@@ -792,8 +816,8 @@ export default function ConsolePage() {
       name: "Delta Boost - Descent",
       startBeatFreq: 9,   // From REM
       endBeatFreq: 2,     // Down to deep delta
-      startCarrierFreq: 528, // Love frequency for healing
-      endCarrierFreq: 528,
+      startCarrierFreq: preWakeFrequency,
+      endCarrierFreq: preWakeFrequency,
       durationSeconds: phase1Duration,
       order: 85,
     });
@@ -806,8 +830,8 @@ export default function ConsolePage() {
       name: "Delta Boost - Deep Regeneration",
       startBeatFreq: 2,
       endBeatFreq: 1.5,   // Ultra-deep delta for HGH release
-      startCarrierFreq: 528,
-      endCarrierFreq: 285, // Healing frequency
+      startCarrierFreq: preWakeFrequency,
+      endCarrierFreq: preWakeFrequency,
       durationSeconds: phase2Duration,
       order: 86,
     });
@@ -820,14 +844,14 @@ export default function ConsolePage() {
       name: "Delta Boost - Gentle Rise",
       startBeatFreq: 1.5,
       endBeatFreq: 9,     // Back to REM for refreshed wake
-      startCarrierFreq: 285,
-      endCarrierFreq: 432,
+      startCarrierFreq: preWakeFrequency,
+      endCarrierFreq: preWakeFrequency,
       durationSeconds: phase3Duration,
       order: 87,
     });
     
     return stages;
-  }, [includePreWakeDelta, preWakeDeltaDuration]);
+  }, [includePreWakeDelta, preWakeDeltaDuration, preWakeFrequency]);
   
   // Scale and transform Full Night Rest stages based on selected duration
   // Also applies custom frequencies and ensures ending in REM state
@@ -2838,19 +2862,34 @@ export default function ConsolePage() {
                       </Button>
                     </div>
                     {includePreSleep && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {PRE_SLEEP_DURATION_OPTIONS.map((option) => (
-                          <Button
-                            key={option.minutes}
-                            variant={preSleepDuration === option.minutes ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setPreSleepDuration(option.minutes)}
-                            className="text-[10px] px-2"
-                            data-testid={`button-presleep-${option.minutes}`}
-                          >
-                            {option.label}
-                          </Button>
-                        ))}
+                      <div className="space-y-2 mt-2">
+                        <div className="flex flex-wrap gap-1">
+                          {PRE_SLEEP_DURATION_OPTIONS.map((option) => (
+                            <Button
+                              key={option.minutes}
+                              variant={preSleepDuration === option.minutes ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setPreSleepDuration(option.minutes)}
+                              className="text-[10px] px-2"
+                              data-testid={`button-presleep-${option.minutes}`}
+                            >
+                              {option.label}
+                            </Button>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-muted-foreground">Tone:</span>
+                          <input
+                            type="number"
+                            value={preSleepFrequency}
+                            onChange={(e) => setPreSleepFrequency(Math.max(60, Math.min(1000, Number(e.target.value) || 432)))}
+                            className="w-16 px-2 py-1 text-[10px] bg-zinc-800 border border-zinc-700 rounded text-white"
+                            min={60}
+                            max={1000}
+                            data-testid="input-presleep-frequency"
+                          />
+                          <span className="text-[10px] text-muted-foreground">Hz</span>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -2878,19 +2917,34 @@ export default function ConsolePage() {
                       </Button>
                     </div>
                     {includePreWakeDelta && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {PRE_WAKE_DURATION_OPTIONS.map((option) => (
-                          <Button
-                            key={option.minutes}
-                            variant={preWakeDeltaDuration === option.minutes ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setPreWakeDeltaDuration(option.minutes)}
-                            className="text-[10px] px-2"
-                            data-testid={`button-prewake-${option.minutes}`}
-                          >
-                            {option.label}
-                          </Button>
-                        ))}
+                      <div className="space-y-2 mt-2">
+                        <div className="flex flex-wrap gap-1">
+                          {PRE_WAKE_DURATION_OPTIONS.map((option) => (
+                            <Button
+                              key={option.minutes}
+                              variant={preWakeDeltaDuration === option.minutes ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setPreWakeDeltaDuration(option.minutes)}
+                              className="text-[10px] px-2"
+                              data-testid={`button-prewake-${option.minutes}`}
+                            >
+                              {option.label}
+                            </Button>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-muted-foreground">Tone:</span>
+                          <input
+                            type="number"
+                            value={preWakeFrequency}
+                            onChange={(e) => setPreWakeFrequency(Math.max(60, Math.min(1000, Number(e.target.value) || 110)))}
+                            className="w-16 px-2 py-1 text-[10px] bg-zinc-800 border border-zinc-700 rounded text-white"
+                            min={60}
+                            max={1000}
+                            data-testid="input-prewake-frequency"
+                          />
+                          <span className="text-[10px] text-muted-foreground">Hz (stays constant throughout)</span>
+                        </div>
                       </div>
                     )}
                   </div>
