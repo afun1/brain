@@ -264,6 +264,7 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    e.dataTransfer.dropEffect = 'copy';
     setIsDragOver(true);
   };
 
@@ -278,16 +279,18 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
     e.stopPropagation();
     setIsDragOver(false);
     
+    console.log('Drop event triggered', e.dataTransfer.files.length, 'files');
+    
     const files = e.dataTransfer.files;
     if (files.length > 0) {
+      console.log('Files found:', Array.from(files).map(f => f.name));
       const audioFiles = Array.from(files).filter(file => 
         file.type.startsWith('audio/') || 
         /\.(mp3|wav|ogg|m4a|flac|aac|wma|m3u|m3u8|pls)$/i.test(file.name)
       );
+      console.log('Audio files after filter:', audioFiles.length);
       if (audioFiles.length > 0) {
-        const dt = new DataTransfer();
-        audioFiles.forEach(f => dt.items.add(f));
-        player.addFiles(dt.files);
+        player.addFiles(audioFiles);
       }
     }
   };
