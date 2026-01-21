@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, jsonb, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -35,5 +35,18 @@ export type InsertProgram = z.infer<typeof insertProgramSchema>;
 export type InsertSleepStage = z.infer<typeof insertSleepStageSchema>;
 
 export type ProgramWithStages = Program & { stages: SleepStage[] };
+
+// Beta Feedback for collecting user reports
+export const betaFeedback = pgTable("beta_feedback", {
+  id: serial("id").primaryKey(),
+  feature: text("feature").notNull(),
+  issueType: text("issue_type").notNull(), // bug, suggestion, confusion, praise
+  description: text("description").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertBetaFeedbackSchema = createInsertSchema(betaFeedback).omit({ id: true, createdAt: true });
+export type BetaFeedback = typeof betaFeedback.$inferSelect;
+export type InsertBetaFeedback = z.infer<typeof insertBetaFeedbackSchema>;
 
 export * from "./models/chat";

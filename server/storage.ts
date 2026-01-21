@@ -2,13 +2,16 @@ import { db } from "./db";
 import {
   programs,
   sleepStages,
+  betaFeedback,
   type Program,
   type SleepStage,
+  type BetaFeedback,
   type InsertProgram,
   type InsertSleepStage,
+  type InsertBetaFeedback,
   type ProgramWithStages,
 } from "@shared/schema";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, desc } from "drizzle-orm";
 
 export interface IStorage {
   getPrograms(): Promise<ProgramWithStages[]>;
@@ -16,6 +19,8 @@ export interface IStorage {
   createProgram(program: InsertProgram): Promise<Program>;
   createSleepStage(stage: InsertSleepStage): Promise<SleepStage>;
   seedDefaultPrograms(): Promise<void>;
+  createBetaFeedback(feedback: InsertBetaFeedback): Promise<BetaFeedback>;
+  getBetaFeedback(): Promise<BetaFeedback[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -188,6 +193,15 @@ export class DatabaseStorage implements IStorage {
         });
       }
     }
+  }
+
+  async createBetaFeedback(feedback: InsertBetaFeedback): Promise<BetaFeedback> {
+    const [result] = await db.insert(betaFeedback).values(feedback).returning();
+    return result;
+  }
+
+  async getBetaFeedback(): Promise<BetaFeedback[]> {
+    return db.select().from(betaFeedback).orderBy(desc(betaFeedback.createdAt));
   }
 }
 
