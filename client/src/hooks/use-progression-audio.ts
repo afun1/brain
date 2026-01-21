@@ -117,6 +117,16 @@ export function useProgressionAudio() {
     const masterGain = ctx.createGain();
     const merger = ctx.createChannelMerger(2);
 
+    // Ensure stereo output configuration
+    ctx.destination.channelCount = 2;
+    ctx.destination.channelCountMode = 'explicit';
+    ctx.destination.channelInterpretation = 'discrete';
+    
+    // Configure master gain for stereo
+    masterGain.channelCount = 2;
+    masterGain.channelCountMode = 'explicit';
+    masterGain.channelInterpretation = 'discrete';
+
     leftOsc.connect(leftGain);
     leftGain.connect(merger, 0, 0);
     rightOsc.connect(rightGain);

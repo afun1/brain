@@ -143,6 +143,16 @@ export function useAudioEngine(stages: AudioStage[] = []) {
     // This ensures left oscillator ONLY goes to left speaker, right ONLY to right
     const merger = ctx.createChannelMerger(2);
 
+    // Ensure stereo output configuration
+    ctx.destination.channelCount = 2;
+    ctx.destination.channelCountMode = 'explicit';
+    ctx.destination.channelInterpretation = 'discrete';
+    
+    // Configure master gain for stereo
+    masterGain.channelCount = 2;
+    masterGain.channelCountMode = 'explicit';
+    masterGain.channelInterpretation = 'discrete';
+
     // Route left oscillator to left channel ONLY (input 0)
     leftOsc.connect(leftGain);
     leftGain.connect(merger, 0, 0);
