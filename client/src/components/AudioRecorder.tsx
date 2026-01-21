@@ -1,8 +1,15 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Mic, Square, Play, Pause, Save, Wand2, Volume2 } from "lucide-react";
+import { Mic, Square, Play, Pause, Save, Wand2, Volume2, FileAudio } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import lamejs from "lamejs";
 
 interface AudioRecorderProps {
   onSaveRecording: (file: File, name: string) => void;
@@ -150,20 +157,58 @@ export function AudioRecorder({ onSaveRecording, onSaveSubliminal, testIdPrefix 
     }
   };
 
-  const handleSaveRecording = async () => {
+  const convertToWav = async (blob: Blob): Promise<Blob> => {
+    const audioContext = new AudioContext();
+    const arrayBuffer = await blob.arrayBuffer();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+    audioContext.close();
+    return audioBufferToWav(audioBuffer);
+  };
+
+  const convertToMp3 = async (blob: Blob): Promise<Blob> => {
+    const audioContext = new AudioContext();
+    const arrayBuffer = await blob.arrayBuffer();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+    audioContext.close();
+    return audioBufferToMp3(audioBuffer);
+  };
+
+  const handleSaveRecording = async (format: 'webm' | 'wav' | 'mp3') => {
     if (!recordedBlob || !recordingName.trim()) return;
     
-    // Let user choose where to save the file
-    const savedName = await saveFileWithPicker(recordedBlob, recordingName, 'webm', 'audio/webm');
-    
-    if (savedName) {
-      // Add to playlist
-      const file = new File([recordedBlob], savedName, { type: 'audio/webm' });
-      onSaveRecording(file, recordingName);
-      toast({ title: "Recording saved", description: `"${savedName}" saved to your device and added to playlist` });
+    try {
+      let blobToSave: Blob;
+      let mimeType: string;
+      let extension: string;
+
+      if (format === 'wav') {
+        blobToSave = await convertToWav(recordedBlob);
+        mimeType = 'audio/wav';
+        extension = 'wav';
+      } else if (format === 'mp3') {
+        blobToSave = await convertToMp3(recordedBlob);
+        mimeType = 'audio/mpeg';
+        extension = 'mp3';
+      } else {
+        blobToSave = recordedBlob;
+        mimeType = 'audio/webm';
+        extension = 'webm';
+      }
+
+      const savedName = await saveFileWithPicker(blobToSave, recordingName, extension, mimeType);
       
-      // Reset to show record button again
-      discardRecording();
+      if (savedName) {
+        const file = new File([blobToSave], savedName, { type: mimeType });
+        onSaveRecording(file, recordingName);
+        toast({ title: "Recording saved", description: `"${savedName}" saved and added to playlist` });
+        discardRecording();
+      }
+    } catch (err) {
+      toast({
+        title: "Conversion failed",
+        description: `Could not convert to ${format.toUpperCase()}`,
+        variant: "destructive"
+      });
     }
   };
 
@@ -289,17 +334,34 @@ export function AudioRecorder({ onSaveRecording, onSaveSubliminal, testIdPrefix 
           </div>
           
           <div className="flex flex-wrap gap-2 justify-center">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSaveRecording}
-              disabled={!recordingName.trim()}
-              className="gap-1"
-              data-testid={`${testIdPrefix}-save-btn`}
-            >
-              <Save className="w-3.5 h-3.5" />
-              Save
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!recordingName.trim()}
+                  className="gap-1"
+                  data-testid={`${testIdPrefix}-save-btn`}
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  Save As
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => handleSaveRecording('mp3')} data-testid={`${testIdPrefix}-save-mp3`}>
+                  <FileAudio className="w-4 h-4 mr-2" />
+                  Save as MP3
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleSaveRecording('wav')} data-testid={`${testIdPrefix}-save-wav`}>
+                  <FileAudio className="w-4 h-4 mr-2" />
+                  Save as WAV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleSaveRecording('webm')} data-testid={`${testIdPrefix}-save-webm`}>
+                  <FileAudio className="w-4 h-4 mr-2" />
+                  Save as WebM
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             
             <Button
               variant="default"
@@ -404,4 +466,50 @@ function audioBufferToWav(buffer: AudioBuffer): Blob {
   }
   
   return new Blob([arrayBuffer], { type: 'audio/wav' });
+}
+
+function audioBufferToMp3(buffer: AudioBuffer): Blob {
+  const numChannels = buffer.numberOfChannels;
+  const sampleRate = buffer.sampleRate;
+  const kbps = 128;
+  
+  // Get audio data - convert to mono if stereo for simpler encoding
+  let samples: Int16Array;
+  
+  if (numChannels === 1) {
+    const channelData = buffer.getChannelData(0);
+    samples = new Int16Array(channelData.length);
+    for (let i = 0; i < channelData.length; i++) {
+      const s = Math.max(-1, Math.min(1, channelData[i]));
+      samples[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+  } else {
+    // Mix stereo to mono
+    const left = buffer.getChannelData(0);
+    const right = buffer.getChannelData(1);
+    samples = new Int16Array(left.length);
+    for (let i = 0; i < left.length; i++) {
+      const s = Math.max(-1, Math.min(1, (left[i] + right[i]) / 2));
+      samples[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+  }
+
+  const mp3encoder = new lamejs.Mp3Encoder(1, sampleRate, kbps);
+  const mp3Data: Int8Array[] = [];
+  
+  const sampleBlockSize = 1152;
+  for (let i = 0; i < samples.length; i += sampleBlockSize) {
+    const sampleChunk = samples.subarray(i, i + sampleBlockSize);
+    const mp3buf = mp3encoder.encodeBuffer(sampleChunk);
+    if (mp3buf.length > 0) {
+      mp3Data.push(new Int8Array(mp3buf));
+    }
+  }
+  
+  const end = mp3encoder.flush();
+  if (end.length > 0) {
+    mp3Data.push(new Int8Array(end));
+  }
+
+  return new Blob(mp3Data, { type: 'audio/mpeg' });
 }
