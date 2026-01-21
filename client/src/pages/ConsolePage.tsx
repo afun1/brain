@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { usePrograms } from "@/hooks/use-programs";
 import { useCustomAudio } from "@/hooks/use-custom-audio";
 import { useAudioEngine } from "@/hooks/use-audio-engine";
+import { useProgressionAudio } from "@/hooks/use-progression-audio";
 import { WaveVisualizer } from "@/components/WaveVisualizer";
 import { AudioFilePlayer } from "@/components/AudioFilePlayer";
 import { StereoConfusionPlayer } from "@/components/StereoConfusionPlayer";
@@ -10,13 +11,14 @@ import { TTSLearningPlayer } from "@/components/TTSLearningPlayer";
 import { AudiobookPlayer } from "@/components/AudiobookPlayer";
 import { PDFReader } from "@/components/PDFReader";
 import { LanguageLearner } from "@/components/LanguageLearner";
+import { ProgressionBuilder } from "@/components/ProgressionBuilder";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   Play, Pause, Volume2, Sliders, Headphones, 
-  ArrowLeftRight, Moon, Brain, Timer, Sun, Zap, HelpCircle, Heart
+  ArrowLeftRight, Moon, Brain, Timer, Sun, Zap, HelpCircle, Heart, ListOrdered
 } from "lucide-react";
 import { Link } from "wouter";
 import { AnimatePresence, motion } from "framer-motion";
@@ -91,7 +93,9 @@ const DELTA_PRESETS = [
 export default function ConsolePage() {
   const { data: programs } = usePrograms();
   const customAudio = useCustomAudio();
+  const progressionAudio = useProgressionAudio();
   const [mode, setMode] = useState<Mode>("custom");
+  const [customSubMode, setCustomSubMode] = useState<'simple' | 'progression'>('simple');
   const [selectedProgramId, setSelectedProgramId] = useState<number | null>(null);
   
   // Learning Mode state
@@ -1537,8 +1541,21 @@ export default function ConsolePage() {
             </TabsList>
 
             <TabsContent value="custom" className="space-y-4 mt-0">
-              <div className="glass-panel rounded-2xl p-4 space-y-4">
-                <div className="grid grid-cols-3 gap-3 text-center">
+              <Tabs value={customSubMode} onValueChange={(v) => setCustomSubMode(v as 'simple' | 'progression')} className="w-full">
+                <TabsList className="w-full grid grid-cols-2 mb-4">
+                  <TabsTrigger value="simple" className="gap-2" data-testid="tab-custom-simple">
+                    <Sliders className="w-4 h-4" />
+                    Simple Mode
+                  </TabsTrigger>
+                  <TabsTrigger value="progression" className="gap-2" data-testid="tab-custom-progression">
+                    <ListOrdered className="w-4 h-4" />
+                    Progression Builder
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="simple" className="mt-0 space-y-4">
+                  <div className="glass-panel rounded-2xl p-4 space-y-4">
+                    <div className="grid grid-cols-3 gap-3 text-center">
                   <div 
                     className={`p-3 rounded-xl border transition-opacity ${customAudio.carrierSide === 'left' ? 'bg-primary/10 border-primary/20' : 'bg-white/5 border-white/10'}`}
                     style={{ opacity: customAudio.leftEnabled ? 1 : 0.4 }}
@@ -1660,6 +1677,20 @@ export default function ConsolePage() {
                   </div>
                 </div>
               </div>
+                </TabsContent>
+
+                <TabsContent value="progression" className="mt-0 space-y-4">
+                  <ProgressionBuilder
+                    onPlay={progressionAudio.play}
+                    onStop={progressionAudio.stop}
+                    isPlaying={progressionAudio.isPlaying}
+                    currentSlotIndex={progressionAudio.currentSlotIndex}
+                    elapsedTime={progressionAudio.elapsedTime}
+                    volume={progressionAudio.volume}
+                    onVolumeChange={progressionAudio.setVolume}
+                  />
+                </TabsContent>
+              </Tabs>
             </TabsContent>
 
             <TabsContent value="learning" className="space-y-4 mt-0">

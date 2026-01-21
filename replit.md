@@ -46,12 +46,27 @@ Sleep programs contain multiple stages, each defining:
 ### Unified Console Interface
 The app uses a single-page console with five tabbed modes:
 
-1. **Custom Mode** - Manual frequency adjustment
+1. **Custom Mode** - Manual frequency adjustment with two sub-modes:
+   
+   **Simple Mode:**
    - Carrier (Solfeggio) frequency: 60-1000 Hz with presets (174, 285, 396, 417, 432, 528, 639, 741, 852, 963 Hz)
    - Binaural beat frequency: 0.5-40 Hz with presets (0.5, 1, 2, 4, 6, 8, 10, 12 Hz)
    - Swap carrier between left/right ear
    - Real-time frequency adjustment while audio is playing
    - Individual left/right channel controls to mute channels and experience single tones
+   
+   **Progression Builder:**
+   - Build custom frequency progressions with up to 20 slots
+   - Each slot defines: Left Hz, Right Hz, and Duration (minutes)
+   - Auto-calculates beat frequency (difference) and shows brain wave type (Delta/Theta/Alpha/Beta/Gamma)
+   - Reorder slots with up/down buttons
+   - Enable/disable individual slots without deleting
+   - Duplicate slots to create variations
+   - Save progressions to browser storage with custom names
+   - Load previously saved progressions
+   - Export progressions as JSON files for backup/sharing
+   - Import progressions from JSON files
+   - Real-time playback with current slot indicator and elapsed time display
 
 2. **Learning Mode** - Meditation/focus enhancement
    - Target state selection: Alpha (8-12 Hz) or Theta (4-8 Hz)
