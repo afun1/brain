@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { 
   Play, Pause, Save, Upload, Download, 
-  RotateCcw, Volume2, ChevronDown, ChevronUp
+  RotateCcw, Volume2, ChevronDown, ChevronUp, ArrowUp, ArrowDown
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -37,12 +37,13 @@ export interface SavedProgression {
   name: string;
   slots: ProgressionSlot[];
   createdAt: string;
+  carrierChannel?: 'L' | 'R';
+  variance?: 'higher' | 'lower';
 }
 
 const STORAGE_KEY = "binaural-progressions";
 const MAX_SLOTS = 20;
 
-// Slot colors matching night mode
 const SLOT_COLORS = [
   "border-red-500/50", "border-orange-500/50", "border-amber-500/50", "border-yellow-500/50", "border-lime-500/50",
   "border-green-500/50", "border-emerald-500/50", "border-cyan-500/50", "border-blue-500/50", "border-purple-500/50",
@@ -111,9 +112,13 @@ export function ProgressionBuilder({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Input state for controlled inputs (allows blank values)
-  const [leftInputs, setLeftInputs] = useState<string[]>(Array(MAX_SLOTS).fill(''));
-  const [rightInputs, setRightInputs] = useState<string[]>(Array(MAX_SLOTS).fill(''));
+  // Carrier channel and variance settings
+  const [carrierChannel, setCarrierChannel] = useState<'L' | 'R'>('L');
+  const [variance, setVariance] = useState<'higher' | 'lower'>('higher');
+  
+  // Input state for controlled inputs (carrier and beat)
+  const [carrierInputs, setCarrierInputs] = useState<string[]>(Array(MAX_SLOTS).fill(''));
+  const [beatInputs, setBeatInputs] = useState<string[]>(Array(MAX_SLOTS).fill(''));
   const [durationInputs, setDurationInputs] = useState<string[]>(Array(MAX_SLOTS).fill(''));
 
   useEffect(() => {
@@ -132,30 +137,50 @@ export function ProgressionBuilder({
     setSavedProgressions(progressions);
   }, []);
 
-  const updateSlot = (index: number, field: keyof ProgressionSlot, value: number | boolean) => {
-    setSlots(slots.map((s, i) => i === index ? { ...s, [field]: value } : s));
+  // Calculate L and R Hz from carrier, beat, and settings
+  const calculateFrequencies = (carrierHz: number, beatHz: number): { leftHz: number; rightHz: number } => {
+    if (carrierHz <= 0 || beatHz <= 0) {
+      return { leftHz: 0, rightHz: 0 };
+    }
+    
+    const variableHz = variance === 'higher' ? carrierHz + beatHz : carrierHz - beatHz;
+    
+    if (carrierChannel === 'L') {
+      return { leftHz: carrierHz, rightHz: variableHz };
+    } else {
+      return { leftHz: variableHz, rightHz: carrierHz };
+    }
   };
 
-  const handleLeftChange = (index: number, value: string) => {
-    const newInputs = [...leftInputs];
+  const updateSlotFromInputs = (index: number, carrier: number, beat: number, duration: number) => {
+    const { leftHz, rightHz } = calculateFrequencies(carrier, beat);
+    setSlots(slots.map((s, i) => i === index ? { ...s, leftHz, rightHz, durationMinutes: duration } : s));
+  };
+
+  const handleCarrierChange = (index: number, value: string) => {
+    const newInputs = [...carrierInputs];
     newInputs[index] = value;
-    setLeftInputs(newInputs);
+    setCarrierInputs(newInputs);
   };
 
-  const handleLeftBlur = (index: number) => {
-    const value = parseFloat(leftInputs[index]) || 0;
-    updateSlot(index, 'leftHz', value);
+  const handleCarrierBlur = (index: number) => {
+    const carrier = parseFloat(carrierInputs[index]) || 0;
+    const beat = parseFloat(beatInputs[index]) || 0;
+    const duration = parseInt(durationInputs[index]) || 0;
+    updateSlotFromInputs(index, carrier, beat, duration);
   };
 
-  const handleRightChange = (index: number, value: string) => {
-    const newInputs = [...rightInputs];
+  const handleBeatChange = (index: number, value: string) => {
+    const newInputs = [...beatInputs];
     newInputs[index] = value;
-    setRightInputs(newInputs);
+    setBeatInputs(newInputs);
   };
 
-  const handleRightBlur = (index: number) => {
-    const value = parseFloat(rightInputs[index]) || 0;
-    updateSlot(index, 'rightHz', value);
+  const handleBeatBlur = (index: number) => {
+    const carrier = parseFloat(carrierInputs[index]) || 0;
+    const beat = parseFloat(beatInputs[index]) || 0;
+    const duration = parseInt(durationInputs[index]) || 0;
+    updateSlotFromInputs(index, carrier, beat, duration);
   };
 
   const handleDurationChange = (index: number, value: string) => {
@@ -165,9 +190,22 @@ export function ProgressionBuilder({
   };
 
   const handleDurationBlur = (index: number) => {
-    const value = parseInt(durationInputs[index]) || 0;
-    updateSlot(index, 'durationMinutes', value);
+    const carrier = parseFloat(carrierInputs[index]) || 0;
+    const beat = parseFloat(beatInputs[index]) || 0;
+    const duration = parseInt(durationInputs[index]) || 0;
+    updateSlotFromInputs(index, carrier, beat, duration);
   };
+
+  // Recalculate all slots when carrier channel or variance changes
+  useEffect(() => {
+    const newSlots = slots.map((slot, idx) => {
+      const carrier = parseFloat(carrierInputs[idx]) || 0;
+      const beat = parseFloat(beatInputs[idx]) || 0;
+      const { leftHz, rightHz } = calculateFrequencies(carrier, beat);
+      return { ...slot, leftHz, rightHz };
+    });
+    setSlots(newSlots);
+  }, [carrierChannel, variance]);
 
   const handleSave = () => {
     if (!saveName.trim()) {
@@ -178,6 +216,8 @@ export function ProgressionBuilder({
       name: saveName.trim(),
       slots: slots.filter(s => s.leftHz > 0 || s.rightHz > 0 || s.durationMinutes > 0),
       createdAt: new Date().toISOString(),
+      carrierChannel,
+      variance,
     };
     const existing = savedProgressions.filter(p => p.name !== newProgression.name);
     saveToStorage([...existing, newProgression]);
@@ -187,25 +227,40 @@ export function ProgressionBuilder({
   };
 
   const loadProgression = (prog: SavedProgression) => {
-    // Reset all slots first
     const newSlots = createInitialSlots();
-    const newLeftInputs = Array(MAX_SLOTS).fill('');
-    const newRightInputs = Array(MAX_SLOTS).fill('');
+    const newCarrierInputs = Array(MAX_SLOTS).fill('');
+    const newBeatInputs = Array(MAX_SLOTS).fill('');
     const newDurationInputs = Array(MAX_SLOTS).fill('');
     
-    // Fill in saved slots
+    // Set carrier channel and variance from saved progression
+    if (prog.carrierChannel) setCarrierChannel(prog.carrierChannel);
+    if (prog.variance) setVariance(prog.variance);
+    
     prog.slots.forEach((slot, idx) => {
       if (idx < MAX_SLOTS) {
         newSlots[idx] = { ...slot, id: generateId() };
-        newLeftInputs[idx] = slot.leftHz > 0 ? slot.leftHz.toString() : '';
-        newRightInputs[idx] = slot.rightHz > 0 ? slot.rightHz.toString() : '';
+        // Reverse calculate carrier and beat from leftHz/rightHz
+        const savedCarrierChannel = prog.carrierChannel || 'L';
+        const savedVariance = prog.variance || 'higher';
+        
+        let carrier: number, beat: number;
+        if (savedCarrierChannel === 'L') {
+          carrier = slot.leftHz;
+          beat = savedVariance === 'higher' ? slot.rightHz - slot.leftHz : slot.leftHz - slot.rightHz;
+        } else {
+          carrier = slot.rightHz;
+          beat = savedVariance === 'higher' ? slot.leftHz - slot.rightHz : slot.rightHz - slot.leftHz;
+        }
+        
+        newCarrierInputs[idx] = carrier > 0 ? carrier.toString() : '';
+        newBeatInputs[idx] = beat > 0 ? beat.toString() : '';
         newDurationInputs[idx] = slot.durationMinutes > 0 ? slot.durationMinutes.toString() : '';
       }
     });
     
     setSlots(newSlots);
-    setLeftInputs(newLeftInputs);
-    setRightInputs(newRightInputs);
+    setCarrierInputs(newCarrierInputs);
+    setBeatInputs(newBeatInputs);
     setDurationInputs(newDurationInputs);
     toast({ title: "Loaded!", description: `"${prog.name}" loaded.` });
   };
@@ -218,7 +273,7 @@ export function ProgressionBuilder({
 
   const exportToFile = () => {
     const activeSlots = slots.filter(s => s.leftHz > 0 || s.rightHz > 0 || s.durationMinutes > 0);
-    const data = JSON.stringify({ slots: activeSlots }, null, 2);
+    const data = JSON.stringify({ slots: activeSlots, carrierChannel, variance }, null, 2);
     const blob = new Blob([data], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -236,24 +291,14 @@ export function ProgressionBuilder({
       try {
         const data = JSON.parse(event.target?.result as string);
         if (data.slots && Array.isArray(data.slots)) {
-          const newSlots = createInitialSlots();
-          const newLeftInputs = Array(MAX_SLOTS).fill('');
-          const newRightInputs = Array(MAX_SLOTS).fill('');
-          const newDurationInputs = Array(MAX_SLOTS).fill('');
-          
-          data.slots.forEach((slot: ProgressionSlot, idx: number) => {
-            if (idx < MAX_SLOTS) {
-              newSlots[idx] = { ...slot, id: generateId(), enabled: true };
-              newLeftInputs[idx] = slot.leftHz > 0 ? slot.leftHz.toString() : '';
-              newRightInputs[idx] = slot.rightHz > 0 ? slot.rightHz.toString() : '';
-              newDurationInputs[idx] = slot.durationMinutes > 0 ? slot.durationMinutes.toString() : '';
-            }
-          });
-          
-          setSlots(newSlots);
-          setLeftInputs(newLeftInputs);
-          setRightInputs(newRightInputs);
-          setDurationInputs(newDurationInputs);
+          const prog: SavedProgression = {
+            name: "Imported",
+            slots: data.slots,
+            createdAt: new Date().toISOString(),
+            carrierChannel: data.carrierChannel || 'L',
+            variance: data.variance || 'higher',
+          };
+          loadProgression(prog);
           toast({ title: "Imported!", description: "Progression loaded from file." });
         }
       } catch (err) {
@@ -266,8 +311,8 @@ export function ProgressionBuilder({
 
   const resetToDefault = () => {
     setSlots(createInitialSlots());
-    setLeftInputs(Array(MAX_SLOTS).fill(''));
-    setRightInputs(Array(MAX_SLOTS).fill(''));
+    setCarrierInputs(Array(MAX_SLOTS).fill(''));
+    setBeatInputs(Array(MAX_SLOTS).fill(''));
     setDurationInputs(Array(MAX_SLOTS).fill(''));
     toast({ title: "Reset", description: "All slots cleared." });
   };
@@ -278,7 +323,7 @@ export function ProgressionBuilder({
     } else {
       const activeSlots = slots.filter(s => s.leftHz > 0 && s.rightHz > 0 && s.durationMinutes > 0 && s.enabled);
       if (activeSlots.length === 0) {
-        toast({ title: "No active slots", description: "Add at least one slot with frequencies and duration." });
+        toast({ title: "No active slots", description: "Add at least one slot with carrier, beat, and duration." });
         return;
       }
       onPlay(activeSlots);
@@ -288,7 +333,6 @@ export function ProgressionBuilder({
   const enabledSlots = slots.filter(s => s.enabled && s.leftHz > 0 && s.rightHz > 0 && s.durationMinutes > 0);
   const totalDuration = enabledSlots.reduce((sum, s) => sum + s.durationMinutes, 0);
 
-  // Get active slots for meter display
   const activeSlotData = slots.map((slot, idx) => ({
     index: idx,
     duration: slot.durationMinutes,
@@ -409,6 +453,61 @@ export function ProgressionBuilder({
             </Button>
           </div>
 
+          {/* Carrier Channel and Variance Controls */}
+          <div className="flex flex-wrap items-center gap-3 p-2 rounded-lg bg-white/5 border border-white/10" data-testid="carrier-settings">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground">Carrier:</span>
+              <div className="flex">
+                <Button
+                  variant={carrierChannel === 'L' ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCarrierChannel('L')}
+                  className="text-xs rounded-r-none px-3"
+                  data-testid="button-carrier-left"
+                >
+                  L
+                </Button>
+                <Button
+                  variant={carrierChannel === 'R' ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCarrierChannel('R')}
+                  className="text-xs rounded-l-none px-3"
+                  data-testid="button-carrier-right"
+                >
+                  R
+                </Button>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground">Variance:</span>
+              <div className="flex">
+                <Button
+                  variant={variance === 'higher' ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setVariance('higher')}
+                  className="text-xs rounded-r-none px-2 gap-1"
+                  data-testid="button-variance-higher"
+                >
+                  <ArrowUp className="w-3 h-3" /> Higher
+                </Button>
+                <Button
+                  variant={variance === 'lower' ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setVariance('lower')}
+                  className="text-xs rounded-l-none px-2 gap-1"
+                  data-testid="button-variance-lower"
+                >
+                  <ArrowDown className="w-3 h-3" /> Lower
+                </Button>
+              </div>
+            </div>
+            
+            <div className="text-[9px] text-muted-foreground ml-auto">
+              {carrierChannel === 'L' ? 'Left' : 'Right'} ear = carrier, {carrierChannel === 'L' ? 'Right' : 'Left'} = carrier {variance === 'higher' ? '+' : '-'} beat
+            </div>
+          </div>
+
           {/* Time Coverage Meter */}
           <div data-testid="time-coverage-meter">
             <div className="flex h-6 rounded-md overflow-hidden border border-white/20">
@@ -443,11 +542,12 @@ export function ProgressionBuilder({
             </div>
           </div>
 
-          {/* Slot Grid - Horizontal layout like night mode */}
+          {/* Slot Grid - Horizontal layout with Carrier, Beat, Duration */}
           <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5" data-testid="slots-grid">
             {slots.map((slot, idx) => {
-              const beatHz = slot.rightHz - slot.leftHz;
-              const { type, color } = getBrainWaveType(beatHz);
+              const carrier = parseFloat(carrierInputs[idx]) || 0;
+              const beat = parseFloat(beatInputs[idx]) || 0;
+              const { type, color } = getBrainWaveType(beat);
               const isActive = slot.leftHz > 0 && slot.rightHz > 0 && slot.durationMinutes > 0;
               const isCurrentSlot = isPlaying && enabledSlots[currentSlotIndex]?.id === slot.id;
               
@@ -461,48 +561,60 @@ export function ProgressionBuilder({
                 >
                   <div className="text-[9px] text-muted-foreground mb-0.5">#{idx + 1}</div>
                   
-                  {/* Left Hz */}
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={leftInputs[idx]}
-                    onChange={(e) => handleLeftChange(idx, e.target.value)}
-                    onBlur={() => handleLeftBlur(idx)}
-                    placeholder="L"
-                    className="w-full py-0.5 text-center text-[10px] bg-zinc-900 border border-white/20 rounded text-white focus:border-primary focus:outline-none mb-0.5"
-                    data-testid={`input-left-hz-${idx}`}
-                  />
+                  {/* Carrier Hz (top) */}
+                  <div className="w-full mb-0.5">
+                    <div className="text-[7px] text-center text-accent/70 mb-0.5">{carrierChannel}</div>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={carrierInputs[idx]}
+                      onChange={(e) => handleCarrierChange(idx, e.target.value)}
+                      onBlur={() => handleCarrierBlur(idx)}
+                      placeholder="Hz"
+                      className="w-full py-0.5 text-center text-[10px] bg-zinc-900 border border-accent/30 rounded text-white focus:border-primary focus:outline-none"
+                      data-testid={`input-carrier-${idx}`}
+                    />
+                  </div>
                   
-                  {/* Right Hz */}
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={rightInputs[idx]}
-                    onChange={(e) => handleRightChange(idx, e.target.value)}
-                    onBlur={() => handleRightBlur(idx)}
-                    placeholder="R"
-                    className="w-full py-0.5 text-center text-[10px] bg-zinc-900 border border-white/20 rounded text-white focus:border-primary focus:outline-none mb-0.5"
-                    data-testid={`input-right-hz-${idx}`}
-                  />
+                  {/* Beat Hz (middle) */}
+                  <div className="w-full mb-0.5">
+                    <div className="text-[7px] text-center text-muted-foreground/70 mb-0.5">Beat</div>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={beatInputs[idx]}
+                      onChange={(e) => handleBeatChange(idx, e.target.value)}
+                      onBlur={() => handleBeatBlur(idx)}
+                      placeholder="Hz"
+                      className="w-full py-0.5 text-center text-[10px] bg-zinc-900 border border-white/20 rounded text-white focus:border-primary focus:outline-none"
+                      data-testid={`input-beat-${idx}`}
+                    />
+                  </div>
                   
                   {/* Duration */}
-                  <div className="flex items-center gap-0.5 w-full">
+                  <div className="w-full">
+                    <div className="text-[7px] text-center text-muted-foreground/70 mb-0.5">Min</div>
                     <input
                       type="text"
                       inputMode="numeric"
                       value={durationInputs[idx]}
                       onChange={(e) => handleDurationChange(idx, e.target.value)}
                       onBlur={() => handleDurationBlur(idx)}
-                      placeholder="m"
+                      placeholder=""
                       className="w-full py-0.5 text-center text-[10px] bg-zinc-800 border border-white/10 rounded text-white focus:border-primary focus:outline-none"
                       data-testid={`input-duration-${idx}`}
                     />
                   </div>
                   
-                  {/* Beat indicator */}
+                  {/* Calculated info */}
                   {isActive && (
-                    <div className={`text-[8px] font-medium mt-0.5 ${color}`}>
-                      {beatHz > 0 ? '+' : ''}{beatHz.toFixed(1)} {type}
+                    <div className="mt-1 text-center">
+                      <div className={`text-[8px] font-medium ${color}`}>
+                        {beat.toFixed(1)} {type}
+                      </div>
+                      <div className="text-[7px] text-muted-foreground">
+                        {slot.leftHz.toFixed(0)}|{slot.rightHz.toFixed(0)}
+                      </div>
                     </div>
                   )}
                 </div>
