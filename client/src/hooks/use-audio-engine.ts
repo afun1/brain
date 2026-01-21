@@ -305,7 +305,11 @@ export function useAudioEngine(stages: AudioStage[] = []) {
 
   }, [stages, volume, totalDuration, leftEnabled, rightEnabled]);
 
-  const stopAudio = useCallback(() => {
+  // Pause: stops audio but preserves position for resuming
+  const pause = useCallback(() => {
+    // Save current position before stopping
+    pauseTimeRef.current = seekOffsetRef.current + (Date.now() - startTimeRef.current) / 1000;
+    
     if (leftOscillatorRef.current) {
       try { leftOscillatorRef.current.stop(); } catch(e) {}
       leftOscillatorRef.current.disconnect();
@@ -335,16 +339,56 @@ export function useAudioEngine(stages: AudioStage[] = []) {
     if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     
     setIsPlaying(false);
+    // Keep elapsedTime at the paused position (don't reset to 0)
+  }, []);
+
+  // Stop: fully stops and resets to beginning
+  const stopAudio = useCallback(() => {
+    if (leftOscillatorRef.current) {
+      try { leftOscillatorRef.current.stop(); } catch(e) {}
+      leftOscillatorRef.current.disconnect();
+      leftOscillatorRef.current = null;
+    }
+    if (rightOscillatorRef.current) {
+      try { rightOscillatorRef.current.stop(); } catch(e) {}
+      rightOscillatorRef.current.disconnect();
+      rightOscillatorRef.current = null;
+    }
+    if (leftGainRef.current) {
+      leftGainRef.current.disconnect();
+      leftGainRef.current = null;
+    }
+    if (rightGainRef.current) {
+      rightGainRef.current.disconnect();
+      rightGainRef.current = null;
+    }
+    if (mergerRef.current) {
+      mergerRef.current.disconnect();
+      mergerRef.current = null;
+    }
+    if (masterGainRef.current) {
+      masterGainRef.current.disconnect();
+      masterGainRef.current = null;
+    }
+    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    
+    pauseTimeRef.current = 0;
+    seekOffsetRef.current = 0;
+    setIsPlaying(false);
     setElapsedTime(0);
   }, []);
 
+  // Toggle: pause if playing, resume from pause position if paused
   const togglePlay = useCallback(() => {
     if (isPlaying) {
-      stopAudio();
+      pause();
     } else {
-      play();
+      // Resume from paused position (or start if pauseTimeRef is 0)
+      const resumeFrom = pauseTimeRef.current > 0 ? pauseTimeRef.current : 0;
+      pauseTimeRef.current = 0; // Clear pause position
+      play(resumeFrom);
     }
-  }, [isPlaying, play, stopAudio]);
+  }, [isPlaying, play, pause]);
 
   const updateVolume = useCallback((val: number) => {
     setVolume(val);
@@ -394,6 +438,7 @@ export function useAudioEngine(stages: AudioStage[] = []) {
   return {
     isPlaying,
     togglePlay,
+    stop: stopAudio,
     volume,
     setVolume: updateVolume,
     elapsedTime,

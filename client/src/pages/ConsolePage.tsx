@@ -17,7 +17,7 @@ import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
-  Play, Pause, Volume2, Sliders, Headphones, 
+  Play, Pause, Square, Volume2, Sliders, Headphones, 
   ArrowLeftRight, Moon, Brain, Timer, Sun, Zap, HelpCircle, Heart, ListOrdered, MessageSquare
 } from "lucide-react";
 import { Link } from "wouter";
@@ -1666,6 +1666,20 @@ export default function ConsolePage() {
       daytimeAudio.togglePlay();
     } else {
       healingAudio.togglePlay();
+    }
+  };
+
+  const handleStop = () => {
+    if (mode === "custom") {
+      customAudio.stop();
+    } else if (mode === "program") {
+      programAudio.stop();
+    } else if (mode === "learning") {
+      learningAudio.stop();
+    } else if (mode === "daytime") {
+      daytimeAudio.stop();
+    } else {
+      healingAudio.stop();
     }
   };
 
@@ -3320,19 +3334,42 @@ export default function ConsolePage() {
             />
           </div>
 
-          <Button
-            size="icon"
-            onClick={handleTogglePlay}
-            disabled={mode === "program" && !selectedProgram}
-            className="rounded-full w-12 h-12"
-            data-testid="button-play-pause"
-          >
-            {isPlaying ? (
-              <Pause className="w-5 h-5 fill-current" />
-            ) : (
-              <Play className="w-5 h-5 fill-current ml-0.5" />
-            )}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="icon"
+              onClick={handleTogglePlay}
+              disabled={mode === "program" && !selectedProgram}
+              className="rounded-full w-12 h-12"
+              data-testid="button-play-pause"
+            >
+              {isPlaying ? (
+                <Pause className="w-5 h-5 fill-current" />
+              ) : (
+                <Play className="w-5 h-5 fill-current ml-0.5" />
+              )}
+            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={handleStop}
+                  disabled={(mode === "program" && !selectedProgram) || (!isPlaying && (
+                    mode === "custom" ? true :
+                    mode === "program" ? programAudio.elapsedTime === 0 :
+                    mode === "learning" ? learningAudio.elapsedTime === 0 :
+                    mode === "daytime" ? daytimeAudio.elapsedTime === 0 :
+                    healingAudio.elapsedTime === 0
+                  ))}
+                  className="rounded-full w-8 h-8"
+                  data-testid="button-stop"
+                >
+                  <Square className="w-3 h-3 fill-current" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Stop & Restart</TooltipContent>
+            </Tooltip>
+          </div>
 
           <div className="flex-1 flex justify-end">
             <div className="text-right text-xs text-muted-foreground">
