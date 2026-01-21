@@ -46,6 +46,7 @@ function ChannelPlaylist({
   const resizeRef = useRef<{ startY: number; startHeight: number } | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const isDraggingRef = useRef(false);
 
   const toggleTrackSelection = useCallback((trackId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -112,9 +113,14 @@ function ChannelPlaylist({
   }, []);
 
   const handleTrackDragStart = useCallback((e: React.DragEvent, index: number) => {
+    isDraggingRef.current = true;
     setDraggedIndex(index);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', index.toString());
+    // Set drag image to the target element
+    if (e.currentTarget instanceof HTMLElement) {
+      e.dataTransfer.setDragImage(e.currentTarget, 10, 10);
+    }
   }, []);
 
   const handleTrackDrag = useCallback((e: React.DragEvent) => {
@@ -280,7 +286,17 @@ function ChannelPlaylist({
     scrollDirectionRef.current = null;
     setDraggedIndex(null);
     setDragOverIndex(null);
+    // Delay resetting drag flag to prevent click from firing
+    setTimeout(() => {
+      isDraggingRef.current = false;
+    }, 100);
   }, [stopAutoScroll]);
+
+  const handleTrackClick = useCallback((index: number) => {
+    // Don't select track if we just finished dragging
+    if (isDraggingRef.current) return;
+    onSelectTrack(index);
+  }, [onSelectTrack]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -418,14 +434,14 @@ function ChannelPlaylist({
               tracks.map((track, index) => (
                 <div
                   key={track.id}
-                  draggable
+                  draggable={true}
                   onDragStart={(e) => handleTrackDragStart(e, index)}
                   onDrag={handleTrackDrag}
                   onDragOver={(e) => handleTrackDragOver(e, index)}
                   onDragLeave={handleTrackDragLeave}
                   onDrop={(e) => handleTrackDrop(e, index)}
                   onDragEnd={handleTrackDragEnd}
-                  className={`flex items-center gap-1.5 p-1.5 rounded cursor-pointer transition-all ${
+                  className={`flex items-center gap-1.5 p-1.5 rounded cursor-grab transition-colors select-none ${
                     draggedIndex === index
                       ? 'opacity-50 bg-primary/10'
                       : dragOverIndex === index
@@ -436,12 +452,11 @@ function ChannelPlaylist({
                       ? 'bg-white/10 border border-white/20'
                       : 'hover:bg-white/5'
                   }`}
-                  onClick={() => onSelectTrack(index)}
+                  onClick={() => handleTrackClick(index)}
                   data-testid={`${testIdPrefix}-track-${index}`}
                 >
                   <div
                     className="cursor-grab active:cursor-grabbing p-0.5 hover:bg-white/10 rounded"
-                    onMouseDown={(e) => e.stopPropagation()}
                     data-testid={`${testIdPrefix}-drag-handle-${index}`}
                   >
                     <GripVertical className="w-2.5 h-2.5 text-muted-foreground" />
