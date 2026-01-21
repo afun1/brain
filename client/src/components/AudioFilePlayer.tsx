@@ -265,9 +265,6 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = 'copy';
-    if (!isDragOver) {
-      console.log('Drag over detected on', title);
-    }
     setIsDragOver(true);
   };
 
@@ -282,23 +279,21 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
     e.stopPropagation();
     setIsDragOver(false);
     
-    console.log('Drop event triggered', e.dataTransfer.files.length, 'files');
-    
     const files = e.dataTransfer.files;
     if (files.length > 0) {
-      console.log('Files found:', Array.from(files).map(f => f.name));
       const audioFiles = Array.from(files).filter(file => 
         file.type.startsWith('audio/') || 
         /\.(mp3|wav|ogg|m4a|flac|aac|wma|m3u|m3u8|pls)$/i.test(file.name)
       );
-      console.log('Audio files after filter:', audioFiles.length);
       if (audioFiles.length > 0) {
-        player.addFiles(audioFiles);
+        const dt = new DataTransfer();
+        audioFiles.forEach(f => dt.items.add(f));
+        player.addFiles(dt.files);
         toast({ 
           title: `Added ${audioFiles.length} file${audioFiles.length > 1 ? 's' : ''}`,
           description: audioFiles.map(f => f.name).join(', ').substring(0, 100)
         });
-      } else if (files.length > 0) {
+      } else {
         toast({ 
           title: "No audio files found",
           description: "Please drop audio files (mp3, wav, ogg, etc.)",
