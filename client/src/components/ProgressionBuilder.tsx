@@ -380,7 +380,7 @@ export function ProgressionBuilder({
               return (
                 <div
                   key={slot.id}
-                  className={`flex flex-wrap items-center gap-2 p-3 rounded-lg border transition-colors ${
+                  className={`flex flex-wrap items-center gap-1 px-2 py-1.5 rounded-md border transition-colors ${
                     isCurrentSlot 
                       ? 'bg-primary/20 border-primary' 
                       : slot.enabled 
@@ -389,11 +389,11 @@ export function ProgressionBuilder({
                   }`}
                   data-testid={`slot-${index}`}
                 >
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center">
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6"
+                      className="h-5 w-5"
                       onClick={() => moveSlot(slot.id, 'up')}
                       disabled={index === 0}
                       data-testid={`button-move-up-${index}`}
@@ -403,7 +403,7 @@ export function ProgressionBuilder({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6"
+                      className="h-5 w-5"
                       onClick={() => moveSlot(slot.id, 'down')}
                       disabled={index === slots.length - 1}
                       data-testid={`button-move-down-${index}`}
@@ -412,85 +412,84 @@ export function ProgressionBuilder({
                     </Button>
                   </div>
 
-                  <span className="text-xs text-muted-foreground w-6">{index + 1}.</span>
+                  <span className="text-[10px] text-muted-foreground w-4">{index + 1}</span>
 
-                  <div className="flex items-center gap-1">
-                    <Label className="text-xs text-muted-foreground">L:</Label>
+                  <div className="flex items-center gap-0.5">
+                    <Label className="text-[10px] text-muted-foreground">L:</Label>
                     <Input
                       type="number"
                       value={slot.leftHz}
-                      onChange={(e) => updateSlot(slot.id, 'leftHz', Number(e.target.value) || 0)}
-                      className="w-20 h-8 text-sm"
-                      min={20}
+                      onChange={(e) => updateSlot(slot.id, 'leftHz', parseFloat(e.target.value) || 0)}
+                      className="w-16 h-6 text-xs px-1"
+                      min={0.1}
                       max={1000}
+                      step="0.01"
                       data-testid={`input-left-hz-${index}`}
                     />
-                    <span className="text-xs text-muted-foreground">Hz</span>
                   </div>
 
-                  <div className="flex items-center gap-1">
-                    <Label className="text-xs text-muted-foreground">R:</Label>
+                  <div className="flex items-center gap-0.5">
+                    <Label className="text-[10px] text-muted-foreground">R:</Label>
                     <Input
                       type="number"
                       value={slot.rightHz}
-                      onChange={(e) => updateSlot(slot.id, 'rightHz', Number(e.target.value) || 0)}
-                      className="w-20 h-8 text-sm"
-                      min={20}
+                      onChange={(e) => updateSlot(slot.id, 'rightHz', parseFloat(e.target.value) || 0)}
+                      className="w-16 h-6 text-xs px-1"
+                      min={0.1}
                       max={1000}
+                      step="0.01"
                       data-testid={`input-right-hz-${index}`}
                     />
-                    <span className="text-xs text-muted-foreground">Hz</span>
                   </div>
 
-                  <div className="flex items-center gap-1">
-                    <Label className="text-xs text-muted-foreground">Time:</Label>
+                  <div className="flex items-center gap-0.5">
                     <Input
                       type="number"
                       value={slot.durationMinutes}
                       onChange={(e) => updateSlot(slot.id, 'durationMinutes', Number(e.target.value) || 1)}
-                      className="w-16 h-8 text-sm"
+                      className="w-10 h-6 text-xs px-1"
                       min={1}
                       max={120}
                       data-testid={`input-duration-${index}`}
                     />
-                    <span className="text-xs text-muted-foreground">min</span>
+                    <span className="text-[10px] text-muted-foreground">m</span>
                   </div>
 
-                  <div className={`text-xs font-medium px-2 py-1 rounded ${color} bg-white/5`}>
-                    {beatHz > 0 ? '+' : ''}{beatHz} Hz ({type})
+                  <div className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${color} bg-white/5`}>
+                    {beatHz > 0 ? '+' : ''}{beatHz.toFixed(2)} ({type})
                   </div>
 
-                  <div className="flex items-center gap-1 ml-auto">
+                  <div className="flex items-center ml-auto">
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7"
+                      className="h-5 w-5"
                       onClick={() => updateSlot(slot.id, 'enabled', !slot.enabled)}
                       data-testid={`button-toggle-${index}`}
                     >
                       {slot.enabled ? (
-                        <span className="w-3 h-3 rounded-full bg-green-500" />
+                        <span className="w-2 h-2 rounded-full bg-green-500" />
                       ) : (
-                        <span className="w-3 h-3 rounded-full bg-muted-foreground/30" />
+                        <span className="w-2 h-2 rounded-full bg-muted-foreground/30" />
                       )}
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7"
+                      className="h-5 w-5"
                       onClick={() => duplicateSlot(slot.id)}
                       data-testid={`button-duplicate-${index}`}
                     >
-                      <Copy className="w-3 h-3" />
+                      <Copy className="w-2.5 h-2.5" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7"
+                      className="h-5 w-5"
                       onClick={() => removeSlot(slot.id)}
                       data-testid={`button-remove-${index}`}
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-2.5 h-2.5" />
                     </Button>
                   </div>
                 </div>
