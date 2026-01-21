@@ -50,3 +50,45 @@ export type BetaFeedback = typeof betaFeedback.$inferSelect;
 export type InsertBetaFeedback = z.infer<typeof insertBetaFeedbackSchema>;
 
 export * from "./models/chat";
+export * from "./models/auth";
+
+// Library Progressions - Community shared progressions
+export const libraryProgressions = pgTable("library_progressions", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description"),
+  category: text("category").notNull(), // Sleep, Power Nap, Focus, Meditation, Healing, Workout
+  authorId: text("author_id"), // null if anonymous
+  authorName: text("author_name"), // Display name or "Anonymous"
+  isAnonymous: boolean("is_anonymous").default(false),
+  slots: jsonb("slots").notNull(), // The progression data
+  carrierChannel: text("carrier_channel").default("L"),
+  variance: text("variance").default("higher"),
+  totalMinutes: integer("total_minutes").notNull(),
+  downloadCount: integer("download_count").default(0),
+  ratingSum: integer("rating_sum").default(0), // Sum of all ratings
+  ratingCount: integer("rating_count").default(0), // Number of ratings
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const libraryRatings = pgTable("library_ratings", {
+  id: serial("id").primaryKey(),
+  progressionId: integer("progression_id").notNull(),
+  userId: text("user_id").notNull(),
+  rating: integer("rating").notNull(), // 1-5 stars
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertLibraryProgressionSchema = createInsertSchema(libraryProgressions).omit({ 
+  id: true, 
+  createdAt: true, 
+  downloadCount: true, 
+  ratingSum: true, 
+  ratingCount: true 
+});
+export const insertLibraryRatingSchema = createInsertSchema(libraryRatings).omit({ id: true, createdAt: true });
+
+export type LibraryProgression = typeof libraryProgressions.$inferSelect;
+export type LibraryRating = typeof libraryRatings.$inferSelect;
+export type InsertLibraryProgression = z.infer<typeof insertLibraryProgressionSchema>;
+export type InsertLibraryRating = z.infer<typeof insertLibraryRatingSchema>;

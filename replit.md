@@ -27,17 +27,28 @@ Preferred communication style: Simple, everyday language.
 
 ### Data Storage
 - **Database**: PostgreSQL with Drizzle ORM.
-- **Schema**: `programs`, `sleep_stages`, and `beta_feedback` tables.
+- **Schema**: `programs`, `sleep_stages`, `beta_feedback`, `users`, `sessions`, `library_progressions`, and `library_ratings` tables.
 - **Migrations**: Drizzle Kit for schema management.
+
+### Authentication
+- **Replit Auth**: OpenID Connect integration for user authentication.
+- **Supported Login Methods**: Google, GitHub, Apple, email/password via Replit.
+- **Session Management**: PostgreSQL-backed session storage with secure cookies.
 
 ### Feature Specifications
 - **Unified Console Interface**: Five tabbed modes:
-    - **Custom Mode**: Manual frequency adjustment (Simple Mode) and progression builder (Progression Builder) with up to 20 slots, save/load/export functionality, and real-time playback.
+    - **Custom Mode**: Manual frequency adjustment (Simple Mode) and progression builder (Progression Builder) with up to 30 slots, save/load/export functionality, real-time playback, and Community Library integration for sharing/downloading progressions.
     - **Learning Mode**: Target state selection (Alpha/Theta), duration options, PDF reader with Word Lookup, TTS Read Mode (with synchronized highlighting and speed control), RSVP Mode (Rapid Serial Visual Presentation), Page Flash Mode, Text-to-Speech learning (via OpenAI TTS), and Language Learning (bilingual audio with translation via GPT-4o-mini).
     - **Healing Mode**: Target state selection (Restoration, Deep Healing, Pain Relief), duration options, 10-slot Carrier Frequency System, and 10-slot Brainwave Frequency System with predefined delta presets.
     - **Daytime Mode**: Focus Modes (Beta/Gamma) and Workout Modes (Pre-Workout, Cardio, HIIT/Strength, Recovery) with optional ramp-up phases and duration controls.
     - **Sleep Programs**: Pre-built sleep journeys with click-to-seek hypnogram, dynamic sleep duration (5h-10h), optional Pre-Sleep Wind-Down, Pre-Wake Delta Boost, and Beta Wake-Up sequences. Includes 8-Hour Full Night Rest with customizable carrier frequencies and 8-Hour Solfeggio Healing Cycles.
 - **Audio Engine Behavior**: Quick transitions (approx. 60 seconds) then hold steady at target frequencies.
+- **Community Library**: Share and download custom progressions with the community.
+    - Voluntary sharing only (opt-in)
+    - Categories: Sleep, Power Nap, Focus, Meditation, Healing, Workout
+    - 1-5 star rating system
+    - Download count tracking
+    - Optional anonymous authorship for sleep professionals
 - **Independent Audio Players**:
     - **Background Music Player**: Supports drag-drop audio, playlist management, A=440Hz/A=432Hz tuning, loop/shuffle, and playlist export.
     - **Affirmations Player**: Includes all Background Music player features, plus audio recording (MediaRecorder API), subliminal track conversion, and WAV file saving (browser session only).

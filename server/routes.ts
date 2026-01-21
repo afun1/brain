@@ -3,12 +3,17 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { registerAudioRoutes } from "./replit_integrations/audio/routes";
-import { insertBetaFeedbackSchema } from "@shared/schema";
+import { insertBetaFeedbackSchema, insertLibraryProgressionSchema } from "@shared/schema";
+import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // Setup auth (must be before other routes)
+  await setupAuth(app);
+  registerAuthRoutes(app);
+
   // Initialize default data
   await storage.seedDefaultPrograms();
 
@@ -52,6 +57,97 @@ export async function registerRoutes(
 
   // Register AI audio routes (TTS, STT, voice chat)
   registerAudioRoutes(app);
+
+  // Library routes - Community shared progressions
+  
+  // Get all library progressions (public, no auth required)
+  app.get("/api/library", async (req, res) => {
+    try {
+      const category = req.query.category as string | undefined;
+      const progressions = await storage.getLibraryProgressions(category);
+      res.json(progressions);
+    } catch (error) {
+      console.error("Error fetching library:", error);
+      res.status(500).json({ message: "Failed to fetch library" });
+    }
+  });
+
+  // Get a single progression (and increment download count)
+  app.get("/api/library/:id", async (req, res) => {
+    try {
+      const progression = await storage.getLibraryProgression(Number(req.params.id));
+      if (!progression) {
+        return res.status(404).json({ message: "Progression not found" });
+      }
+      // Increment download count
+      await storage.incrementDownloadCount(Number(req.params.id));
+      res.json(progression);
+    } catch (error) {
+      console.error("Error fetching progression:", error);
+      res.status(500).json({ message: "Failed to fetch progression" });
+    }
+  });
+
+  // Share a progression to the library (requires login)
+  app.post("/api/library", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const userFirstName = req.user?.claims?.first_name || "";
+      const userLastName = req.user?.claims?.last_name || "";
+      const isAnonymous = req.body.isAnonymous === true;
+      
+      const authorName = isAnonymous ? "Anonymous" : `${userFirstName} ${userLastName}`.trim() || "Anonymous";
+      
+      const data = {
+        ...req.body,
+        authorId: isAnonymous ? null : userId,
+        authorName,
+        isAnonymous,
+      };
+      
+      const parsed = insertLibraryProgressionSchema.safeParse(data);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid progression data", errors: parsed.error.errors });
+      }
+      
+      const progression = await storage.createLibraryProgression(parsed.data);
+      res.status(201).json(progression);
+    } catch (error) {
+      console.error("Error sharing progression:", error);
+      res.status(500).json({ message: "Failed to share progression" });
+    }
+  });
+
+  // Rate a progression (requires login)
+  app.post("/api/library/:id/rate", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const progressionId = Number(req.params.id);
+      const rating = Number(req.body.rating);
+      
+      if (rating < 1 || rating > 5) {
+        return res.status(400).json({ message: "Rating must be between 1 and 5" });
+      }
+      
+      await storage.rateProgression(progressionId, userId, rating);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error rating progression:", error);
+      res.status(500).json({ message: "Failed to rate progression" });
+    }
+  });
+
+  // Get user's own shared progressions
+  app.get("/api/library/my/progressions", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const progressions = await storage.getUserProgressions(userId);
+      res.json(progressions);
+    } catch (error) {
+      console.error("Error fetching user progressions:", error);
+      res.status(500).json({ message: "Failed to fetch your progressions" });
+    }
+  });
 
   return httpServer;
 }

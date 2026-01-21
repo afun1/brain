@@ -3,15 +3,19 @@ import {
   programs,
   sleepStages,
   betaFeedback,
+  libraryProgressions,
+  libraryRatings,
   type Program,
   type SleepStage,
   type BetaFeedback,
+  type LibraryProgression,
   type InsertProgram,
   type InsertSleepStage,
   type InsertBetaFeedback,
+  type InsertLibraryProgression,
   type ProgramWithStages,
 } from "@shared/schema";
-import { eq, asc, desc } from "drizzle-orm";
+import { eq, asc, desc, sql } from "drizzle-orm";
 
 export interface IStorage {
   getPrograms(): Promise<ProgramWithStages[]>;
@@ -21,6 +25,13 @@ export interface IStorage {
   seedDefaultPrograms(): Promise<void>;
   createBetaFeedback(feedback: InsertBetaFeedback): Promise<BetaFeedback>;
   getBetaFeedback(): Promise<BetaFeedback[]>;
+  // Library methods
+  getLibraryProgressions(category?: string): Promise<LibraryProgression[]>;
+  getLibraryProgression(id: number): Promise<LibraryProgression | undefined>;
+  createLibraryProgression(data: InsertLibraryProgression): Promise<LibraryProgression>;
+  incrementDownloadCount(id: number): Promise<void>;
+  rateProgression(progressionId: number, userId: string, rating: number): Promise<void>;
+  getUserProgressions(userId: string): Promise<LibraryProgression[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -202,6 +213,65 @@ export class DatabaseStorage implements IStorage {
 
   async getBetaFeedback(): Promise<BetaFeedback[]> {
     return db.select().from(betaFeedback).orderBy(desc(betaFeedback.createdAt));
+  }
+
+  // Library methods
+  async getLibraryProgressions(category?: string): Promise<LibraryProgression[]> {
+    if (category) {
+      return db.select().from(libraryProgressions)
+        .where(eq(libraryProgressions.category, category))
+        .orderBy(desc(libraryProgressions.createdAt));
+    }
+    return db.select().from(libraryProgressions).orderBy(desc(libraryProgressions.createdAt));
+  }
+
+  async getLibraryProgression(id: number): Promise<LibraryProgression | undefined> {
+    const [progression] = await db.select().from(libraryProgressions).where(eq(libraryProgressions.id, id));
+    return progression;
+  }
+
+  async createLibraryProgression(data: InsertLibraryProgression): Promise<LibraryProgression> {
+    const [result] = await db.insert(libraryProgressions).values(data).returning();
+    return result;
+  }
+
+  async incrementDownloadCount(id: number): Promise<void> {
+    await db.update(libraryProgressions)
+      .set({ downloadCount: sql`${libraryProgressions.downloadCount} + 1` })
+      .where(eq(libraryProgressions.id, id));
+  }
+
+  async rateProgression(progressionId: number, userId: string, rating: number): Promise<void> {
+    // Check if user already rated
+    const [existing] = await db.select().from(libraryRatings)
+      .where(eq(libraryRatings.progressionId, progressionId))
+      .where(eq(libraryRatings.userId, userId));
+
+    if (existing) {
+      // Update existing rating
+      const ratingDiff = rating - existing.rating;
+      await db.update(libraryRatings)
+        .set({ rating })
+        .where(eq(libraryRatings.id, existing.id));
+      await db.update(libraryProgressions)
+        .set({ ratingSum: sql`${libraryProgressions.ratingSum} + ${ratingDiff}` })
+        .where(eq(libraryProgressions.id, progressionId));
+    } else {
+      // Add new rating
+      await db.insert(libraryRatings).values({ progressionId, userId, rating });
+      await db.update(libraryProgressions)
+        .set({ 
+          ratingSum: sql`${libraryProgressions.ratingSum} + ${rating}`,
+          ratingCount: sql`${libraryProgressions.ratingCount} + 1`
+        })
+        .where(eq(libraryProgressions.id, progressionId));
+    }
+  }
+
+  async getUserProgressions(userId: string): Promise<LibraryProgression[]> {
+    return db.select().from(libraryProgressions)
+      .where(eq(libraryProgressions.authorId, userId))
+      .orderBy(desc(libraryProgressions.createdAt));
   }
 }
 

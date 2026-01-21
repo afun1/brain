@@ -3,9 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Play, Pause, Save, Upload, Download, 
-  RotateCcw, Volume2, ChevronDown, ChevronUp, ArrowUp, ArrowDown
+  RotateCcw, Volume2, ChevronDown, ChevronUp, ArrowUp, ArrowDown, Share2, Library
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -21,9 +23,19 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { CommunityLibrary } from "./CommunityLibrary";
 
 export interface ProgressionSlot {
   id: string;
@@ -111,6 +123,7 @@ export function ProgressionBuilder({
   onVolumeChange,
 }: ProgressionBuilderProps) {
   const { toast } = useToast();
+  const { user, isAuthenticated } = useAuth();
   const [slots, setSlots] = useState<ProgressionSlot[]>(createInitialSlots());
   const [savedProgressions, setSavedProgressions] = useState<SavedProgression[]>([]);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -124,6 +137,17 @@ export function ProgressionBuilder({
   
   // Show extended slots (21-30)
   const [showExtendedSlots, setShowExtendedSlots] = useState(false);
+  
+  // Share to Library state
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareTitle, setShareTitle] = useState("");
+  const [shareDescription, setShareDescription] = useState("");
+  const [shareCategory, setShareCategory] = useState("Sleep");
+  const [shareAnonymous, setShareAnonymous] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  
+  // Community Library state
+  const [libraryOpen, setLibraryOpen] = useState(false);
   
   // Input state for controlled inputs (carrier, beat, duration per slot)
   const [carrierInputs, setCarrierInputs] = useState<string[]>(Array(MAX_SLOTS).fill(''));
@@ -328,6 +352,49 @@ export function ProgressionBuilder({
     toast({ title: "Reset", description: "All slots cleared." });
   };
 
+  const handleLoadFromLibrary = (prog: SavedProgression) => {
+    loadProgression(prog);
+  };
+
+  const handleShareToLibrary = async () => {
+    if (!shareTitle.trim()) {
+      toast({ title: "Title required", description: "Please enter a title for your progression." });
+      return;
+    }
+
+    const activeSlots = slots.filter(s => s.leftHz > 0 || s.rightHz > 0 || s.durationMinutes > 0);
+    if (activeSlots.length === 0) {
+      toast({ title: "No slots to share", description: "Add some slots first.", variant: "destructive" });
+      return;
+    }
+
+    setIsSharing(true);
+    try {
+      await apiRequest("POST", "/api/library", {
+        title: shareTitle.trim(),
+        description: shareDescription.trim() || null,
+        category: shareCategory,
+        isAnonymous: shareAnonymous,
+        slots: activeSlots,
+        carrierChannel,
+        variance,
+        totalMinutes: activeSlots.reduce((sum, s) => sum + s.durationMinutes, 0),
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ['/api/library'] });
+      setShareDialogOpen(false);
+      setShareTitle("");
+      setShareDescription("");
+      setShareCategory("Sleep");
+      setShareAnonymous(false);
+      toast({ title: "Shared!", description: "Your progression is now available in the Community Library." });
+    } catch (error) {
+      toast({ title: "Share failed", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
   const handlePlayStop = () => {
     if (isPlaying) {
       onStop();
@@ -446,6 +513,103 @@ export function ProgressionBuilder({
 
             <Button variant="outline" size="sm" onClick={exportToFile} className="text-xs" data-testid="button-export">
               <Download className="w-3 h-3 mr-1" /> Export
+            </Button>
+
+            <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+              <DialogTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-xs text-accent border-accent/50 hover:bg-accent/10" 
+                  data-testid="button-share-library"
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      toast({ title: "Login required", description: "Please log in to share progressions." });
+                      window.location.href = "/api/login";
+                      return;
+                    }
+                  }}
+                >
+                  <Share2 className="w-3 h-3 mr-1" /> Share to Library
+                </Button>
+              </DialogTrigger>
+              {isAuthenticated && (
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Share to Community Library</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div>
+                      <Label htmlFor="share-title">Title</Label>
+                      <Input
+                        id="share-title"
+                        value={shareTitle}
+                        onChange={(e) => setShareTitle(e.target.value)}
+                        placeholder="My Sleep Progression"
+                        className="mt-1"
+                        data-testid="input-share-title"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="share-description">Description (optional)</Label>
+                      <Textarea
+                        id="share-description"
+                        value={shareDescription}
+                        onChange={(e) => setShareDescription(e.target.value)}
+                        placeholder="Describe what this progression does..."
+                        className="mt-1 h-20"
+                        data-testid="input-share-description"
+                      />
+                    </div>
+                    <div>
+                      <Label>Category</Label>
+                      <Select value={shareCategory} onValueChange={setShareCategory}>
+                        <SelectTrigger className="mt-1" data-testid="select-share-category">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Sleep">Sleep</SelectItem>
+                          <SelectItem value="Power Nap">Power Nap</SelectItem>
+                          <SelectItem value="Focus">Focus</SelectItem>
+                          <SelectItem value="Meditation">Meditation</SelectItem>
+                          <SelectItem value="Healing">Healing</SelectItem>
+                          <SelectItem value="Workout">Workout</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="share-anonymous"
+                        checked={shareAnonymous}
+                        onCheckedChange={(checked) => setShareAnonymous(checked === true)}
+                        data-testid="checkbox-anonymous"
+                      />
+                      <Label htmlFor="share-anonymous" className="text-sm font-normal cursor-pointer">
+                        Share anonymously (hide my name)
+                      </Label>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Your progression will be shared with the community. Others can download and rate it.
+                    </p>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setShareDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleShareToLibrary} disabled={isSharing} data-testid="button-confirm-share">
+                      {isSharing ? "Sharing..." : "Share"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              )}
+            </Dialog>
+
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setLibraryOpen(true)} 
+              className="text-xs"
+              data-testid="button-browse-library"
+            >
+              <Library className="w-3 h-3 mr-1" /> Browse Library
             </Button>
             
             <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="text-xs" data-testid="button-import">
@@ -699,6 +863,12 @@ export function ProgressionBuilder({
           </div>
         </CardContent>
       )}
+      
+      <CommunityLibrary 
+        isOpen={libraryOpen} 
+        onOpenChange={setLibraryOpen}
+        onLoadProgression={handleLoadFromLibrary}
+      />
     </Card>
   );
 }
