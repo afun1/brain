@@ -39,11 +39,64 @@ export function useAudioEngine(stages: AudioStage[] = []) {
   const pauseTimeRef = useRef<number>(0);
   const animationFrameRef = useRef<number>();
   const seekOffsetRef = useRef<number>(0);
+  const keepAliveIntervalRef = useRef<number | null>(null);
+  const isPlayingRef = useRef<boolean>(false);
+
+  // Keep isPlayingRef in sync
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  // Keepalive mechanism to prevent browser from suspending AudioContext
+  useEffect(() => {
+    const startKeepAlive = () => {
+      if (keepAliveIntervalRef.current) return;
+      
+      keepAliveIntervalRef.current = window.setInterval(async () => {
+        if (audioContextRef.current && audioContextRef.current.state === 'suspended' && isPlayingRef.current) {
+          console.log('AudioContext suspended, resuming...');
+          await audioContextRef.current.resume();
+        }
+      }, 5000);
+    };
+
+    const stopKeepAlive = () => {
+      if (keepAliveIntervalRef.current) {
+        clearInterval(keepAliveIntervalRef.current);
+        keepAliveIntervalRef.current = null;
+      }
+    };
+
+    if (isPlaying) {
+      startKeepAlive();
+    } else {
+      stopKeepAlive();
+    }
+
+    return () => stopKeepAlive();
+  }, [isPlaying]);
+
+  // Handle visibility changes - resume AudioContext when tab becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && isPlayingRef.current && audioContextRef.current) {
+        if (audioContextRef.current.state === 'suspended') {
+          await audioContextRef.current.resume();
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       stopAudio();
+      if (keepAliveIntervalRef.current) {
+        clearInterval(keepAliveIntervalRef.current);
+      }
       if (audioContextRef.current?.state !== 'closed') {
         audioContextRef.current?.close();
       }

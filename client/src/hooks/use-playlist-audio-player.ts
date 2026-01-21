@@ -86,6 +86,9 @@ function generateId(): string {
 
 export function usePlaylistAudioPlayer(storageKey: string) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const keepAliveIntervalRef = useRef<number | null>(null);
+  const lastPlaybackTimeRef = useRef<number>(0);
+  const isPlayingRef = useRef<boolean>(false);
   
   const [tracks, setTracks] = useState<PlaylistTrack[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -100,6 +103,61 @@ export function usePlaylistAudioPlayer(storageKey: string) {
   const [shuffleActive, setShuffleActive] = useState(false);
 
   const currentTrack = tracks[currentIndex] || null;
+
+  // Keep isPlayingRef in sync
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  // Keepalive mechanism to prevent browser from stopping audio
+  useEffect(() => {
+    const startKeepAlive = () => {
+      if (keepAliveIntervalRef.current) return;
+      
+      keepAliveIntervalRef.current = window.setInterval(() => {
+        if (audioRef.current && isPlayingRef.current) {
+          // Check if audio has stalled
+          const currentTime = audioRef.current.currentTime;
+          if (currentTime === lastPlaybackTimeRef.current && !audioRef.current.paused && !audioRef.current.ended) {
+            // Audio appears stalled, try to recover
+            console.log('Audio stalled, attempting recovery...');
+            audioRef.current.play().catch(() => {});
+          }
+          lastPlaybackTimeRef.current = currentTime;
+        }
+      }, 5000); // Check every 5 seconds
+    };
+
+    const stopKeepAlive = () => {
+      if (keepAliveIntervalRef.current) {
+        clearInterval(keepAliveIntervalRef.current);
+        keepAliveIntervalRef.current = null;
+      }
+    };
+
+    if (isPlaying) {
+      startKeepAlive();
+    } else {
+      stopKeepAlive();
+    }
+
+    return () => stopKeepAlive();
+  }, [isPlaying]);
+
+  // Handle visibility changes - resume playback when tab becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isPlayingRef.current && audioRef.current) {
+        // Tab became visible, ensure audio is still playing
+        if (audioRef.current.paused) {
+          audioRef.current.play().catch(() => {});
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
 
   useEffect(() => {
     const saved = localStorage.getItem(storageKey);

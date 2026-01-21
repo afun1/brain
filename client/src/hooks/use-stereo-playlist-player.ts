@@ -144,6 +144,10 @@ export function useStereoPlaylistPlayer() {
   const leftMonoGainRef = useRef<GainNode | null>(null);
   const rightMonoGainRef = useRef<GainNode | null>(null);
   const isInitializedRef = useRef(false);
+  const keepAliveIntervalRef = useRef<number | null>(null);
+  const lastLeftTimeRef = useRef<number>(0);
+  const lastRightTimeRef = useRef<number>(0);
+  const isPlayingRef = useRef<boolean>(false);
 
   const [leftTracks, setLeftTracks] = useState<StereoTrack[]>([]);
   const [rightTracks, setRightTracks] = useState<StereoTrack[]>([]);
@@ -164,6 +168,86 @@ export function useStereoPlaylistPlayer() {
 
   const leftTrack = leftTracks[leftIndex] || null;
   const rightTrack = rightTracks[rightIndex] || null;
+
+  // Keep isPlayingRef in sync
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  // Keepalive mechanism to prevent browser from stopping audio and keep AudioContext alive
+  useEffect(() => {
+    const startKeepAlive = () => {
+      if (keepAliveIntervalRef.current) return;
+      
+      keepAliveIntervalRef.current = window.setInterval(async () => {
+        // Keep AudioContext alive
+        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+          console.log('AudioContext suspended, resuming...');
+          await audioContextRef.current.resume();
+        }
+
+        if (isPlayingRef.current) {
+          // Check if left audio has stalled
+          if (leftAudioRef.current && leftTracks.length > 0) {
+            const leftTime = leftAudioRef.current.currentTime;
+            if (leftTime === lastLeftTimeRef.current && !leftAudioRef.current.paused && !leftAudioRef.current.ended) {
+              console.log('Left audio stalled, attempting recovery...');
+              leftAudioRef.current.play().catch(() => {});
+            }
+            lastLeftTimeRef.current = leftTime;
+          }
+          
+          // Check if right audio has stalled
+          if (rightAudioRef.current && rightTracks.length > 0) {
+            const rightTime = rightAudioRef.current.currentTime;
+            if (rightTime === lastRightTimeRef.current && !rightAudioRef.current.paused && !rightAudioRef.current.ended) {
+              console.log('Right audio stalled, attempting recovery...');
+              rightAudioRef.current.play().catch(() => {});
+            }
+            lastRightTimeRef.current = rightTime;
+          }
+        }
+      }, 5000); // Check every 5 seconds
+    };
+
+    const stopKeepAlive = () => {
+      if (keepAliveIntervalRef.current) {
+        clearInterval(keepAliveIntervalRef.current);
+        keepAliveIntervalRef.current = null;
+      }
+    };
+
+    if (isPlaying) {
+      startKeepAlive();
+    } else {
+      stopKeepAlive();
+    }
+
+    return () => stopKeepAlive();
+  }, [isPlaying, leftTracks.length, rightTracks.length]);
+
+  // Handle visibility changes - resume playback when tab becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && isPlayingRef.current) {
+        // Resume AudioContext if suspended
+        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+          await audioContextRef.current.resume();
+        }
+        
+        // Resume audio elements if paused
+        if (leftAudioRef.current && leftAudioRef.current.paused && leftTracks.length > 0) {
+          leftAudioRef.current.play().catch(() => {});
+        }
+        if (rightAudioRef.current && rightAudioRef.current.paused && rightTracks.length > 0) {
+          rightAudioRef.current.play().catch(() => {});
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [leftTracks.length, rightTracks.length]);
 
   const initializeAudioSystem = useCallback(async () => {
     if (isInitializedRef.current) return;
