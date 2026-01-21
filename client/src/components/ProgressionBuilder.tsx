@@ -117,12 +117,9 @@ export function ProgressionBuilder({
   const [carrierChannel, setCarrierChannel] = useState<'L' | 'R'>('L');
   const [variance, setVariance] = useState<'higher' | 'lower'>('higher');
   
-  // Global beat frequency (applies to all slots)
-  const [globalBeat, setGlobalBeat] = useState<number>(0);
-  const [globalBeatInput, setGlobalBeatInput] = useState<string>('');
-  
-  // Input state for controlled inputs (carrier only, beat is global now)
+  // Input state for controlled inputs (carrier, beat, duration per slot)
   const [carrierInputs, setCarrierInputs] = useState<string[]>(Array(MAX_SLOTS).fill(''));
+  const [beatInputs, setBeatInputs] = useState<string[]>(Array(MAX_SLOTS).fill(''));
   const [durationInputs, setDurationInputs] = useState<string[]>(Array(MAX_SLOTS).fill(''));
 
   useEffect(() => {
