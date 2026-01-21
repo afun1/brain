@@ -3,9 +3,62 @@ import { useRef, useState, useCallback, useEffect } from "react";
 export interface PlaylistTrack {
   id: string;
   name: string;
-  file: File;
+  file?: File;
   objectUrl: string;
   duration?: number;
+  isUrl?: boolean; // True if objectUrl is an external URL, not a blob URL
+}
+
+// Parse M3U playlist file content
+function parseM3U(content: string): { name: string; url: string }[] {
+  const lines = content.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+  const entries: { name: string; url: string }[] = [];
+  let currentName = '';
+  
+  for (const line of lines) {
+    if (line.startsWith('#EXTINF:')) {
+      // Format: #EXTINF:duration,title
+      const match = line.match(/#EXTINF:[^,]*,(.+)/);
+      if (match) {
+        currentName = match[1].trim();
+      }
+    } else if (!line.startsWith('#')) {
+      // This is a file path or URL
+      const url = line;
+      const name = currentName || url.split('/').pop()?.replace(/\.[^/.]+$/, '') || 'Unknown';
+      entries.push({ name, url });
+      currentName = '';
+    }
+  }
+  
+  return entries;
+}
+
+// Parse PLS playlist file content
+function parsePLS(content: string): { name: string; url: string }[] {
+  const lines = content.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+  const entries: { name: string; url: string }[] = [];
+  const files: Record<number, string> = {};
+  const titles: Record<number, string> = {};
+  
+  for (const line of lines) {
+    const fileMatch = line.match(/^File(\d+)=(.+)/i);
+    if (fileMatch) {
+      files[parseInt(fileMatch[1])] = fileMatch[2];
+    }
+    const titleMatch = line.match(/^Title(\d+)=(.+)/i);
+    if (titleMatch) {
+      titles[parseInt(titleMatch[1])] = titleMatch[2];
+    }
+  }
+  
+  for (const num of Object.keys(files).map(Number).sort((a, b) => a - b)) {
+    const url = files[num];
+    const name = titles[num] || url.split('/').pop()?.replace(/\.[^/.]+$/, '') || 'Unknown';
+    entries.push({ name, url });
+  }
+  
+  return entries;
 }
 
 type LoopMode = 'off' | 'playlist' | 'track';
@@ -177,29 +230,77 @@ export function usePlaylistAudioPlayer(storageKey: string) {
     }
   }, [currentIndex, tracks.length > 0 ? tracks[currentIndex]?.id : null]);
 
-  const addFiles = useCallback((files: FileList | File[]) => {
-    const newTracks: PlaylistTrack[] = Array.from(files).map(file => {
-      const id = generateId();
-      const objectUrl = URL.createObjectURL(file);
-      return {
-        id,
-        name: file.name.replace(/\.[^/.]+$/, ""),
-        file,
-        objectUrl,
-      };
-    });
+  const addFiles = useCallback(async (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    const newTracks: PlaylistTrack[] = [];
     
-    setTracks(prev => [...prev, ...newTracks]);
+    for (const file of fileArray) {
+      const fileName = file.name.toLowerCase();
+      
+      // Check if it's a playlist file
+      if (fileName.endsWith('.m3u') || fileName.endsWith('.m3u8')) {
+        try {
+          const content = await file.text();
+          const entries = parseM3U(content);
+          for (const entry of entries) {
+            // Check if it's a URL we can play
+            if (entry.url.startsWith('http://') || entry.url.startsWith('https://')) {
+              newTracks.push({
+                id: generateId(),
+                name: entry.name,
+                objectUrl: entry.url,
+                isUrl: true,
+              });
+            }
+            // For local paths, we can't access them directly in browser
+            // But we'll still add them as entries so user sees what's in the playlist
+          }
+        } catch (e) {
+          console.error('Failed to parse M3U file:', e);
+        }
+      } else if (fileName.endsWith('.pls')) {
+        try {
+          const content = await file.text();
+          const entries = parsePLS(content);
+          for (const entry of entries) {
+            if (entry.url.startsWith('http://') || entry.url.startsWith('https://')) {
+              newTracks.push({
+                id: generateId(),
+                name: entry.name,
+                objectUrl: entry.url,
+                isUrl: true,
+              });
+            }
+          }
+        } catch (e) {
+          console.error('Failed to parse PLS file:', e);
+        }
+      } else {
+        // Regular audio file
+        const id = generateId();
+        const objectUrl = URL.createObjectURL(file);
+        newTracks.push({
+          id,
+          name: file.name.replace(/\.[^/.]+$/, ""),
+          file,
+          objectUrl,
+        });
+      }
+    }
     
-    if (tracks.length === 0 && newTracks.length > 0) {
-      setCurrentIndex(0);
+    if (newTracks.length > 0) {
+      setTracks(prev => [...prev, ...newTracks]);
+      
+      if (tracks.length === 0) {
+        setCurrentIndex(0);
+      }
     }
   }, [tracks.length]);
 
   const removeTrack = useCallback((id: string) => {
     setTracks(prev => {
       const trackToRemove = prev.find(t => t.id === id);
-      if (trackToRemove) {
+      if (trackToRemove && !trackToRemove.isUrl) {
         URL.revokeObjectURL(trackToRemove.objectUrl);
       }
       

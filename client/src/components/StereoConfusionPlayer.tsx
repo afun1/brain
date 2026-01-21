@@ -277,7 +277,7 @@ function ChannelPlaylist({
     if (files && files.length > 0) {
       const audioFiles = Array.from(files).filter(file => 
         file.type.startsWith('audio/') || 
-        /\.(mp3|wav|ogg|m4a|flac|aac|wma)$/i.test(file.name)
+        /\.(mp3|wav|ogg|m4a|flac|aac|wma|m3u|m3u8|pls)$/i.test(file.name)
       );
       if (audioFiles.length > 0) {
         onAddFiles(audioFiles);
@@ -338,7 +338,7 @@ function ChannelPlaylist({
       <input
         ref={fileInputRef}
         type="file"
-        accept="audio/*"
+        accept="audio/*,.m3u,.m3u8,.pls"
         multiple
         onChange={handleFileSelect}
         className="hidden"
@@ -504,7 +504,7 @@ export function StereoConfusionPlayer() {
     if (files && files.length > 0) {
       const audioFiles = Array.from(files).filter(file => 
         file.type.startsWith('audio/') || 
-        /\.(mp3|wav|ogg|m4a|flac|aac|wma)$/i.test(file.name)
+        /\.(mp3|wav|ogg|m4a|flac|aac|wma|m3u|m3u8|pls)$/i.test(file.name)
       );
       if (audioFiles.length > 0) {
         player.addBothFiles(audioFiles);
@@ -539,7 +539,7 @@ export function StereoConfusionPlayer() {
       <input
         ref={bothFileInputRef}
         type="file"
-        accept="audio/*"
+        accept="audio/*,.m3u,.m3u8,.pls"
         multiple
         onChange={handleBothFileSelect}
         className="hidden"

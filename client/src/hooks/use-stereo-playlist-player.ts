@@ -3,15 +3,121 @@ import { useRef, useState, useCallback, useEffect } from "react";
 export interface StereoTrack {
   id: string;
   name: string;
-  file: File;
+  file?: File;
   objectUrl: string;
   duration?: number;
+  isUrl?: boolean;
 }
 
 type LoopMode = 'off' | 'playlist' | 'track';
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 11);
+}
+
+// Parse M3U playlist file content
+function parseM3U(content: string): { name: string; url: string }[] {
+  const lines = content.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+  const entries: { name: string; url: string }[] = [];
+  let currentName = '';
+  
+  for (const line of lines) {
+    if (line.startsWith('#EXTINF:')) {
+      const match = line.match(/#EXTINF:[^,]*,(.+)/);
+      if (match) {
+        currentName = match[1].trim();
+      }
+    } else if (!line.startsWith('#')) {
+      const url = line;
+      const name = currentName || url.split('/').pop()?.replace(/\.[^/.]+$/, '') || 'Unknown';
+      entries.push({ name, url });
+      currentName = '';
+    }
+  }
+  
+  return entries;
+}
+
+// Parse PLS playlist file content
+function parsePLS(content: string): { name: string; url: string }[] {
+  const lines = content.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+  const entries: { name: string; url: string }[] = [];
+  const files: Record<number, string> = {};
+  const titles: Record<number, string> = {};
+  
+  for (const line of lines) {
+    const fileMatch = line.match(/^File(\d+)=(.+)/i);
+    if (fileMatch) {
+      files[parseInt(fileMatch[1])] = fileMatch[2];
+    }
+    const titleMatch = line.match(/^Title(\d+)=(.+)/i);
+    if (titleMatch) {
+      titles[parseInt(titleMatch[1])] = titleMatch[2];
+    }
+  }
+  
+  for (const num of Object.keys(files).map(Number).sort((a, b) => a - b)) {
+    const url = files[num];
+    const name = titles[num] || url.split('/').pop()?.replace(/\.[^/.]+$/, '') || 'Unknown';
+    entries.push({ name, url });
+  }
+  
+  return entries;
+}
+
+// Helper to process files including M3U/PLS
+async function processAudioFiles(files: FileList | File[]): Promise<StereoTrack[]> {
+  const fileArray = Array.from(files);
+  const newTracks: StereoTrack[] = [];
+  
+  for (const file of fileArray) {
+    const fileName = file.name.toLowerCase();
+    
+    if (fileName.endsWith('.m3u') || fileName.endsWith('.m3u8')) {
+      try {
+        const content = await file.text();
+        const entries = parseM3U(content);
+        for (const entry of entries) {
+          if (entry.url.startsWith('http://') || entry.url.startsWith('https://')) {
+            newTracks.push({
+              id: generateId(),
+              name: entry.name,
+              objectUrl: entry.url,
+              isUrl: true,
+            });
+          }
+        }
+      } catch (e) {
+        console.error('Failed to parse M3U file:', e);
+      }
+    } else if (fileName.endsWith('.pls')) {
+      try {
+        const content = await file.text();
+        const entries = parsePLS(content);
+        for (const entry of entries) {
+          if (entry.url.startsWith('http://') || entry.url.startsWith('https://')) {
+            newTracks.push({
+              id: generateId(),
+              name: entry.name,
+              objectUrl: entry.url,
+              isUrl: true,
+            });
+          }
+        }
+      } catch (e) {
+        console.error('Failed to parse PLS file:', e);
+      }
+    } else {
+      newTracks.push({
+        id: generateId(),
+        name: file.name.replace(/\.[^/.]+$/, ""),
+        file,
+        objectUrl: URL.createObjectURL(file),
+      });
+    }
+  }
+  
+  return newTracks;
 }
 
 function shuffleArray<T>(array: T[]): T[] {
@@ -375,68 +481,62 @@ export function useStereoPlaylistPlayer() {
     }
   }, [rightIndex, rightTracks.length > 0 ? rightTracks[rightIndex]?.id : null]);
 
-  const addLeftFiles = useCallback((files: FileList | File[]) => {
-    const newTracks: StereoTrack[] = Array.from(files).map(file => ({
-      id: generateId(),
-      name: file.name.replace(/\.[^/.]+$/, ""),
-      file,
-      objectUrl: URL.createObjectURL(file),
-    }));
+  const addLeftFiles = useCallback(async (files: FileList | File[]) => {
+    const newTracks = await processAudioFiles(files);
     
-    setLeftTracks(prev => [...prev, ...newTracks]);
-    
-    if (leftTracks.length === 0 && newTracks.length > 0) {
-      setLeftIndex(0);
+    if (newTracks.length > 0) {
+      setLeftTracks(prev => [...prev, ...newTracks]);
+      
+      if (leftTracks.length === 0) {
+        setLeftIndex(0);
+      }
     }
   }, [leftTracks.length]);
 
-  const addRightFiles = useCallback((files: FileList | File[]) => {
-    const newTracks: StereoTrack[] = Array.from(files).map(file => ({
-      id: generateId(),
-      name: file.name.replace(/\.[^/.]+$/, ""),
-      file,
-      objectUrl: URL.createObjectURL(file),
-    }));
+  const addRightFiles = useCallback(async (files: FileList | File[]) => {
+    const newTracks = await processAudioFiles(files);
     
-    setRightTracks(prev => [...prev, ...newTracks]);
-    
-    if (rightTracks.length === 0 && newTracks.length > 0) {
-      setRightIndex(0);
+    if (newTracks.length > 0) {
+      setRightTracks(prev => [...prev, ...newTracks]);
+      
+      if (rightTracks.length === 0) {
+        setRightIndex(0);
+      }
     }
   }, [rightTracks.length]);
 
-  const addBothFiles = useCallback((files: FileList | File[]) => {
-    const fileArray = Array.from(files);
+  const addBothFiles = useCallback(async (files: FileList | File[]) => {
+    const processedTracks = await processAudioFiles(files);
     
-    const leftNewTracks: StereoTrack[] = fileArray.map(file => ({
-      id: generateId(),
-      name: file.name.replace(/\.[^/.]+$/, ""),
-      file,
-      objectUrl: URL.createObjectURL(file),
+    // Create separate track instances for left and right (with unique IDs)
+    const leftNewTracks: StereoTrack[] = processedTracks.map(t => ({
+      ...t,
+      id: generateId(), // New ID for left
     }));
     
-    const rightNewTracks: StereoTrack[] = fileArray.map(file => ({
-      id: generateId(),
-      name: file.name.replace(/\.[^/.]+$/, ""),
-      file,
-      objectUrl: URL.createObjectURL(file),
+    const rightNewTracks: StereoTrack[] = processedTracks.map(t => ({
+      ...t,
+      id: generateId(), // New ID for right
+      objectUrl: t.isUrl ? t.objectUrl : (t.file ? URL.createObjectURL(t.file) : t.objectUrl),
     }));
     
-    setLeftTracks(prev => [...prev, ...leftNewTracks]);
-    setRightTracks(prev => [...prev, ...rightNewTracks]);
-    
-    if (leftTracks.length === 0 && leftNewTracks.length > 0) {
-      setLeftIndex(0);
-    }
-    if (rightTracks.length === 0 && rightNewTracks.length > 0) {
-      setRightIndex(0);
+    if (leftNewTracks.length > 0) {
+      setLeftTracks(prev => [...prev, ...leftNewTracks]);
+      setRightTracks(prev => [...prev, ...rightNewTracks]);
+      
+      if (leftTracks.length === 0) {
+        setLeftIndex(0);
+      }
+      if (rightTracks.length === 0) {
+        setRightIndex(0);
+      }
     }
   }, [leftTracks.length, rightTracks.length]);
 
   const removeLeftTrack = useCallback((id: string) => {
     setLeftTracks(prev => {
       const trackToRemove = prev.find(t => t.id === id);
-      if (trackToRemove) {
+      if (trackToRemove && !trackToRemove.isUrl) {
         URL.revokeObjectURL(trackToRemove.objectUrl);
       }
       
@@ -460,7 +560,7 @@ export function useStereoPlaylistPlayer() {
   const removeRightTrack = useCallback((id: string) => {
     setRightTracks(prev => {
       const trackToRemove = prev.find(t => t.id === id);
-      if (trackToRemove) {
+      if (trackToRemove && !trackToRemove.isUrl) {
         URL.revokeObjectURL(trackToRemove.objectUrl);
       }
       

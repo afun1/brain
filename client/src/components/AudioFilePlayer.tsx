@@ -269,7 +269,7 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
     if (files.length > 0) {
       const audioFiles = Array.from(files).filter(file => 
         file.type.startsWith('audio/') || 
-        /\.(mp3|wav|ogg|m4a|flac|aac|wma)$/i.test(file.name)
+        /\.(mp3|wav|ogg|m4a|flac|aac|wma|m3u|m3u8|pls)$/i.test(file.name)
       );
       if (audioFiles.length > 0) {
         const dt = new DataTransfer();
@@ -398,7 +398,7 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
       <input
         ref={fileInputRef}
         type="file"
-        accept="audio/*"
+        accept="audio/*,.m3u,.m3u8,.pls"
         multiple
         onChange={handleFileSelect}
         className="hidden"
