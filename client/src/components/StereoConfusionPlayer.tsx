@@ -225,6 +225,25 @@ function ChannelPlaylist({
     scrollDirectionRef.current = null;
   }, [stopAutoScroll]);
 
+  const handleScrollAreaDrop = useCallback((e: React.DragEvent) => {
+    // Handle external file drops on the scroll area
+    if (e.dataTransfer.types.includes('Files') && e.dataTransfer.files.length > 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(false);
+      stopAutoScroll();
+      scrollDirectionRef.current = null;
+      const files = e.dataTransfer.files;
+      const audioFiles = Array.from(files).filter(file => 
+        file.type.startsWith('audio/') || 
+        /\.(mp3|wav|ogg|m4a|flac|aac|wma|m3u|m3u8|pls)$/i.test(file.name)
+      );
+      if (audioFiles.length > 0) {
+        onAddFiles(audioFiles);
+      }
+    }
+  }, [stopAutoScroll, onAddFiles]);
+
   const handleTrackDrop = useCallback((e: React.DragEvent, toIndex: number) => {
     // Check if this is an external file drop (not internal reorder)
     if (e.dataTransfer.types.includes('Files') && e.dataTransfer.files.length > 0) {
@@ -387,6 +406,7 @@ function ChannelPlaylist({
           style={{ height: `${listHeight}px` }}
           onDragOver={handleScrollAreaDragOver}
           onDragLeave={handleScrollAreaDragLeave}
+          onDrop={handleScrollAreaDrop}
         >
           <div className="p-1.5 space-y-0.5">
             {tracks.length === 0 ? (

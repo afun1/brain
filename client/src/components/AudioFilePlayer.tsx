@@ -490,6 +490,9 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
               ref={scrollContainerRef}
               className="rounded-md border border-white/10 bg-black/20 overflow-y-auto"
               style={{ height: `${listHeight}px` }}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
             >
               <div className="p-2 space-y-1">
                 {player.tracks.map((track, index) => (
