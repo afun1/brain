@@ -1465,16 +1465,24 @@ export default function ConsolePage() {
         <div className="flex items-center gap-2">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Link href="/beta-report">
+              <a 
+                href="/beta-report" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  window.open(window.location.origin + '/beta-report', '_blank');
+                }}
+              >
                 <Button variant="outline" size="sm" className="gap-2" data-testid="button-beta-report">
                   <MessageSquare className="w-4 h-4" />
                   <span className="hidden sm:inline">Beta Feedback</span>
                   <span className="sm:hidden">Feedback</span>
                 </Button>
-              </Link>
+              </a>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Submit feedback to help improve the app</p>
+              <p>Opens in new tab (requires internet)</p>
             </TooltipContent>
           </Tooltip>
           <Tooltip>
