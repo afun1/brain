@@ -63,6 +63,7 @@ const ISSUE_TYPES = [
   { value: "suggestion", label: "Suggestion - I have an idea" },
   { value: "confusion", label: "Confusion - I don't understand something" },
   { value: "praise", label: "Praise - Something works great!" },
+  { value: "feature-request", label: "Feature Request - I want a new feature" },
 ];
 
 export default function BetaReportPage() {
@@ -224,19 +225,41 @@ export default function BetaReportPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Describe your experience</CardTitle>
+              <CardTitle>
+                {issueType === "feature-request" ? "Describe your feature idea" : "Describe your experience"}
+              </CardTitle>
               <CardDescription>
-                Tell us what happened, what you expected, or what you'd like to see
+                {issueType === "feature-request" ? (
+                  "What feature would you like to see? Describe how it would work and why it would be helpful."
+                ) : (
+                  "Tell us what happened, what you expected, or what you'd like to see"
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Textarea
-                placeholder="Your feedback..."
+                placeholder={
+                  issueType === "feature-request"
+                    ? "Example: I'd love a feature that lets me schedule sleep sessions to start automatically at a specific time..."
+                    : "Your feedback..."
+                }
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={6}
                 data-testid="textarea-description"
               />
+              {issueType === "feature-request" && (
+                <div className="mt-4 p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
+                  <p className="font-medium mb-2">Popular feature request ideas:</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Mobile app version</li>
+                    <li>Scheduled/timed sessions</li>
+                    <li>Integration with sleep trackers</li>
+                    <li>More ambient sound options</li>
+                    <li>Guided meditation voices</li>
+                  </ul>
+                </div>
+              )}
             </CardContent>
           </Card>
 
