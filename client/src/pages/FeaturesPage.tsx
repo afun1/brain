@@ -31,6 +31,8 @@ import {
   Share2,
   Library,
   MessageSquarePlus,
+  HelpCircle,
+  Speaker,
 } from "lucide-react";
 
 export default function FeaturesPage() {
@@ -696,6 +698,73 @@ export default function FeaturesPage() {
                     <span className="text-sm text-muted-foreground">Crown Chakra - Cosmic Connection</span>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+          </section>
+
+          <Separator />
+
+          <section className="space-y-4" data-testid="section-faq">
+            <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              <HelpCircle className="h-6 w-6 text-primary" />
+              Frequently Asked Questions
+            </h2>
+            
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Speaker className="h-5 w-5 text-muted-foreground" />
+                  Can I use speakers instead of headphones for brain entrainment?
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-muted-foreground">
+                  <strong>No - binaural beats require headphones.</strong> They work by delivering two slightly different frequencies 
+                  to each ear separately. Your brain perceives a third "phantom" frequency at the difference between them. 
+                  Without headphones, both frequencies mix in the air before reaching your ears, eliminating the effect entirely.
+                </p>
+                
+                <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                  <p className="text-sm font-medium text-foreground">Effectiveness Rating (1-10 Scale)</p>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Binaural Beats + Headphones</span>
+                      <span className="font-medium text-green-500">7/10</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Binaural Beats + Speakers</span>
+                      <span className="font-medium text-red-500">0/10 (doesn't work)</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Monaural Beats + Headphones</span>
+                      <span className="font-medium text-green-500">7/10</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Monaural Beats + Speakers</span>
+                      <span className="font-medium text-yellow-500">4/10</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Isochronic Tones + Headphones</span>
+                      <span className="font-medium text-green-500">9/10</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Isochronic Tones + Speakers</span>
+                      <span className="font-medium text-yellow-500">6/10</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <p className="text-sm text-muted-foreground">
+                  <strong>Research note:</strong> A 2023 systematic review of 14 EEG studies found mixed results for brainwave 
+                  entrainment - only 5 studies fully supported the effect. However, all successful studies used headphones. 
+                  Individual response varies significantly, but headphones remain essential for any binaural beat effect.
+                </p>
+                
+                <p className="text-sm text-muted-foreground">
+                  <strong>Speaker alternative:</strong> If you prefer speakers, consider <em>isochronic tones</em> instead - 
+                  they use rhythmic on/off pulsing rather than frequency differences, so they work without stereo separation 
+                  (though effectiveness decreases with distance from speakers).
+                </p>
               </CardContent>
             </Card>
           </section>
