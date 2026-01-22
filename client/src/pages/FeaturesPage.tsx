@@ -28,6 +28,9 @@ import {
   Dumbbell,
   Sparkles,
   MousePointerClick,
+  Share2,
+  Library,
+  MessageSquarePlus,
 } from "lucide-react";
 
 export default function FeaturesPage() {
@@ -142,6 +145,35 @@ export default function FeaturesPage() {
                   <li><strong>Swap Carrier:</strong> Switch which ear receives the higher frequency</li>
                   <li><strong>Channel Controls:</strong> Mute left or right ear to hear just one tone (no binaural effect)</li>
                 </ul>
+                
+                <div className="mt-4 space-y-3 border-t pt-3">
+                  <h4 className="font-medium text-foreground flex items-center gap-2">
+                    <Sliders className="h-4 w-4" />
+                    Progression Builder (30 Slots)
+                  </h4>
+                  <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-2">
+                    <li><strong>30 Frequency Slots:</strong> Build complex progressions that transition through different frequencies over time</li>
+                    <li><strong>Carrier & Beat Per Slot:</strong> Set unique carrier frequency and beat for each slot with custom duration</li>
+                    <li><strong>Save/Load:</strong> Save your progressions locally and load them anytime</li>
+                    <li><strong>Import/Export:</strong> Export progressions as JSON files to share or backup</li>
+                    <li><strong>Community Library:</strong> Share your progressions with others or download community-created ones</li>
+                  </ul>
+                </div>
+                
+                <div className="mt-4 space-y-3 border-t pt-3">
+                  <h4 className="font-medium text-foreground flex items-center gap-2">
+                    <Sparkles className="h-4 w-4" />
+                    Community Library
+                  </h4>
+                  <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-2">
+                    <li><strong>Browse Library:</strong> Discover progressions shared by other users</li>
+                    <li><strong>Filter by Category:</strong> Sleep, Power Nap, Focus, Meditation, Healing, Workout</li>
+                    <li><strong>Ratings & Downloads:</strong> See community ratings (1-5 stars) and download counts</li>
+                    <li><strong>Share Your Work:</strong> Share your custom progressions with the community (login required)</li>
+                    <li><strong>Anonymous Sharing:</strong> Option to share without displaying your name (great for professionals)</li>
+                    <li><strong>One-Click Download:</strong> Load any shared progression directly into your Progression Builder</li>
+                  </ul>
+                </div>
               </CardContent>
             </Card>
 
@@ -663,6 +695,36 @@ export default function FeaturesPage() {
                     <span className="font-medium">963 Hz</span>
                     <span className="text-sm text-muted-foreground">Crown Chakra - Cosmic Connection</span>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+
+          <Separator />
+
+          <section className="space-y-4">
+            <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              <MessageSquarePlus className="h-6 w-6 text-primary" />
+              Feedback & Feature Requests
+            </h2>
+            <Card>
+              <CardContent className="pt-6 space-y-4">
+                <p className="text-muted-foreground">
+                  Your feedback helps shape the future of this app! Visit the Beta Feedback page to:
+                </p>
+                <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-2">
+                  <li><strong>Report Bugs:</strong> Let us know if something isn't working correctly</li>
+                  <li><strong>Share Suggestions:</strong> Tell us what could be improved</li>
+                  <li><strong>Request Features:</strong> Describe new features you'd like to see</li>
+                  <li><strong>Give Praise:</strong> Let us know what's working great!</li>
+                </ul>
+                <div className="pt-2">
+                  <Link href="/feedback">
+                    <Button variant="outline" data-testid="button-go-to-feedback">
+                      <MessageSquarePlus className="h-4 w-4 mr-2" />
+                      Submit Feedback
+                    </Button>
+                  </Link>
                 </div>
               </CardContent>
             </Card>
