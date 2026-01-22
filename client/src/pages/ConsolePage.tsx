@@ -445,12 +445,15 @@ export default function ConsolePage() {
     return 30;
   });
   
-  const [preSleepFrequency, setPreSleepFrequency] = useState<number>(() => {
+  const [preSleepFrequency, setPreSleepFrequency] = useState<string>(() => {
     try {
       const stored = localStorage.getItem(PRE_SLEEP_STORAGE_KEY);
-      if (stored) return JSON.parse(stored).frequency ?? 432;
+      if (stored) {
+        const freq = JSON.parse(stored).frequency;
+        return freq !== undefined && freq !== null ? String(freq) : "";
+      }
     } catch {}
-    return 432;
+    return "";
   });
   
   // Pre-Wake Delta Boost Phase (replaces beta wake-up for regeneration benefits)
@@ -478,12 +481,15 @@ export default function ConsolePage() {
     return 20;
   });
   
-  const [preWakeFrequency, setPreWakeFrequency] = useState<number>(() => {
+  const [preWakeFrequency, setPreWakeFrequency] = useState<string>(() => {
     try {
       const stored = localStorage.getItem(PRE_WAKE_STORAGE_KEY);
-      if (stored) return JSON.parse(stored).frequency ?? 110;
+      if (stored) {
+        const freq = JSON.parse(stored).frequency;
+        return freq !== undefined && freq !== null ? String(freq) : "";
+      }
     } catch {}
-    return 110; // Default to 110 Hz based on user's positive experience
+    return "";
   });
   
   // Persist pre-sleep settings
@@ -783,6 +789,7 @@ export default function ConsolePage() {
     
     const totalSeconds = preSleepDuration * 60;
     const stages: SleepStage[] = [];
+    const carrierFreq = parseFloat(preSleepFrequency) || 432; // Default to 432 Hz if empty
     
     // Phase 1: Beta to Alpha (40% of time) - Active relaxation
     const phase1Duration = Math.round(totalSeconds * 0.4);
@@ -792,8 +799,8 @@ export default function ConsolePage() {
       name: "Wind Down - Beta to Alpha",
       startBeatFreq: 15,  // Start at relaxed beta
       endBeatFreq: 10,    // Transition to alpha
-      startCarrierFreq: preSleepFrequency,
-      endCarrierFreq: preSleepFrequency,
+      startCarrierFreq: carrierFreq,
+      endCarrierFreq: carrierFreq,
       durationSeconds: phase1Duration,
       order: -3,
     });
@@ -806,8 +813,8 @@ export default function ConsolePage() {
       name: "Wind Down - Alpha to Theta",
       startBeatFreq: 10,
       endBeatFreq: 6,     // Deep theta
-      startCarrierFreq: preSleepFrequency,
-      endCarrierFreq: preSleepFrequency,
+      startCarrierFreq: carrierFreq,
+      endCarrierFreq: carrierFreq,
       durationSeconds: phase2Duration,
       order: -2,
     });
@@ -820,8 +827,8 @@ export default function ConsolePage() {
       name: "Wind Down - Drifting Off",
       startBeatFreq: 6,
       endBeatFreq: 5,     // Light theta, ready to transition to delta
-      startCarrierFreq: preSleepFrequency,
-      endCarrierFreq: preSleepFrequency,
+      startCarrierFreq: carrierFreq,
+      endCarrierFreq: carrierFreq,
       durationSeconds: phase3Duration,
       order: -1,
     });
@@ -835,6 +842,7 @@ export default function ConsolePage() {
     
     const totalSeconds = preWakeDeltaDuration * 60;
     const stages: SleepStage[] = [];
+    const carrierFreq = parseFloat(preWakeFrequency) || 110; // Default to 110 Hz if empty
     
     // Phase 1: Transition from REM to Deep Delta (20% of time)
     const phase1Duration = Math.round(totalSeconds * 0.2);
@@ -844,8 +852,8 @@ export default function ConsolePage() {
       name: "Delta Boost - Descent",
       startBeatFreq: 9,   // From REM
       endBeatFreq: 2,     // Down to deep delta
-      startCarrierFreq: preWakeFrequency,
-      endCarrierFreq: preWakeFrequency,
+      startCarrierFreq: carrierFreq,
+      endCarrierFreq: carrierFreq,
       durationSeconds: phase1Duration,
       order: 85,
     });
@@ -858,8 +866,8 @@ export default function ConsolePage() {
       name: "Delta Boost - Deep Regeneration",
       startBeatFreq: 2,
       endBeatFreq: 1.5,   // Ultra-deep delta for HGH release
-      startCarrierFreq: preWakeFrequency,
-      endCarrierFreq: preWakeFrequency,
+      startCarrierFreq: carrierFreq,
+      endCarrierFreq: carrierFreq,
       durationSeconds: phase2Duration,
       order: 86,
     });
@@ -872,8 +880,8 @@ export default function ConsolePage() {
       name: "Delta Boost - Gentle Rise",
       startBeatFreq: 1.5,
       endBeatFreq: 9,     // Back to REM for refreshed wake
-      startCarrierFreq: preWakeFrequency,
-      endCarrierFreq: preWakeFrequency,
+      startCarrierFreq: carrierFreq,
+      endCarrierFreq: carrierFreq,
       durationSeconds: phase3Duration,
       order: 87,
     });
@@ -2943,12 +2951,12 @@ export default function ConsolePage() {
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-muted-foreground">Tone:</span>
                           <input
-                            type="number"
+                            type="text"
+                            inputMode="decimal"
                             value={preSleepFrequency}
-                            onChange={(e) => setPreSleepFrequency(Math.max(60, Math.min(1000, Number(e.target.value) || 432)))}
+                            onChange={(e) => setPreSleepFrequency(e.target.value)}
+                            placeholder="432"
                             className="w-16 px-2 py-1 text-[10px] bg-zinc-800 border border-zinc-700 rounded text-white"
-                            min={60}
-                            max={1000}
                             data-testid="input-presleep-frequency"
                           />
                           <span className="text-[10px] text-muted-foreground">Hz</span>
@@ -2998,12 +3006,12 @@ export default function ConsolePage() {
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-muted-foreground">Tone:</span>
                           <input
-                            type="number"
+                            type="text"
+                            inputMode="decimal"
                             value={preWakeFrequency}
-                            onChange={(e) => setPreWakeFrequency(Math.max(60, Math.min(1000, Number(e.target.value) || 110)))}
+                            onChange={(e) => setPreWakeFrequency(e.target.value)}
+                            placeholder="110"
                             className="w-16 px-2 py-1 text-[10px] bg-zinc-800 border border-zinc-700 rounded text-white"
-                            min={60}
-                            max={1000}
                             data-testid="input-prewake-frequency"
                           />
                           <span className="text-[10px] text-muted-foreground">Hz (stays constant throughout)</span>
