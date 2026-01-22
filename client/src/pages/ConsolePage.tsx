@@ -403,13 +403,18 @@ export default function ConsolePage() {
     return true;
   });
   
-  // 0 = "Continue" (keep previous tone), any other value = specific frequency
-  const [wakeUpFrequency, setWakeUpFrequency] = useState<number>(() => {
+  // "" = "Continue" (keep previous tone), any other value = specific frequency
+  const [wakeUpFrequency, setWakeUpFrequency] = useState<string>(() => {
     try {
       const stored = localStorage.getItem(WAKEUP_STORAGE_KEY);
-      if (stored) return JSON.parse(stored).frequency ?? 0;
+      if (stored) {
+        const freq = JSON.parse(stored).frequency;
+        // 0 was the old "Continue" value, convert to empty string
+        if (freq === 0 || freq === undefined || freq === null) return "";
+        return String(freq);
+      }
     } catch {}
-    return 0; // Default to "Continue" - no tone change
+    return ""; // Default to "Continue" - no tone change
   });
   
   // Persist wake-up settings
@@ -727,13 +732,13 @@ export default function ConsolePage() {
   
   // Generate wake-up stages (17 min total: 2 min REM→Alpha transition + 15 min beta awakening)
   // Starts from REM (9 Hz) to ensure smooth transition from dream state
-  // wakeUpFrequency: 0 = "Continue" (use -1 as marker, will be replaced with previous stage's freq)
+  // wakeUpFrequency: "" = "Continue" (use -1 as marker, will be replaced with previous stage's freq)
   const wakeUpStages = useMemo((): SleepStage[] => {
     if (!includeWakeUp) return [];
     
     const baseOrder = 100; // Start after all program stages
     // Use -1 as marker for "continue from previous" - will be resolved in programStagesWithWakeUp
-    const freq = wakeUpFrequency === 0 ? -1 : wakeUpFrequency;
+    const freq = wakeUpFrequency === "" ? -1 : (parseFloat(wakeUpFrequency) || -1);
     
     return [
       {
@@ -3046,25 +3051,23 @@ export default function ConsolePage() {
                       <div className="flex items-center gap-2 mt-2">
                         <span className="text-[10px] text-muted-foreground">Tone:</span>
                         <Button
-                          variant={wakeUpFrequency === 0 ? "default" : "outline"}
+                          variant={wakeUpFrequency === "" ? "default" : "outline"}
                           size="sm"
-                          onClick={() => setWakeUpFrequency(0)}
+                          onClick={() => setWakeUpFrequency("")}
                           className="text-[10px] px-2"
                           data-testid="button-wakeup-continue"
                         >
                           Continue
                         </Button>
                         <input
-                          type="number"
-                          value={wakeUpFrequency === 0 ? "" : wakeUpFrequency}
-                          onChange={(e) => setWakeUpFrequency(Math.max(60, Math.min(1000, Number(e.target.value) || 0)))}
-                          placeholder="Custom"
-                          className="w-16 px-2 py-1 text-[10px] bg-zinc-800 border border-zinc-700 rounded text-white"
-                          min={60}
-                          max={1000}
+                          type="text"
+                          inputMode="decimal"
+                          value={wakeUpFrequency}
+                          onChange={(e) => setWakeUpFrequency(e.target.value)}
+                          placeholder="Custom Hz"
+                          className="w-20 px-2 py-1 text-[10px] bg-zinc-800 border border-zinc-700 rounded text-white"
                           data-testid="input-wakeup-frequency"
                         />
-                        <span className="text-[10px] text-muted-foreground">Hz</span>
                       </div>
                     )}
                   </div>
