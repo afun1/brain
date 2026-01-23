@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Play, Pause, Volume2, Upload, X, Music, MessageCircle, 
-  SkipBack, SkipForward, Repeat, Repeat1, Trash2,
+  SkipBack, SkipForward, Repeat, Trash2,
   Download, Shuffle, GripVertical, GripHorizontal
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -337,14 +337,9 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
 
   const IconComponent = icon === "music" ? Music : MessageCircle;
 
-  const loopIcon = player.loopMode === 'track' ? (
-    <Repeat1 className="w-4 h-4" />
-  ) : (
-    <Repeat className="w-4 h-4" />
-  );
+  const loopIcon = <Repeat className="w-4 h-4" />;
 
-  const loopLabel = player.loopMode === 'off' ? 'Loop Off' : 
-                    player.loopMode === 'playlist' ? 'Loop All' : 'Loop Track';
+  const loopLabel = player.loopMode === 'off' ? 'Loop Off' : 'Loop Playlist';
 
   return (
     <div 

@@ -411,7 +411,7 @@ export function useStereoPlaylistPlayer() {
     const audio = leftAudioRef.current;
     audio.pause();
     audio.src = track.objectUrl;
-    audio.loop = loopMode === 'track';
+    audio.loop = false; // Never loop individual tracks - only playlist looping
     
     audio.onloadedmetadata = () => {
       setLeftTracks(prev => prev.map(t => 
@@ -427,7 +427,7 @@ export function useStereoPlaylistPlayer() {
     };
     
     audio.onended = () => {
-      if (loopMode === 'track') return;
+      // Track loop mode removed - only handle playlist looping or stop
       
       setLeftTracks(currentTracks => {
         if (leftShuffleActive && leftShuffledIndices.length > 0) {
@@ -484,7 +484,7 @@ export function useStereoPlaylistPlayer() {
     const audio = rightAudioRef.current;
     audio.pause();
     audio.src = track.objectUrl;
-    audio.loop = loopMode === 'track';
+    audio.loop = false; // Never loop individual tracks - only playlist looping
     
     audio.onloadedmetadata = () => {
       setRightTracks(prev => prev.map(t => 
@@ -496,7 +496,7 @@ export function useStereoPlaylistPlayer() {
     };
     
     audio.onended = () => {
-      if (loopMode === 'track') return;
+      // Track loop mode removed - only handle playlist looping or stop
       
       setRightTracks(currentTracks => {
         if (rightShuffleActive && rightShuffledIndices.length > 0) {
@@ -898,9 +898,10 @@ export function useStereoPlaylistPlayer() {
 
   const cycleLoopMode = useCallback(() => {
     setLoopMode(prev => {
-      const next = prev === 'off' ? 'playlist' : prev === 'playlist' ? 'track' : 'off';
-      if (leftAudioRef.current) leftAudioRef.current.loop = next === 'track';
-      if (rightAudioRef.current) rightAudioRef.current.loop = next === 'track';
+      // Toggle between playlist loop and off only (removed track loop option)
+      const next = prev === 'off' ? 'playlist' : 'off';
+      if (leftAudioRef.current) leftAudioRef.current.loop = false;
+      if (rightAudioRef.current) rightAudioRef.current.loop = false;
       return next;
     });
   }, []);

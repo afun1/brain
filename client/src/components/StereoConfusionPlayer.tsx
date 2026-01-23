@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Play, Pause, Volume2, Upload, X, Headphones,
-  SkipBack, SkipForward, Repeat, Repeat1, Trash2, Copy, Shuffle, GripHorizontal, GripVertical
+  SkipBack, SkipForward, Repeat, Trash2, Copy, Shuffle, GripHorizontal, GripVertical
 } from "lucide-react";
 
 function formatTime(seconds: number): string {
@@ -515,14 +515,9 @@ export function StereoConfusionPlayer() {
   const bothFileInputRef = useRef<HTMLInputElement>(null);
   const [isBothDragOver, setIsBothDragOver] = useState(false);
 
-  const loopIcon = player.loopMode === 'track' ? (
-    <Repeat1 className="w-4 h-4" />
-  ) : (
-    <Repeat className="w-4 h-4" />
-  );
+  const loopIcon = <Repeat className="w-4 h-4" />;
 
-  const loopLabel = player.loopMode === 'off' ? 'Loop Off' : 
-                    player.loopMode === 'playlist' ? 'Loop All' : 'Loop Track';
+  const loopLabel = player.loopMode === 'off' ? 'Loop Off' : 'Loop Playlist';
 
   const hasAnyTracks = player.leftTracks.length > 0 || player.rightTracks.length > 0;
 

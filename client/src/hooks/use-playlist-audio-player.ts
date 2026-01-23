@@ -164,7 +164,9 @@ export function usePlaylistAudioPlayer(storageKey: string) {
     if (saved) {
       try {
         const settings: PersistedSettings = JSON.parse(saved);
-        setLoopMode(settings.loopMode || 'playlist');
+        // Migrate old 'track' mode to 'playlist' (track loop removed)
+        const savedLoop = settings.loopMode === 'track' ? 'playlist' : (settings.loopMode || 'playlist');
+        setLoopMode(savedLoop);
         setVolumeState(settings.volume ?? 0.5);
         setTuningState(settings.tuning ?? 440);
         setShuffle(settings.shuffle ?? false);
@@ -204,7 +206,7 @@ export function usePlaylistAudioPlayer(storageKey: string) {
     const audio = audioRef.current || new Audio();
     audio.src = track.objectUrl;
     audio.volume = volume;
-    audio.loop = loopMode === 'track';
+    audio.loop = false; // Never loop individual tracks - only playlist looping
     audio.playbackRate = tuning === 432 ? 432 / 440 : 1.0;
     
     audio.onloadedmetadata = () => {
@@ -219,7 +221,7 @@ export function usePlaylistAudioPlayer(storageKey: string) {
     };
     
     audio.onended = () => {
-      if (loopMode === 'track') return;
+      // Track loop mode removed - only handle playlist looping or stop
       
       setTracks(currentTracks => {
         if (shuffleActive && shuffledIndices.length > 0) {
@@ -489,9 +491,10 @@ export function usePlaylistAudioPlayer(storageKey: string) {
 
   const cycleLoopMode = useCallback(() => {
     setLoopMode(prev => {
-      const next = prev === 'off' ? 'playlist' : prev === 'playlist' ? 'track' : 'off';
+      // Toggle between playlist loop and off only (removed track loop option)
+      const next = prev === 'off' ? 'playlist' : 'off';
       if (audioRef.current) {
-        audioRef.current.loop = next === 'track';
+        audioRef.current.loop = false; // Never loop individual tracks
       }
       return next;
     });
