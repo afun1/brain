@@ -165,14 +165,56 @@ export function useStereoPlaylistPlayer() {
   const [rightShuffledIndices, setRightShuffledIndices] = useState<number[]>([]);
   const [leftShuffleActive, setLeftShuffleActive] = useState(false);
   const [rightShuffleActive, setRightShuffleActive] = useState(false);
+  
+  // Refs to avoid stale closures in audio callbacks
+  const loopModeRef = useRef<LoopMode>(loopMode);
+  const shuffleRef = useRef(shuffle);
+  const leftShuffleActiveRef = useRef(leftShuffleActive);
+  const rightShuffleActiveRef = useRef(rightShuffleActive);
+  const leftShuffledIndicesRef = useRef<number[]>(leftShuffledIndices);
+  const rightShuffledIndicesRef = useRef<number[]>(rightShuffledIndices);
+  const leftIndexRef = useRef(leftIndex);
+  const rightIndexRef = useRef(rightIndex);
 
   const leftTrack = leftTracks[leftIndex] || null;
   const rightTrack = rightTracks[rightIndex] || null;
 
-  // Keep isPlayingRef in sync
+  // Keep refs in sync with state
   useEffect(() => {
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
+  
+  useEffect(() => {
+    loopModeRef.current = loopMode;
+  }, [loopMode]);
+  
+  useEffect(() => {
+    shuffleRef.current = shuffle;
+  }, [shuffle]);
+  
+  useEffect(() => {
+    leftShuffleActiveRef.current = leftShuffleActive;
+  }, [leftShuffleActive]);
+  
+  useEffect(() => {
+    rightShuffleActiveRef.current = rightShuffleActive;
+  }, [rightShuffleActive]);
+  
+  useEffect(() => {
+    leftShuffledIndicesRef.current = leftShuffledIndices;
+  }, [leftShuffledIndices]);
+  
+  useEffect(() => {
+    rightShuffledIndicesRef.current = rightShuffledIndices;
+  }, [rightShuffledIndices]);
+  
+  useEffect(() => {
+    leftIndexRef.current = leftIndex;
+  }, [leftIndex]);
+  
+  useEffect(() => {
+    rightIndexRef.current = rightIndex;
+  }, [rightIndex]);
 
   // Keepalive mechanism to prevent browser from stopping audio and keep AudioContext alive
   useEffect(() => {
@@ -428,13 +470,19 @@ export function useStereoPlaylistPlayer() {
     
     audio.onended = () => {
       // Track loop mode removed - only handle playlist looping or stop
+      // Use refs to get current values (avoid stale closures)
+      const currentLoopMode = loopModeRef.current;
+      const currentShuffle = shuffleRef.current;
+      const currentShuffleActive = leftShuffleActiveRef.current;
+      const currentShuffledIndices = leftShuffledIndicesRef.current;
+      const currentIdx = leftIndexRef.current;
       
       setLeftTracks(currentTracks => {
-        if (leftShuffleActive && leftShuffledIndices.length > 0) {
-          const currentShufflePos = leftShuffledIndices.indexOf(leftIndex);
+        if (currentShuffleActive && currentShuffledIndices.length > 0) {
+          const currentShufflePos = currentShuffledIndices.indexOf(currentIdx);
           if (currentShufflePos === -1) {
-            if (loopMode === 'playlist') {
-              if (shuffle) {
+            if (currentLoopMode === 'playlist') {
+              if (currentShuffle) {
                 const newIndices = shuffleArray(Array.from({ length: currentTracks.length }, (_, i) => i));
                 setLeftShuffledIndices(newIndices);
                 setLeftIndex(newIndices[0] ?? 0);
@@ -445,10 +493,10 @@ export function useStereoPlaylistPlayer() {
             }
           } else {
             const nextShufflePos = currentShufflePos + 1;
-            if (nextShufflePos < leftShuffledIndices.length) {
-              setLeftIndex(leftShuffledIndices[nextShufflePos] ?? 0);
-            } else if (loopMode === 'playlist') {
-              if (shuffle) {
+            if (nextShufflePos < currentShuffledIndices.length) {
+              setLeftIndex(currentShuffledIndices[nextShufflePos] ?? 0);
+            } else if (currentLoopMode === 'playlist') {
+              if (currentShuffle) {
                 const newIndices = shuffleArray(Array.from({ length: currentTracks.length }, (_, i) => i));
                 setLeftShuffledIndices(newIndices);
                 setLeftIndex(newIndices[0] ?? 0);
@@ -459,11 +507,11 @@ export function useStereoPlaylistPlayer() {
             }
           }
         } else {
-          const nextIdx = leftIndex + 1;
+          const nextIdx = currentIdx + 1;
           if (nextIdx < currentTracks.length) {
             setLeftIndex(nextIdx);
-          } else if (loopMode === 'playlist' && currentTracks.length > 0) {
-            if (shuffle && !leftShuffleActive) {
+          } else if (currentLoopMode === 'playlist' && currentTracks.length > 0) {
+            if (currentShuffle && !currentShuffleActive) {
               const newIndices = shuffleArray(Array.from({ length: currentTracks.length }, (_, i) => i));
               setLeftShuffledIndices(newIndices);
               setLeftShuffleActive(true);
@@ -476,7 +524,7 @@ export function useStereoPlaylistPlayer() {
         return currentTracks;
       });
     };
-  }, [loopMode, leftIndex, shuffle, leftShuffleActive, leftShuffledIndices]);
+  }, []);
 
   const loadRightTrack = useCallback((track: StereoTrack) => {
     if (!rightAudioRef.current) return;
@@ -497,13 +545,19 @@ export function useStereoPlaylistPlayer() {
     
     audio.onended = () => {
       // Track loop mode removed - only handle playlist looping or stop
+      // Use refs to get current values (avoid stale closures)
+      const currentLoopMode = loopModeRef.current;
+      const currentShuffle = shuffleRef.current;
+      const currentShuffleActive = rightShuffleActiveRef.current;
+      const currentShuffledIndices = rightShuffledIndicesRef.current;
+      const currentIdx = rightIndexRef.current;
       
       setRightTracks(currentTracks => {
-        if (rightShuffleActive && rightShuffledIndices.length > 0) {
-          const currentShufflePos = rightShuffledIndices.indexOf(rightIndex);
+        if (currentShuffleActive && currentShuffledIndices.length > 0) {
+          const currentShufflePos = currentShuffledIndices.indexOf(currentIdx);
           if (currentShufflePos === -1) {
-            if (loopMode === 'playlist') {
-              if (shuffle) {
+            if (currentLoopMode === 'playlist') {
+              if (currentShuffle) {
                 const newIndices = shuffleArray(Array.from({ length: currentTracks.length }, (_, i) => i));
                 setRightShuffledIndices(newIndices);
                 setRightIndex(newIndices[0] ?? 0);
@@ -514,10 +568,10 @@ export function useStereoPlaylistPlayer() {
             }
           } else {
             const nextShufflePos = currentShufflePos + 1;
-            if (nextShufflePos < rightShuffledIndices.length) {
-              setRightIndex(rightShuffledIndices[nextShufflePos] ?? 0);
-            } else if (loopMode === 'playlist') {
-              if (shuffle) {
+            if (nextShufflePos < currentShuffledIndices.length) {
+              setRightIndex(currentShuffledIndices[nextShufflePos] ?? 0);
+            } else if (currentLoopMode === 'playlist') {
+              if (currentShuffle) {
                 const newIndices = shuffleArray(Array.from({ length: currentTracks.length }, (_, i) => i));
                 setRightShuffledIndices(newIndices);
                 setRightIndex(newIndices[0] ?? 0);
@@ -528,11 +582,11 @@ export function useStereoPlaylistPlayer() {
             }
           }
         } else {
-          const nextIdx = rightIndex + 1;
+          const nextIdx = currentIdx + 1;
           if (nextIdx < currentTracks.length) {
             setRightIndex(nextIdx);
-          } else if (loopMode === 'playlist' && currentTracks.length > 0) {
-            if (shuffle && !rightShuffleActive) {
+          } else if (currentLoopMode === 'playlist' && currentTracks.length > 0) {
+            if (currentShuffle && !currentShuffleActive) {
               const newIndices = shuffleArray(Array.from({ length: currentTracks.length }, (_, i) => i));
               setRightShuffledIndices(newIndices);
               setRightShuffleActive(true);
@@ -545,7 +599,7 @@ export function useStereoPlaylistPlayer() {
         return currentTracks;
       });
     };
-  }, [loopMode, rightIndex, shuffle, rightShuffleActive, rightShuffledIndices]);
+  }, []);
 
   useEffect(() => {
     if (leftTrack && isInitializedRef.current && leftAudioRef.current) {

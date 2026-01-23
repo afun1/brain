@@ -101,13 +101,40 @@ export function usePlaylistAudioPlayer(storageKey: string) {
   const [shuffle, setShuffle] = useState(false);
   const [shuffledIndices, setShuffledIndices] = useState<number[]>([]);
   const [shuffleActive, setShuffleActive] = useState(false);
+  
+  // Refs to avoid stale closures in audio callbacks
+  const loopModeRef = useRef<LoopMode>(loopMode);
+  const shuffleRef = useRef(shuffle);
+  const shuffleActiveRef = useRef(shuffleActive);
+  const shuffledIndicesRef = useRef<number[]>(shuffledIndices);
+  const currentIndexRef = useRef(currentIndex);
 
   const currentTrack = tracks[currentIndex] || null;
 
-  // Keep isPlayingRef in sync
+  // Keep refs in sync with state
   useEffect(() => {
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
+  
+  useEffect(() => {
+    loopModeRef.current = loopMode;
+  }, [loopMode]);
+  
+  useEffect(() => {
+    shuffleRef.current = shuffle;
+  }, [shuffle]);
+  
+  useEffect(() => {
+    shuffleActiveRef.current = shuffleActive;
+  }, [shuffleActive]);
+  
+  useEffect(() => {
+    shuffledIndicesRef.current = shuffledIndices;
+  }, [shuffledIndices]);
+  
+  useEffect(() => {
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
 
   // Keepalive mechanism to prevent browser from stopping audio
   useEffect(() => {
@@ -222,13 +249,19 @@ export function usePlaylistAudioPlayer(storageKey: string) {
     
     audio.onended = () => {
       // Track loop mode removed - only handle playlist looping or stop
+      // Use refs to get current values (avoid stale closures)
+      const currentLoopMode = loopModeRef.current;
+      const currentShuffle = shuffleRef.current;
+      const currentShuffleActive = shuffleActiveRef.current;
+      const currentShuffledIndices = shuffledIndicesRef.current;
+      const currentIdx = currentIndexRef.current;
       
       setTracks(currentTracks => {
-        if (shuffleActive && shuffledIndices.length > 0) {
-          const currentShufflePos = shuffledIndices.indexOf(currentIndex);
+        if (currentShuffleActive && currentShuffledIndices.length > 0) {
+          const currentShufflePos = currentShuffledIndices.indexOf(currentIdx);
           if (currentShufflePos === -1) {
-            if (loopMode === 'playlist') {
-              if (shuffle) {
+            if (currentLoopMode === 'playlist') {
+              if (currentShuffle) {
                 const newIndices = shuffleArray(Array.from({ length: currentTracks.length }, (_, i) => i));
                 setShuffledIndices(newIndices);
                 setCurrentIndex(newIndices[0] ?? 0);
@@ -241,10 +274,10 @@ export function usePlaylistAudioPlayer(storageKey: string) {
             }
           } else {
             const nextShufflePos = currentShufflePos + 1;
-            if (nextShufflePos < shuffledIndices.length) {
-              setCurrentIndex(shuffledIndices[nextShufflePos] ?? 0);
-            } else if (loopMode === 'playlist') {
-              if (shuffle) {
+            if (nextShufflePos < currentShuffledIndices.length) {
+              setCurrentIndex(currentShuffledIndices[nextShufflePos] ?? 0);
+            } else if (currentLoopMode === 'playlist') {
+              if (currentShuffle) {
                 const newIndices = shuffleArray(Array.from({ length: currentTracks.length }, (_, i) => i));
                 setShuffledIndices(newIndices);
                 setCurrentIndex(newIndices[0] ?? 0);
@@ -257,11 +290,11 @@ export function usePlaylistAudioPlayer(storageKey: string) {
             }
           }
         } else {
-          const nextIdx = currentIndex + 1;
+          const nextIdx = currentIdx + 1;
           if (nextIdx < currentTracks.length) {
             setCurrentIndex(nextIdx);
-          } else if (loopMode === 'playlist' && currentTracks.length > 0) {
-            if (shuffle && !shuffleActive) {
+          } else if (currentLoopMode === 'playlist' && currentTracks.length > 0) {
+            if (currentShuffle && !currentShuffleActive) {
               const newIndices = shuffleArray(Array.from({ length: currentTracks.length }, (_, i) => i));
               setShuffledIndices(newIndices);
               setShuffleActive(true);
