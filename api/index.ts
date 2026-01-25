@@ -41,6 +41,11 @@ async function initializeApp() {
     try {
       console.log("🔄 Initializing app...");
       
+      // Test endpoint first
+      app.get("/api/test", (_req, res) => {
+        res.json({ status: "ok", message: "API is working" });
+      });
+      
       // Initialize default data
       console.log("🔄 Seeding default programs...");
       await storage.seedDefaultPrograms();
