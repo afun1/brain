@@ -11,5 +11,6 @@
       "source": "/(.*)",
       "destination": "/dist/index.html"
     }
-  ]
+  ],
+  "framework": null
 }
