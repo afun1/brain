@@ -1,16 +1,5 @@
 {
   "buildCommand": "npm run build",
   "installCommand": "npm install",
-  "outputDirectory": "dist",
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/dist/index.cjs"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/dist/index.html"
-    }
-  ],
-  "framework": null
+  "outputDirectory": "dist/public"
 }
