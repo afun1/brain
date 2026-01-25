@@ -2938,36 +2938,34 @@ export default function ConsolePage() {
 
             <TabsContent value="program" className="space-y-4 mt-0">
               {/* Sleep Programs Visualization */}
-              {programs && programs.length > 0 && (
-                <div className="glass-panel rounded-2xl p-4 mb-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-semibold text-white">Sleep Programs - Full night sleep journeys</h3>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {programs.map((program) => (
-                      <div
-                        key={program.id}
-                        className="rounded-xl p-4 bg-white/5 border border-white/10"
-                        data-testid={`viz-program-${program.id}`}
-                      >
-                        <div className="flex items-center justify-between mb-3">
-                          <h4 className="text-sm font-semibold text-white">{program.name}</h4>
-                          {program.isDefault && (
-                            <span className="text-[10px] bg-primary/30 text-primary px-2 py-0.5 rounded-full">Recommended</span>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground mb-3">{program.description}</p>
-                        <SleepProgressChart
-                          stages={generatePreviewStages(sleepDurationHours)}
-                          elapsedTime={0}
-                          currentBeat={0}
-                          currentStageName=""
-                        />
-                      </div>
-                    ))}
-                  </div>
+              <div className="glass-panel rounded-2xl p-4 mb-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-white">Sleep Programs - Full night sleep journeys</h3>
                 </div>
-              )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {programs?.map((program) => (
+                    <div
+                      key={program.id}
+                      className="rounded-xl p-4 bg-white/5 border border-white/10"
+                      data-testid={`viz-program-${program.id}`}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-semibold text-white">{program.name}</h4>
+                        {program.isDefault && (
+                          <span className="text-[10px] bg-primary/30 text-primary px-2 py-0.5 rounded-full">Recommended</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-3">{program.description}</p>
+                      <SleepProgressChart
+                        stages={generatePreviewStages(sleepDurationHours)}
+                        elapsedTime={0}
+                        currentBeat={0}
+                        currentStageName=""
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
 
               <div className="glass-panel rounded-2xl p-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
