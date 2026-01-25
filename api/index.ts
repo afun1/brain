@@ -1,7 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { storage } from "../server/storage";
 import { api } from "../shared/routes";
-import { registerAudioRoutes } from "../server/replit_integrations/audio/routes";
 import { createServer } from "http";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -55,9 +54,6 @@ async function initializeApp() {
       }
       res.json(program);
     });
-
-    // Register AI audio routes
-    registerAudioRoutes(app);
 
     // Serve static files
     const distPath = path.join(process.cwd(), "dist", "public");

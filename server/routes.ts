@@ -2,21 +2,13 @@ import type { Express } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
-import { registerAudioRoutes } from "./replit_integrations/audio/routes";
 import { insertBetaFeedbackSchema, insertLibraryProgressionSchema } from "@shared/schema";
-import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Setup auth only if Replit environment is configured
-  if (process.env.REPL_ID) {
-    await setupAuth(app);
-    registerAuthRoutes(app);
-  } else {
-    console.log("⚠️  Running without authentication (local dev mode)");
-  }
+  console.log("✅ Running in serverless mode (no auth required)");
 
   // Initialize default data
   console.log("🔄 Seeding default programs...");
