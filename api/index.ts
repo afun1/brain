@@ -76,8 +76,9 @@ async function initializeApp() {
   }
 }
 
-// Export for Vercel
-export default async function handler(req: Request, res: Response) {
+// Export for Vercel serverless
+export default async function handler(req: any, res: any) {
   await initializeApp();
-  return app(req, res);
+  // Pass request to Express app
+  app.handle(req, res);
 }
