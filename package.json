@@ -11,7 +11,6 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development tsx --env-file=.env server/index.ts",
     "build": "tsx script/build.ts",
-    "postbuild": "drizzle-kit push",
     "start": "cross-env NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
     "lint": "eslint . --ext .ts,.tsx",

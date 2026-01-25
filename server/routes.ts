@@ -19,10 +19,13 @@ export async function registerRoutes(
   }
 
   // Initialize default data
+  console.log("🔄 Seeding default programs...");
   await storage.seedDefaultPrograms();
+  console.log("✅ Default programs seeded");
 
   app.get(api.programs.list.path, async (req, res) => {
     const programs = await storage.getPrograms();
+    console.log(`📊 GET /api/programs - returning ${programs.length} programs`);
     res.json(programs);
   });
 
