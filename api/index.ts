@@ -38,21 +38,37 @@ let initialized = false;
 
 async function initializeApp() {
   if (!initialized) {
-    // Initialize default data
-    await storage.seedDefaultPrograms();
+    try {
+      console.log("🔄 Initializing app...");
+      
+      // Initialize default data
+      console.log("🔄 Seeding default programs...");
+      await storage.seedDefaultPrograms();
+      console.log("✅ Default programs seeded");
 
-    // Register routes
-    app.get(api.programs.list.path, async (req, res) => {
-      const programs = await storage.getPrograms();
-      res.json(programs);
-    });
+      // Register routes
+      app.get(api.programs.list.path, async (req, res) => {
+        try {
+          const programs = await storage.getPrograms();
+          console.log(`📊 GET /api/programs - returning ${programs.length} programs`);
+          res.json(programs);
+        } catch (error) {
+          console.error("Error fetching programs:", error);
+          res.status(500).json({ error: "Failed to fetch programs" });
+        }
+      });
 
     app.get(api.programs.get.path, async (req, res) => {
-      const program = await storage.getProgram(Number(req.params.id));
-      if (!program) {
-        return res.status(404).json({ message: "Program not found" });
+      try {
+        const program = await storage.getProgram(Number(req.params.id));
+        if (!program) {
+          return res.status(404).json({ message: "Program not found" });
+        }
+        res.json(program);
+      } catch (error) {
+        console.error("Error fetching program:", error);
+        res.status(500).json({ error: "Failed to fetch program" });
       }
-      res.json(program);
     });
 
     // Serve static files
@@ -73,6 +89,11 @@ async function initializeApp() {
     });
 
     initialized = true;
+    console.log("✅ App initialized successfully");
+    } catch (error) {
+      console.error("❌ Failed to initialize app:", error);
+      throw error;
+    }
   }
 }
 
