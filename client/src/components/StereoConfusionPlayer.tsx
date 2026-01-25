@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Play, Pause, Volume2, Upload, X, Headphones,
-  SkipBack, SkipForward, Repeat, Trash2, Copy, Shuffle, GripHorizontal, GripVertical
+  SkipBack, SkipForward, Repeat, Repeat1, Trash2, Copy, Shuffle, GripHorizontal, GripVertical
 } from "lucide-react";
 
 function formatTime(seconds: number): string {
@@ -515,9 +515,13 @@ export function StereoConfusionPlayer() {
   const bothFileInputRef = useRef<HTMLInputElement>(null);
   const [isBothDragOver, setIsBothDragOver] = useState(false);
 
-  const loopIcon = <Repeat className="w-4 h-4" />;
+  const loopLabel = player.loopMode === 'off' 
+    ? 'Loop Off' 
+    : player.loopMode === 'playlist' 
+    ? 'Loop Playlist' 
+    : 'Loop Track';
 
-  const loopLabel = player.loopMode === 'off' ? 'Loop Off' : 'Loop Playlist';
+  const shuffleLabel = player.shuffle ? 'Shuffle On' : 'Shuffle Off';
 
   const hasAnyTracks = player.leftTracks.length > 0 || player.rightTracks.length > 0;
 
@@ -669,25 +673,23 @@ export function StereoConfusionPlayer() {
 
           <div className="flex items-center justify-center gap-1">
             <Button
-              variant="ghost"
-              size="icon"
+              variant="outline"
+              size="sm"
               onClick={player.toggleShuffle}
-              className={player.shuffle ? 'text-primary' : 'text-muted-foreground'}
-              title={player.shuffle ? 'Shuffle On' : 'Shuffle Off'}
+              className={player.shuffle ? 'text-primary border-primary' : 'text-muted-foreground'}
               data-testid="stereo-shuffle-btn"
             >
-              <Shuffle className="w-4 h-4" />
+              {shuffleLabel}
             </Button>
             
             <Button
-              variant="ghost"
-              size="icon"
+              variant="outline"
+              size="sm"
               onClick={player.cycleLoopMode}
-              className={player.loopMode !== 'off' ? 'text-primary' : 'text-muted-foreground'}
-              title={loopLabel}
+              className={player.loopMode !== 'off' ? 'text-primary border-primary' : 'text-muted-foreground'}
               data-testid="stereo-loop-btn"
             >
-              {loopIcon}
+              {loopLabel}
             </Button>
             
             <Button

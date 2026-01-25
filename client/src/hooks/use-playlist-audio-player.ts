@@ -233,7 +233,7 @@ export function usePlaylistAudioPlayer(storageKey: string) {
     const audio = audioRef.current || new Audio();
     audio.src = track.objectUrl;
     audio.volume = volume;
-    audio.loop = false; // Never loop individual tracks - only playlist looping
+    audio.loop = loopMode === 'track'; // Loop track when in track mode
     audio.playbackRate = tuning === 432 ? 432 / 440 : 1.0;
     
     audio.onloadedmetadata = () => {
@@ -248,13 +248,17 @@ export function usePlaylistAudioPlayer(storageKey: string) {
     };
     
     audio.onended = () => {
-      // Track loop mode removed - only handle playlist looping or stop
       // Use refs to get current values (avoid stale closures)
       const currentLoopMode = loopModeRef.current;
       const currentShuffle = shuffleRef.current;
       const currentShuffleActive = shuffleActiveRef.current;
       const currentShuffledIndices = shuffledIndicesRef.current;
       const currentIdx = currentIndexRef.current;
+      
+      // If in track loop mode, the audio element will handle looping automatically
+      if (currentLoopMode === 'track') {
+        return;
+      }
       
       setTracks(currentTracks => {
         if (currentShuffleActive && currentShuffledIndices.length > 0) {
@@ -524,10 +528,18 @@ export function usePlaylistAudioPlayer(storageKey: string) {
 
   const cycleLoopMode = useCallback(() => {
     setLoopMode(prev => {
-      // Toggle between playlist loop and off only (removed track loop option)
-      const next = prev === 'off' ? 'playlist' : 'off';
+      // Cycle through: off → playlist → track → off
+      let next: LoopMode;
+      if (prev === 'off') {
+        next = 'playlist';
+      } else if (prev === 'playlist') {
+        next = 'track';
+      } else {
+        next = 'off';
+      }
+      
       if (audioRef.current) {
-        audioRef.current.loop = false; // Never loop individual tracks
+        audioRef.current.loop = next === 'track'; // Loop current track when in track mode
       }
       return next;
     });
@@ -554,13 +566,24 @@ export function usePlaylistAudioPlayer(storageKey: string) {
 
   const toggleShuffle = useCallback(() => {
     setShuffle(prev => {
-      if (prev) {
+      const newShuffleState = !prev;
+      if (newShuffleState) {
+        // Activating shuffle - generate shuffled indices
+        if (tracks.length > 0) {
+          const indices = shuffleArray(Array.from({ length: tracks.length }, (_, i) => i));
+          setShuffledIndices(indices);
+          setShuffleActive(true);
+          // Optionally start from a random position in the shuffle
+          // setCurrentIndex(indices[0] ?? 0);
+        }
+      } else {
+        // Deactivating shuffle - clear shuffle state
         setShuffleActive(false);
         setShuffledIndices([]);
       }
-      return !prev;
+      return newShuffleState;
     });
-  }, []);
+  }, [tracks.length]);
 
   return {
     tracks,

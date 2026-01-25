@@ -10,9 +10,13 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Setup auth (must be before other routes)
-  await setupAuth(app);
-  registerAuthRoutes(app);
+  // Setup auth only if Replit environment is configured
+  if (process.env.REPL_ID) {
+    await setupAuth(app);
+    registerAuthRoutes(app);
+  } else {
+    console.log("⚠️  Running without authentication (local dev mode)");
+  }
 
   // Initialize default data
   await storage.seedDefaultPrograms();

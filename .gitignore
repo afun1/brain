@@ -1,12 +1,66 @@
+# Dependencies
 node_modules
+package-lock.json
+
+# Build outputs
 dist
-.DS_Store
+build
 server/public
-vite.config.ts.*
-*.tar.gz
-.local
+
+# Environment variables
 .env
-.env.*
-!.env.example
+.env.local
+.env.*.local
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs
+
+# Temporary files
+*.tmp
+*.temp
+.cache
+.parcel-cache
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Build artifacts
+*.tar.gz
+vite.config.ts.*
+
+# Vercel
 .vercel
+
+# Replit
+.replit
+.local
+.config
+
+# TypeScript
+*.tsbuildinfo
+
+# Testing
+coverage
+.nyc_output
+
+# Misc
+.eslintcache

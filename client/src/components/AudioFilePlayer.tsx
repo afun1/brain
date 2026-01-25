@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Play, Pause, Volume2, Upload, X, Music, MessageCircle, 
-  SkipBack, SkipForward, Repeat, Trash2,
+  SkipBack, SkipForward, Repeat, Repeat1, Trash2,
   Download, Shuffle, GripVertical, GripHorizontal
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -337,9 +337,13 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
 
   const IconComponent = icon === "music" ? Music : MessageCircle;
 
-  const loopIcon = <Repeat className="w-4 h-4" />;
+  const loopLabel = player.loopMode === 'off' 
+    ? 'Loop Off' 
+    : player.loopMode === 'playlist' 
+    ? 'Loop Playlist' 
+    : 'Loop Track';
 
-  const loopLabel = player.loopMode === 'off' ? 'Loop Off' : 'Loop Playlist';
+  const shuffleLabel = player.shuffle ? 'Shuffle On' : 'Shuffle Off';
 
   return (
     <div 
@@ -586,25 +590,23 @@ export function AudioFilePlayer({ title, icon, storageKey, testIdPrefix, showRec
 
           <div className="flex items-center justify-center gap-1">
             <Button
-              variant="ghost"
-              size="icon"
+              variant="outline"
+              size="sm"
               onClick={player.toggleShuffle}
-              className={player.shuffle ? 'text-primary' : 'text-muted-foreground'}
-              title={player.shuffle ? 'Shuffle On' : 'Shuffle Off'}
+              className={player.shuffle ? 'text-primary border-primary' : 'text-muted-foreground'}
               data-testid={`${testIdPrefix}-shuffle-btn`}
             >
-              <Shuffle className="w-4 h-4" />
+              {shuffleLabel}
             </Button>
             
             <Button
-              variant="ghost"
-              size="icon"
+              variant="outline"
+              size="sm"
               onClick={player.cycleLoopMode}
-              className={player.loopMode !== 'off' ? 'text-primary' : 'text-muted-foreground'}
-              title={loopLabel}
+              className={player.loopMode !== 'off' ? 'text-primary border-primary' : 'text-muted-foreground'}
               data-testid={`${testIdPrefix}-loop-btn`}
             >
-              {loopIcon}
+              {loopLabel}
             </Button>
             
             <Button

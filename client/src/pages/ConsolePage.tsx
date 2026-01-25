@@ -842,6 +842,7 @@ export default function ConsolePage() {
   }, [includePreSleep, preSleepDuration, preSleepFrequency]);
   
   // Generate Pre-Wake Delta Boost stages (deep delta for regeneration before waking)
+  // Pre-wake delta boost stages - will be adjusted to match previous stage's ending frequency
   const preWakeDeltaStages = useMemo((): SleepStage[] => {
     if (!includePreWakeDelta) return [];
     
@@ -849,13 +850,16 @@ export default function ConsolePage() {
     const stages: SleepStage[] = [];
     const carrierFreq = parseFloat(preWakeFrequency) || 110; // Default to 110 Hz if empty
     
-    // Phase 1: Transition from REM to Deep Delta (20% of time)
+    // Use marker value (-1) for starting frequency - will be replaced with actual previous stage's ending frequency
+    // This prevents frequency spikes when transitioning from sleep program to delta boost
+    
+    // Phase 1: Transition to Deep Delta (20% of time)
     const phase1Duration = Math.round(totalSeconds * 0.2);
     stages.push({
       id: 8500,
       programId: 0,
       name: "Delta Boost - Descent",
-      startBeatFreq: 9,   // From REM
+      startBeatFreq: -1,  // Marker: will be replaced with previous stage's ending frequency
       endBeatFreq: 2,     // Down to deep delta
       startCarrierFreq: carrierFreq,
       endCarrierFreq: carrierFreq,
@@ -990,11 +994,56 @@ export default function ConsolePage() {
     const programStages = (selectedProgram?.stages as SleepStage[]) || [];
     const transformedStages = transformFullNightRestStages(programStages);
     
+    // If pre-sleep wind-down is enabled, skip the initial stages of the sleep program
+    // that would take the user back up from theta to beta
+    // Pre-sleep ends at ~5-6 Hz (theta), so skip stages that start above 7 Hz
+    let adjustedProgramStages = transformedStages;
+    if (includePreSleep && transformedStages.length > 0) {
+      // Find the first stage that starts at or below 7 Hz (theta/delta range)
+      const firstThetaDeltaIndex = transformedStages.findIndex(
+        stage => stage.startBeatFreq <= 7
+      );
+      
+      if (firstThetaDeltaIndex > 0) {
+        // Skip all stages before the first theta/delta stage
+        // This prevents the Beta→Alpha→Theta from pre-sleep jumping back to Beta
+        adjustedProgramStages = transformedStages.slice(firstThetaDeltaIndex);
+      }
+    }
+    
+    // If pre-wake delta boost is enabled, remove the "Gentle Awakening" stage
+    // to avoid beta spike (delta boost already brings you to 9 Hz REM)
+    if (includePreWakeDelta && transformedStages.length > 0) {
+      adjustedProgramStages = adjustedProgramStages.filter(
+        stage => !stage.name.toLowerCase().includes('awakening')
+      );
+    }
+    
+    // Resolve pre-wake delta boost's starting frequency (-1 marker)
+    // to match the ending frequency of the sleep program
+    let resolvedPreWakeDeltaStages = preWakeDeltaStages;
+    if (preWakeDeltaStages.length > 0 && preWakeDeltaStages[0].startBeatFreq === -1) {
+      // Find the ending frequency of the sleep program
+      const lastSleepStage = adjustedProgramStages[adjustedProgramStages.length - 1];
+      const smoothStartFreq = lastSleepStage ? lastSleepStage.endBeatFreq : 9;
+      
+      // Replace -1 marker with smooth transition frequency
+      resolvedPreWakeDeltaStages = preWakeDeltaStages.map((stage, idx) => {
+        if (idx === 0 && stage.startBeatFreq === -1) {
+          return {
+            ...stage,
+            startBeatFreq: smoothStartFreq,
+          };
+        }
+        return stage;
+      });
+    }
+    
     // Build the base stages (everything before wake-up)
     const baseStages = [
       ...preSleepStages,
-      ...transformedStages,
-      ...preWakeDeltaStages,
+      ...adjustedProgramStages,
+      ...resolvedPreWakeDeltaStages,
     ];
     
     // Resolve "Continue" mode (-1) for wake-up stages
@@ -1014,15 +1063,15 @@ export default function ConsolePage() {
     }
     
     // Chain all phases in order:
-    // 1. Pre-Sleep Wind-Down (optional)
-    // 2. Main Sleep Program
-    // 3. Pre-Wake Delta Boost (optional)
+    // 1. Pre-Sleep Wind-Down (optional) - Beta → Alpha → Theta
+    // 2. Main Sleep Program (starting from Theta if pre-sleep enabled)
+    // 3. Pre-Wake Delta Boost (optional, smooth transition from sleep program)
     // 4. Beta Wake-Up (optional, with "Continue" support)
     return [
       ...baseStages,
       ...resolvedWakeUpStages,
     ];
-  }, [selectedProgram, wakeUpStages, preSleepStages, preWakeDeltaStages, customFrequencySlots, slotDurations, isFullNightRest, totalProgramMinutes]);
+  }, [selectedProgram, wakeUpStages, preSleepStages, preWakeDeltaStages, customFrequencySlots, slotDurations, isFullNightRest, totalProgramMinutes, includePreSleep]);
   
   const programAudio = useAudioEngine(programStagesWithWakeUp);
   
@@ -1778,7 +1827,7 @@ export default function ConsolePage() {
       </header>
 
       <main className="flex-1 relative z-10 flex flex-col px-4 py-4 pb-48 overflow-y-auto">
-        <div className="w-full max-w-4xl mx-auto space-y-4">
+        <div className="w-full mx-auto space-y-4">
           
           <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)} className="w-full">
             <TabsList className="grid w-full grid-cols-5 mb-4">

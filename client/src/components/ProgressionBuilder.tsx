@@ -732,16 +732,16 @@ export function ProgressionBuilder({
               return (
                 <div
                   key={slot.id}
-                  className={`flex flex-col items-center p-1.5 rounded-lg border ${SLOT_COLORS[idx % SLOT_COLORS.length]} bg-white/5 transition-all ${
+                  className={`flex flex-col items-center p-1 rounded-lg border ${SLOT_COLORS[idx % SLOT_COLORS.length]} bg-white/5 transition-all ${
                     isCurrentSlot ? 'ring-2 ring-primary bg-primary/20' : ''
                   } ${!isActive ? 'opacity-50' : ''}`}
                   data-testid={`slot-${idx}`}
                 >
-                  <div className="text-[9px] text-muted-foreground mb-0.5">#{idx + 1}</div>
+                  <div className="text-sm text-muted-foreground mb-0.5">#{idx + 1}</div>
                   
                   {/* Carrier Hz */}
                   <div className="w-full mb-0.5">
-                    <div className="text-[7px] text-center text-accent/70 mb-0.5">{carrierChannel} Hz</div>
+                    <div className="text-sm text-center text-accent/70 mb-0.5">{carrierChannel} Hz</div>
                     <input
                       type="text"
                       inputMode="decimal"
@@ -749,14 +749,14 @@ export function ProgressionBuilder({
                       onChange={(e) => handleCarrierChange(idx, e.target.value)}
                       onBlur={() => handleCarrierBlur(idx)}
                       placeholder=""
-                      className="w-full py-0.5 text-center text-[10px] bg-zinc-900 border border-accent/30 rounded text-white focus:border-primary focus:outline-none"
+                      className="w-full py-0.5 text-center text-sm bg-zinc-900 border border-accent/30 rounded text-white focus:border-primary focus:outline-none"
                       data-testid={`input-carrier-${idx}`}
                     />
                   </div>
                   
                   {/* Beat Hz (editable per slot) */}
                   <div className="w-full mb-0.5">
-                    <div className="text-[7px] text-center text-purple-400/70 mb-0.5">Beat</div>
+                    <div className="text-sm text-center text-purple-400/70 mb-0.5">Beat</div>
                     <input
                       type="text"
                       inputMode="decimal"
@@ -764,7 +764,7 @@ export function ProgressionBuilder({
                       onChange={(e) => handleBeatChange(idx, e.target.value)}
                       onBlur={() => handleBeatBlur(idx)}
                       placeholder=""
-                      className="w-full py-0.5 text-center text-[10px] bg-zinc-900 border border-purple-400/30 rounded text-white focus:border-primary focus:outline-none"
+                      className="w-full py-0.5 text-center text-sm bg-zinc-900 border border-purple-400/30 rounded text-white focus:border-primary focus:outline-none"
                       data-testid={`input-beat-${idx}`}
                     />
                   </div>
@@ -772,8 +772,8 @@ export function ProgressionBuilder({
                   {/* Variable Hz (calculated, read-only display) */}
                   {carrier > 0 && beat > 0 && (
                     <div className="w-full mb-0.5">
-                      <div className="text-[7px] text-center text-muted-foreground/70 mb-0.5">{carrierChannel === 'L' ? 'R' : 'L'} Hz</div>
-                      <div className={`w-full py-0.5 text-center text-[10px] bg-zinc-800/50 border border-white/10 rounded ${color}`}>
+                      <div className="text-sm text-center text-muted-foreground/70 mb-0.5">{carrierChannel === 'L' ? 'R' : 'L'} Hz</div>
+                      <div className={`w-full py-0.5 text-center text-sm bg-zinc-800/50 border border-white/10 rounded ${color}`}>
                         {variableHz.toFixed(1)}
                       </div>
                     </div>
@@ -781,7 +781,7 @@ export function ProgressionBuilder({
                   
                   {/* Duration */}
                   <div className="w-full">
-                    <div className="text-[7px] text-center text-muted-foreground/70 mb-0.5">Min</div>
+                    <div className="text-sm text-center text-muted-foreground/70 mb-0.5">Min</div>
                     <input
                       type="text"
                       inputMode="numeric"
@@ -789,14 +789,14 @@ export function ProgressionBuilder({
                       onChange={(e) => handleDurationChange(idx, e.target.value)}
                       onBlur={() => handleDurationBlur(idx)}
                       placeholder=""
-                      className="w-full py-0.5 text-center text-[10px] bg-zinc-800 border border-white/10 rounded text-white focus:border-primary focus:outline-none"
+                      className="w-full py-0.5 text-center text-sm bg-zinc-800 border border-white/10 rounded text-white focus:border-primary focus:outline-none"
                       data-testid={`input-duration-${idx}`}
                     />
                   </div>
                   
                   {/* Brain wave type indicator */}
                   {isActive && (
-                    <div className={`mt-1 text-[8px] font-medium ${color}`}>
+                    <div className={`mt-0.5 text-sm font-medium ${color}`}>
                       {beat} {type}
                     </div>
                   )}

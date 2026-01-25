@@ -453,7 +453,7 @@ export function useStereoPlaylistPlayer() {
     const audio = leftAudioRef.current;
     audio.pause();
     audio.src = track.objectUrl;
-    audio.loop = false; // Never loop individual tracks - only playlist looping
+    audio.loop = loopMode === 'track'; // Loop track when in track mode
     
     audio.onloadedmetadata = () => {
       setLeftTracks(prev => prev.map(t => 
@@ -469,13 +469,17 @@ export function useStereoPlaylistPlayer() {
     };
     
     audio.onended = () => {
-      // Track loop mode removed - only handle playlist looping or stop
       // Use refs to get current values (avoid stale closures)
       const currentLoopMode = loopModeRef.current;
       const currentShuffle = shuffleRef.current;
       const currentShuffleActive = leftShuffleActiveRef.current;
       const currentShuffledIndices = leftShuffledIndicesRef.current;
       const currentIdx = leftIndexRef.current;
+      
+      // If in track loop mode, the audio element will handle looping automatically
+      if (currentLoopMode === 'track') {
+        return;
+      }
       
       setLeftTracks(currentTracks => {
         if (currentShuffleActive && currentShuffledIndices.length > 0) {
@@ -532,7 +536,7 @@ export function useStereoPlaylistPlayer() {
     const audio = rightAudioRef.current;
     audio.pause();
     audio.src = track.objectUrl;
-    audio.loop = false; // Never loop individual tracks - only playlist looping
+    audio.loop = loopMode === 'track'; // Loop track when in track mode
     
     audio.onloadedmetadata = () => {
       setRightTracks(prev => prev.map(t => 
@@ -544,13 +548,17 @@ export function useStereoPlaylistPlayer() {
     };
     
     audio.onended = () => {
-      // Track loop mode removed - only handle playlist looping or stop
       // Use refs to get current values (avoid stale closures)
       const currentLoopMode = loopModeRef.current;
       const currentShuffle = shuffleRef.current;
       const currentShuffleActive = rightShuffleActiveRef.current;
       const currentShuffledIndices = rightShuffledIndicesRef.current;
       const currentIdx = rightIndexRef.current;
+      
+      // If in track loop mode, the audio element will handle looping automatically
+      if (currentLoopMode === 'track') {
+        return;
+      }
       
       setRightTracks(currentTracks => {
         if (currentShuffleActive && currentShuffledIndices.length > 0) {
@@ -952,10 +960,19 @@ export function useStereoPlaylistPlayer() {
 
   const cycleLoopMode = useCallback(() => {
     setLoopMode(prev => {
-      // Toggle between playlist loop and off only (removed track loop option)
-      const next = prev === 'off' ? 'playlist' : 'off';
-      if (leftAudioRef.current) leftAudioRef.current.loop = false;
-      if (rightAudioRef.current) rightAudioRef.current.loop = false;
+      // Cycle through: off → playlist → track → off
+      let next: LoopMode;
+      if (prev === 'off') {
+        next = 'playlist';
+      } else if (prev === 'playlist') {
+        next = 'track';
+      } else {
+        next = 'off';
+      }
+      
+      // Loop tracks when in track mode
+      if (leftAudioRef.current) leftAudioRef.current.loop = next === 'track';
+      if (rightAudioRef.current) rightAudioRef.current.loop = next === 'track';
       return next;
     });
   }, []);
@@ -1017,15 +1034,29 @@ export function useStereoPlaylistPlayer() {
 
   const toggleShuffle = useCallback(() => {
     setShuffle(prev => {
-      if (prev) {
+      const newShuffleState = !prev;
+      if (newShuffleState) {
+        // Activating shuffle - generate shuffled indices for both channels
+        if (leftTracks.length > 0) {
+          const leftIndices = shuffleArray(Array.from({ length: leftTracks.length }, (_, i) => i));
+          setLeftShuffledIndices(leftIndices);
+          setLeftShuffleActive(true);
+        }
+        if (rightTracks.length > 0) {
+          const rightIndices = shuffleArray(Array.from({ length: rightTracks.length }, (_, i) => i));
+          setRightShuffledIndices(rightIndices);
+          setRightShuffleActive(true);
+        }
+      } else {
+        // Deactivating shuffle - clear shuffle state
         setLeftShuffleActive(false);
         setRightShuffleActive(false);
         setLeftShuffledIndices([]);
         setRightShuffledIndices([]);
       }
-      return !prev;
+      return newShuffleState;
     });
-  }, []);
+  }, [leftTracks.length, rightTracks.length]);
 
   return {
     leftTracks,

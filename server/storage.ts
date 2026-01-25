@@ -15,7 +15,7 @@ import {
   type InsertLibraryProgression,
   type ProgramWithStages,
 } from "@shared/schema";
-import { eq, asc, desc, sql } from "drizzle-orm";
+import { eq, asc, desc, sql, and } from "drizzle-orm";
 
 export interface IStorage {
   getPrograms(): Promise<ProgramWithStages[]>;
@@ -76,7 +76,7 @@ export class DatabaseStorage implements IStorage {
 
   async seedDefaultPrograms(): Promise<void> {
     // First, remove any outdated programs that are no longer supported
-    const deprecatedNames = ["90-Minute Sleep Cycle", "8-Hour Solfeggio Sleep Journey"];
+    const deprecatedNames = ["90-Minute Sleep Cycle", "8-Hour Solfeggio Sleep Journey", "8-Hour Full Night Rest"];
     const allPrograms = await db.select().from(programs);
     
     for (const program of allPrograms) {
@@ -178,22 +178,22 @@ export class DatabaseStorage implements IStorage {
         { name: "N2 - Settling", order: 8, durationSeconds: 1500, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 7, endBeatFreq: 5 },
         { name: "N3 - Deep Sleep 2", order: 9, durationSeconds: 1800, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 5, endBeatFreq: 1 },
         { name: "N2 - Rising", order: 10, durationSeconds: 600, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 1, endBeatFreq: 5 },
-        { name: "REM Cycle 2", order: 11, durationSeconds: 1080, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 5, endBeatFreq: 9 },
+        { name: "REM Cycle 2", order: 11, durationSeconds: 900, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 5, endBeatFreq: 9 },
         { name: "N1 - Brief", order: 12, durationSeconds: 180, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 9, endBeatFreq: 7 },
         { name: "N2 - Extended", order: 13, durationSeconds: 1800, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 7, endBeatFreq: 5 },
         { name: "N3 - Shallow Deep", order: 14, durationSeconds: 600, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 5, endBeatFreq: 2 },
         { name: "N2 - Transition", order: 15, durationSeconds: 600, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 2, endBeatFreq: 5 },
-        { name: "REM Cycle 3", order: 16, durationSeconds: 1680, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 5, endBeatFreq: 9 },
+        { name: "REM Cycle 3", order: 16, durationSeconds: 600, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 5, endBeatFreq: 9 },
         { name: "N1 - Quick", order: 17, durationSeconds: 180, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 9, endBeatFreq: 7 },
-        { name: "N2 - Stable", order: 18, durationSeconds: 1800, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 7, endBeatFreq: 5 },
-        { name: "N3 - Brief Deep", order: 19, durationSeconds: 300, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 5, endBeatFreq: 3 },
-        { name: "N2 - Rising", order: 20, durationSeconds: 600, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 3, endBeatFreq: 5 },
-        { name: "REM Cycle 4", order: 21, durationSeconds: 2400, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 5, endBeatFreq: 9 },
-        { name: "N1 - Light", order: 22, durationSeconds: 180, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 9, endBeatFreq: 7 },
-        { name: "N2 - Final Light Sleep", order: 23, durationSeconds: 1500, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 7, endBeatFreq: 5 },
-        { name: "N2 - Transition", order: 24, durationSeconds: 300, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 5, endBeatFreq: 6 },
-        { name: "REM Cycle 5 - Long", order: 25, durationSeconds: 3600, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 6, endBeatFreq: 9 },
-        { name: "Final REM - Dreams", order: 26, durationSeconds: 900, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 9, endBeatFreq: 9 },
+        { name: "N2 - Stable", order: 18, durationSeconds: 600, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 7, endBeatFreq: 5 },
+        { name: "N3 - Brief Deep", order: 19, durationSeconds: 600, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 5, endBeatFreq: 2 },
+        { name: "N2 - Rising", order: 20, durationSeconds: 300, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 2, endBeatFreq: 5 },
+        { name: "REM Cycle 4", order: 21, durationSeconds: 600, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 5, endBeatFreq: 9 },
+        { name: "N2 - Descent", order: 22, durationSeconds: 300, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 9, endBeatFreq: 5 },
+        { name: "N2 - To Delta", order: 23, durationSeconds: 300, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 5, endBeatFreq: 2 },
+        { name: "N3 - Final Delta", order: 24, durationSeconds: 900, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 2, endBeatFreq: 1 },
+        { name: "N2 - Rising from Delta", order: 25, durationSeconds: 300, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 1, endBeatFreq: 5 },
+        { name: "Final REM - Dreams", order: 26, durationSeconds: 1200, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 5, endBeatFreq: 9 },
         { name: "Gentle Awakening", order: 27, durationSeconds: 600, startCarrierFreq: 432, endCarrierFreq: 432, startBeatFreq: 9, endBeatFreq: 12 },
       ];
 
@@ -244,8 +244,10 @@ export class DatabaseStorage implements IStorage {
   async rateProgression(progressionId: number, userId: string, rating: number): Promise<void> {
     // Check if user already rated
     const [existing] = await db.select().from(libraryRatings)
-      .where(eq(libraryRatings.progressionId, progressionId))
-      .where(eq(libraryRatings.userId, userId));
+      .where(and(
+        eq(libraryRatings.progressionId, progressionId),
+        eq(libraryRatings.userId, userId)
+      ));
 
     if (existing) {
       // Update existing rating
